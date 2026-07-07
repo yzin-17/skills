@@ -1,10 +1,10 @@
-# API Mockgen Implementation Plan
+# Mockoon Gen Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the MVP `mockgen` TypeScript CLI that reads reviewed OpenAPI/artifact input and deterministically generates `api-artifact.json`, `api.generated.ts`, `whistle.txt`, `mockoon.json`, and validation reports.
+**Goal:** Build the MVP `mockoon-gen` TypeScript CLI that reads reviewed OpenAPI/artifact input and deterministically generates `api-artifact.json`, `api.generated.ts`, `whistle.txt`, `mockoon.json`, and validation reports.
 
-**Architecture:** The CLI is artifact-first. `src/artifact` owns the schema, migration, validation, and OpenAPI-to-artifact conversion; `src/generators` owns deterministic output adapters; `src/cli` wires commands to the core modules. The MVP intentionally does not parse loose documents in the CLI; loose docs are handled by the API mockgen skill before OpenAPI reaches the CLI.
+**Architecture:** The CLI is artifact-first. `skills/mockoon-gen/src/artifact` owns the schema, migration, validation, and OpenAPI-to-artifact conversion; `skills/mockoon-gen/src/generators` owns deterministic output adapters; `skills/mockoon-gen/src/cli` wires commands to the core modules. The MVP intentionally does not parse loose documents in the CLI; loose docs are handled by the Mockoon Gen skill before OpenAPI reaches the CLI.
 
 **Tech Stack:** Node.js, TypeScript, Vitest, Commander, Zod, YAML.
 
@@ -12,95 +12,97 @@
 
 ## Current State
 
-The repository is a small skeleton with `README.md`, `LICENSE`, and the reviewed spec at `docs/superpowers/specs/2026-07-06-api-mockgen-design.md`.
+The repository is a small skeleton with root `README.md`, `LICENSE`, and the reviewed spec at `docs/superpowers/specs/2026-07-06-api-mockgen-design.md`.
 
-The reviewed spec is staged locally but not committed because the user rejected the commit operation. Implementation should avoid modifying unrelated git state.
+The reviewed spec is already committed. The repository may contain multiple skills, so all Mockoon Gen package files live under `skills/mockoon-gen/`. Root-level files are limited to shared repository files such as `.gitignore`, `README.md`, `LICENSE`, and `docs/`.
 
 ## File Structure
 
 Create this structure:
 
 ```text
-package.json
-tsconfig.json
-vitest.config.ts
 .gitignore
 
-src/
-  cli.ts
-  index.ts
-  artifact/
-    types.ts
-    schema.ts
-    validate.ts
-    from-openapi.ts
-    migrate.ts
-    review.ts
-  config/
-    load-config.ts
-    types.ts
-  generators/
-    api-code.ts
-    mockoon.ts
-    whistle.ts
-    hash.ts
-  openapi/
-    load-openapi.ts
-    types.ts
-  utils/
-    fs.ts
-    json-path.ts
-
-tests/
-  fixtures/
-    openapi.user.yaml
-    artifact.user.json
-  artifact/
-    schema.test.ts
-    from-openapi.test.ts
-    validate.test.ts
-  generators/
-    api-code.test.ts
-    mockoon.test.ts
-    whistle.test.ts
-  cli/
-    cli.test.ts
+skills/
+  mockoon-gen/
+    package.json
+    tsconfig.json
+    vitest.config.ts
+    README.md
+    src/
+      cli.ts
+      index.ts
+      artifact/
+        types.ts
+        schema.ts
+        validate.ts
+        from-openapi.ts
+        migrate.ts
+        review.ts
+      config/
+        load-config.ts
+        types.ts
+      generators/
+        api-code.ts
+        mockoon.ts
+        whistle.ts
+        hash.ts
+      openapi/
+        load-openapi.ts
+        types.ts
+      utils/
+        fs.ts
+        json-path.ts
+    tests/
+      fixtures/
+        openapi.user.yaml
+        artifact.user.json
+      artifact/
+        schema.test.ts
+        from-openapi.test.ts
+        validate.test.ts
+      generators/
+        api-code.test.ts
+        mockoon.test.ts
+        whistle.test.ts
+      cli/
+        cli.test.ts
 ```
 
 Responsibility boundaries:
 
-- `src/artifact/types.ts`: TypeScript types for schema version `0.2.0`.
-- `src/artifact/schema.ts`: Zod schema for runtime validation.
-- `src/artifact/from-openapi.ts`: deterministic OpenAPI-to-artifact draft generation.
-- `src/artifact/validate.ts`: `fatal`, `needsReview`, `warning` validation rules.
-- `src/artifact/migrate.ts`: schema version migration entry point.
-- `src/generators/api-code.ts`: `api.generated.ts` generation and hash header handling.
-- `src/generators/whistle.ts`: route-level whistle rule generation.
-- `src/generators/mockoon.ts`: Mockoon JSON generation from endpoint mock scenarios.
-- `src/openapi/load-openapi.ts`: YAML/JSON load and content hash.
-- `src/cli.ts`: command parsing only; no business logic.
+- `skills/mockoon-gen/src/artifact/types.ts`: TypeScript types for schema version `0.2.0`.
+- `skills/mockoon-gen/src/artifact/schema.ts`: Zod schema for runtime validation.
+- `skills/mockoon-gen/src/artifact/from-openapi.ts`: deterministic OpenAPI-to-artifact draft generation.
+- `skills/mockoon-gen/src/artifact/validate.ts`: `fatal`, `needsReview`, `warning` validation rules.
+- `skills/mockoon-gen/src/artifact/migrate.ts`: schema version migration entry point.
+- `skills/mockoon-gen/src/generators/api-code.ts`: `api.generated.ts` generation and hash header handling.
+- `skills/mockoon-gen/src/generators/whistle.ts`: route-level whistle rule generation.
+- `skills/mockoon-gen/src/generators/mockoon.ts`: Mockoon JSON generation from endpoint mock scenarios.
+- `skills/mockoon-gen/src/openapi/load-openapi.ts`: YAML/JSON load and content hash.
+- `skills/mockoon-gen/src/cli.ts`: command parsing only; no business logic.
 
 ## Task 1: Initialize TypeScript CLI Project
 
 **Files:**
-- Create: `package.json`
-- Create: `tsconfig.json`
-- Create: `vitest.config.ts`
+- Create: `skills/mockoon-gen/package.json`
+- Create: `skills/mockoon-gen/tsconfig.json`
+- Create: `skills/mockoon-gen/vitest.config.ts`
 - Create: `.gitignore`
-- Create: `src/index.ts`
-- Create: `src/cli.ts`
-- Test: `tests/cli/cli.test.ts`
+- Create: `skills/mockoon-gen/src/index.ts`
+- Create: `skills/mockoon-gen/src/cli.ts`
+- Test: `skills/mockoon-gen/tests/cli/cli.test.ts`
 
-- [ ] **Step 1: Create `package.json`**
+- [ ] **Step 1: Create `skills/mockoon-gen/package.json`**
 
 ```json
 {
-  "name": "api-mockgen",
+  "name": "mockoon-gen",
   "version": "0.1.0",
   "type": "module",
   "private": true,
   "bin": {
-    "mockgen": "./dist/cli.js"
+    "mockoon-gen": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -121,7 +123,7 @@ Responsibility boundaries:
 }
 ```
 
-- [ ] **Step 2: Create `tsconfig.json`**
+- [ ] **Step 2: Create `skills/mockoon-gen/tsconfig.json`**
 
 ```json
 {
@@ -142,7 +144,7 @@ Responsibility boundaries:
 }
 ```
 
-- [ ] **Step 3: Create `vitest.config.ts`**
+- [ ] **Step 3: Create `skills/mockoon-gen/vitest.config.ts`**
 
 ```ts
 import { defineConfig } from "vitest/config";
@@ -160,20 +162,21 @@ export default defineConfig({
 ```gitignore
 node_modules/
 dist/
-.mockgen/
+.mockoon-gen/
+.superpowers/
 coverage/
 *.log
 ```
 
 - [ ] **Step 5: Create initial exports**
 
-Create `src/index.ts`:
+Create `skills/mockoon-gen/src/index.ts`:
 
 ```ts
 export const MOCKGEN_VERSION = "0.1.0";
 ```
 
-Create `src/cli.ts`:
+Create `skills/mockoon-gen/src/cli.ts`:
 
 ```ts
 #!/usr/bin/env node
@@ -184,12 +187,12 @@ export function createProgram(): Command {
   const program = new Command();
 
   program
-    .name("mockgen")
+    .name("mockoon-gen")
     .description("Generate frontend API contracts and mock files from reviewed OpenAPI artifacts.")
     .version(MOCKGEN_VERSION);
 
-  program.command("init").description("Create default mockgen config.").action(() => {
-    console.log("mockgen init is not implemented yet");
+  program.command("init").description("Create default mockoon-gen config.").action(() => {
+    console.log("mockoon-gen init is not implemented yet");
   });
 
   return program;
@@ -202,16 +205,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 - [ ] **Step 6: Write CLI smoke test**
 
-Create `tests/cli/cli.test.ts`:
+Create `skills/mockoon-gen/tests/cli/cli.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
 import { createProgram } from "../../src/cli.js";
 
 describe("createProgram", () => {
-  it("registers the mockgen CLI name", () => {
+  it("registers the mockoon-gen CLI name", () => {
     const program = createProgram();
-    expect(program.name()).toBe("mockgen");
+    expect(program.name()).toBe("mockoon-gen");
   });
 });
 ```
@@ -221,18 +224,18 @@ describe("createProgram", () => {
 Run:
 
 ```bash
-npm install
+npm --prefix skills/mockoon-gen install
 ```
 
-Expected: `node_modules` and `package-lock.json` are created.
+Expected: `node_modules` and `skills/mockoon-gen/package-lock.json` are created.
 
 - [ ] **Step 8: Verify project scaffold**
 
 Run:
 
 ```bash
-npm run typecheck
-npm test
+npm --prefix skills/mockoon-gen run typecheck
+npm --prefix skills/mockoon-gen test
 ```
 
 Expected: both commands exit 0; Vitest reports 1 passing test.
@@ -240,20 +243,20 @@ Expected: both commands exit 0; Vitest reports 1 passing test.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add package.json package-lock.json tsconfig.json vitest.config.ts .gitignore src/index.ts src/cli.ts tests/cli/cli.test.ts
-git commit -m "feat: initialize mockgen cli project"
+git add .gitignore skills/mockoon-gen/package.json skills/mockoon-gen/package-lock.json skills/mockoon-gen/tsconfig.json skills/mockoon-gen/vitest.config.ts skills/mockoon-gen/src/index.ts skills/mockoon-gen/src/cli.ts skills/mockoon-gen/tests/cli/cli.test.ts
+git commit -m "feat: initialize mockoon-gen cli project"
 ```
 
 ## Task 2: Define Artifact Types and Runtime Schema
 
 **Files:**
-- Create: `src/artifact/types.ts`
-- Create: `src/artifact/schema.ts`
-- Test: `tests/artifact/schema.test.ts`
+- Create: `skills/mockoon-gen/src/artifact/types.ts`
+- Create: `skills/mockoon-gen/src/artifact/schema.ts`
+- Test: `skills/mockoon-gen/tests/artifact/schema.test.ts`
 
 - [ ] **Step 1: Write failing schema tests**
 
-Create `tests/artifact/schema.test.ts`:
+Create `skills/mockoon-gen/tests/artifact/schema.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -263,7 +266,7 @@ const minimalArtifact = {
   schemaVersion: "0.2.0",
   sources: [],
   openapi: {
-    file: ".mockgen/openapi.yaml",
+    file: ".mockoon-gen/openapi.yaml",
     sha256: "abc123",
     origin: "generated",
     reviewStatus: "confirmed"
@@ -281,11 +284,11 @@ const minimalArtifact = {
       reviewStatus: "unreviewed"
     },
     whistle: {
-      file: ".mockgen/whistle.txt",
+      file: ".mockoon-gen/whistle.txt",
       routes: []
     },
     mockoon: {
-      file: ".mockgen/mockoon.json",
+      file: ".mockoon-gen/mockoon.json",
       port: null,
       defaultHeaders: {
         "Content-Type": "application/json; charset=utf-8"
@@ -329,14 +332,14 @@ describe("artifactSchema", () => {
 Run:
 
 ```bash
-npm test -- tests/artifact/schema.test.ts
+npm --prefix skills/mockoon-gen test -- tests/artifact/schema.test.ts
 ```
 
-Expected: FAIL because `src/artifact/schema.ts` does not exist.
+Expected: FAIL because `skills/mockoon-gen/src/artifact/schema.ts` does not exist.
 
 - [ ] **Step 3: Create artifact types**
 
-Create `src/artifact/types.ts`:
+Create `skills/mockoon-gen/src/artifact/types.ts`:
 
 ```ts
 export type Origin = "generated" | "inferred" | "imported" | "manual";
@@ -512,7 +515,7 @@ export interface ApiArtifact {
 
 - [ ] **Step 4: Create Zod schema**
 
-Create `src/artifact/schema.ts`:
+Create `skills/mockoon-gen/src/artifact/schema.ts`:
 
 ```ts
 import { z } from "zod";
@@ -726,7 +729,7 @@ export type ParsedArtifact = z.infer<typeof artifactSchema>;
 Run:
 
 ```bash
-npm test -- tests/artifact/schema.test.ts
+npm --prefix skills/mockoon-gen test -- tests/artifact/schema.test.ts
 ```
 
 Expected: PASS.
@@ -734,23 +737,23 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/artifact/types.ts src/artifact/schema.ts tests/artifact/schema.test.ts
+git add skills/mockoon-gen/src/artifact/types.ts skills/mockoon-gen/src/artifact/schema.ts skills/mockoon-gen/tests/artifact/schema.test.ts
 git commit -m "feat: define artifact schema"
 ```
 
 ## Task 3: Load OpenAPI and Generate Artifact Draft
 
 **Files:**
-- Create: `src/generators/hash.ts`
-- Create: `src/openapi/types.ts`
-- Create: `src/openapi/load-openapi.ts`
-- Create: `src/artifact/from-openapi.ts`
-- Create: `tests/fixtures/openapi.user.yaml`
-- Test: `tests/artifact/from-openapi.test.ts`
+- Create: `skills/mockoon-gen/src/generators/hash.ts`
+- Create: `skills/mockoon-gen/src/openapi/types.ts`
+- Create: `skills/mockoon-gen/src/openapi/load-openapi.ts`
+- Create: `skills/mockoon-gen/src/artifact/from-openapi.ts`
+- Create: `skills/mockoon-gen/tests/fixtures/openapi.user.yaml`
+- Test: `skills/mockoon-gen/tests/artifact/from-openapi.test.ts`
 
 - [ ] **Step 1: Create OpenAPI fixture**
 
-Create `tests/fixtures/openapi.user.yaml`:
+Create `skills/mockoon-gen/tests/fixtures/openapi.user.yaml`:
 
 ```yaml
 openapi: 3.0.3
@@ -788,7 +791,7 @@ paths:
 
 - [ ] **Step 2: Write failing OpenAPI conversion test**
 
-Create `tests/artifact/from-openapi.test.ts`:
+Create `skills/mockoon-gen/tests/artifact/from-openapi.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -799,7 +802,7 @@ describe("artifactFromOpenApi", () => {
   it("creates endpoint, route, DTO, VO, mapper, and mock draft", async () => {
     const loaded = await loadOpenApi("tests/fixtures/openapi.user.yaml");
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockgen",
+      artifactDir: ".mockoon-gen",
       apiOutput: "src/api/generated/api.generated.ts",
       mockoonPort: 3100
     });
@@ -821,14 +824,14 @@ describe("artifactFromOpenApi", () => {
 Run:
 
 ```bash
-npm test -- tests/artifact/from-openapi.test.ts
+npm --prefix skills/mockoon-gen test -- tests/artifact/from-openapi.test.ts
 ```
 
 Expected: FAIL because OpenAPI loader and converter do not exist.
 
 - [ ] **Step 4: Implement SHA-256 helper**
 
-Create `src/generators/hash.ts`:
+Create `skills/mockoon-gen/src/generators/hash.ts`:
 
 ```ts
 import { createHash } from "node:crypto";
@@ -840,7 +843,7 @@ export function sha256(input: string): string {
 
 - [ ] **Step 5: Implement OpenAPI types and loader**
 
-Create `src/openapi/types.ts`:
+Create `skills/mockoon-gen/src/openapi/types.ts`:
 
 ```ts
 export interface LoadedOpenApi {
@@ -886,7 +889,7 @@ export interface OpenApiSchema {
 }
 ```
 
-Create `src/openapi/load-openapi.ts`:
+Create `skills/mockoon-gen/src/openapi/load-openapi.ts`:
 
 ```ts
 import { readFile } from "node:fs/promises";
@@ -912,7 +915,7 @@ export async function loadOpenApi(file: string): Promise<LoadedOpenApi> {
 
 - [ ] **Step 6: Implement OpenAPI-to-artifact converter**
 
-Create `src/artifact/from-openapi.ts`:
+Create `skills/mockoon-gen/src/artifact/from-openapi.ts`:
 
 ```ts
 import type { ApiArtifact, ArtifactEndpoint, MapperStep, MockScenario, WhistleRoute } from "./types.js";
@@ -1142,7 +1145,7 @@ function kebab(value: string): string {
 Run:
 
 ```bash
-npm test -- tests/artifact/from-openapi.test.ts
+npm --prefix skills/mockoon-gen test -- tests/artifact/from-openapi.test.ts
 ```
 
 Expected: PASS.
@@ -1150,20 +1153,20 @@ Expected: PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/generators/hash.ts src/openapi/types.ts src/openapi/load-openapi.ts src/artifact/from-openapi.ts tests/fixtures/openapi.user.yaml tests/artifact/from-openapi.test.ts
+git add skills/mockoon-gen/src/generators/hash.ts skills/mockoon-gen/src/openapi/types.ts skills/mockoon-gen/src/openapi/load-openapi.ts skills/mockoon-gen/src/artifact/from-openapi.ts skills/mockoon-gen/tests/fixtures/openapi.user.yaml skills/mockoon-gen/tests/artifact/from-openapi.test.ts
 git commit -m "feat: generate artifact from openapi"
 ```
 
 ## Task 4: Add Artifact Validation
 
 **Files:**
-- Create: `src/utils/json-path.ts`
-- Create: `src/artifact/validate.ts`
-- Test: `tests/artifact/validate.test.ts`
+- Create: `skills/mockoon-gen/src/utils/json-path.ts`
+- Create: `skills/mockoon-gen/src/artifact/validate.ts`
+- Test: `skills/mockoon-gen/tests/artifact/validate.test.ts`
 
 - [ ] **Step 1: Write failing validation tests**
 
-Create `tests/artifact/validate.test.ts`:
+Create `skills/mockoon-gen/tests/artifact/validate.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -1175,7 +1178,7 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
     schemaVersion: "0.2.0",
     sources: [],
     openapi: {
-      file: ".mockgen/openapi.yaml",
+      file: ".mockoon-gen/openapi.yaml",
       sha256: "abc",
       origin: "generated",
       reviewStatus: "confirmed"
@@ -1193,11 +1196,11 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
         reviewStatus: "unreviewed"
       },
       whistle: {
-        file: ".mockgen/whistle.txt",
+        file: ".mockoon-gen/whistle.txt",
         routes: []
       },
       mockoon: {
-        file: ".mockgen/mockoon.json",
+        file: ".mockoon-gen/mockoon.json",
         port: null,
         defaultHeaders: {},
         origin: "generated",
@@ -1213,7 +1216,7 @@ describe("validateArtifact", () => {
     const result = validateArtifact(
       artifact({
         openapi: {
-          file: ".mockgen/openapi.yaml",
+          file: ".mockoon-gen/openapi.yaml",
           sha256: "abc",
           origin: "generated",
           reviewStatus: "unreviewed"
@@ -1236,7 +1239,7 @@ describe("validateArtifact", () => {
         outputs: {
           ...artifact().outputs,
           whistle: {
-            file: ".mockgen/whistle.txt",
+            file: ".mockoon-gen/whistle.txt",
             routes: [
               {
                 endpointId: "ep-get-user",
@@ -1267,14 +1270,14 @@ describe("validateArtifact", () => {
 Run:
 
 ```bash
-npm test -- tests/artifact/validate.test.ts
+npm --prefix skills/mockoon-gen test -- tests/artifact/validate.test.ts
 ```
 
 Expected: FAIL because `validateArtifact` does not exist.
 
 - [ ] **Step 3: Implement JSON path helper**
 
-Create `src/utils/json-path.ts`:
+Create `skills/mockoon-gen/src/utils/json-path.ts`:
 
 ```ts
 export function pathFor(parts: Array<string | number>): string {
@@ -1289,7 +1292,7 @@ export function pathFor(parts: Array<string | number>): string {
 
 - [ ] **Step 4: Implement validator**
 
-Create `src/artifact/validate.ts`:
+Create `skills/mockoon-gen/src/artifact/validate.ts`:
 
 ```ts
 import type { ApiArtifact, ReviewItem } from "./types.js";
@@ -1386,7 +1389,7 @@ function item(
 Run:
 
 ```bash
-npm test -- tests/artifact/validate.test.ts
+npm --prefix skills/mockoon-gen test -- tests/artifact/validate.test.ts
 ```
 
 Expected: PASS.
@@ -1394,19 +1397,19 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/utils/json-path.ts src/artifact/validate.ts tests/artifact/validate.test.ts
+git add skills/mockoon-gen/src/utils/json-path.ts skills/mockoon-gen/src/artifact/validate.ts skills/mockoon-gen/tests/artifact/validate.test.ts
 git commit -m "feat: validate artifact review gates"
 ```
 
 ## Task 5: Generate TypeScript API Code
 
 **Files:**
-- Create: `src/generators/api-code.ts`
-- Test: `tests/generators/api-code.test.ts`
+- Create: `skills/mockoon-gen/src/generators/api-code.ts`
+- Test: `skills/mockoon-gen/tests/generators/api-code.test.ts`
 
 - [ ] **Step 1: Write failing API code generation tests**
 
-Create `tests/generators/api-code.test.ts`:
+Create `skills/mockoon-gen/tests/generators/api-code.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -1416,7 +1419,7 @@ import { generateApiCode } from "../../src/generators/api-code.js";
 const artifact: ApiArtifact = {
   schemaVersion: "0.2.0",
   sources: [],
-  openapi: { file: ".mockgen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
+  openapi: { file: ".mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
   reviewItems: [],
   endpoints: [
     {
@@ -1480,9 +1483,9 @@ const artifact: ApiArtifact = {
       origin: "generated",
       reviewStatus: "confirmed"
     },
-    whistle: { file: ".mockgen/whistle.txt", routes: [] },
+    whistle: { file: ".mockoon-gen/whistle.txt", routes: [] },
     mockoon: {
-      file: ".mockgen/mockoon.json",
+      file: ".mockoon-gen/mockoon.json",
       port: 3100,
       defaultHeaders: {},
       origin: "generated",
@@ -1520,14 +1523,14 @@ describe("generateApiCode", () => {
 Run:
 
 ```bash
-npm test -- tests/generators/api-code.test.ts
+npm --prefix skills/mockoon-gen test -- tests/generators/api-code.test.ts
 ```
 
 Expected: FAIL because `generateApiCode` does not exist.
 
 - [ ] **Step 3: Implement API code generator**
 
-Create `src/generators/api-code.ts`:
+Create `skills/mockoon-gen/src/generators/api-code.ts`:
 
 ```ts
 import type { ApiArtifact, ArtifactEndpoint, MapperStep } from "../artifact/types.js";
@@ -1536,13 +1539,13 @@ import { sha256 } from "./hash.js";
 export function generateApiCode(artifact: ApiArtifact): string {
   const body = [
     "/* eslint-disable */",
-    "/* This file is generated by mockgen. Do not edit by hand unless you accept it back into the artifact workflow. */",
+    "/* This file is generated by mockoon-gen. Do not edit by hand unless you accept it back into the artifact workflow. */",
     "declare function request<T>(path: string, options?: { method?: string; body?: unknown }): Promise<T>;",
     "",
     ...artifact.endpoints.flatMap((endpoint) => generateEndpoint(endpoint, artifact.outputs.apiCode.transformResponse))
   ].join("\n");
 
-  return `/* mockgen-sha256: ${sha256(body)} */\n${body}\n`;
+  return `/* mockoon-gen-sha256: ${sha256(body)} */\n${body}\n`;
 }
 
 function generateEndpoint(endpoint: ArtifactEndpoint, transformResponse: boolean): string[] {
@@ -1593,7 +1596,7 @@ function generateMapperStep(step: MapperStep): string {
 Run:
 
 ```bash
-npm test -- tests/generators/api-code.test.ts
+npm --prefix skills/mockoon-gen test -- tests/generators/api-code.test.ts
 ```
 
 Expected: PASS.
@@ -1601,19 +1604,19 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/generators/api-code.ts tests/generators/api-code.test.ts
+git add skills/mockoon-gen/src/generators/api-code.ts skills/mockoon-gen/tests/generators/api-code.test.ts
 git commit -m "feat: generate api code"
 ```
 
 ## Task 6: Generate Whistle Rules
 
 **Files:**
-- Create: `src/generators/whistle.ts`
-- Test: `tests/generators/whistle.test.ts`
+- Create: `skills/mockoon-gen/src/generators/whistle.ts`
+- Test: `skills/mockoon-gen/tests/generators/whistle.test.ts`
 
 - [ ] **Step 1: Write failing whistle tests**
 
-Create `tests/generators/whistle.test.ts`:
+Create `skills/mockoon-gen/tests/generators/whistle.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -1653,14 +1656,14 @@ describe("generateWhistleRules", () => {
 Run:
 
 ```bash
-npm test -- tests/generators/whistle.test.ts
+npm --prefix skills/mockoon-gen test -- tests/generators/whistle.test.ts
 ```
 
 Expected: FAIL because `generateWhistleRules` does not exist.
 
 - [ ] **Step 3: Implement whistle generator**
 
-Create `src/generators/whistle.ts`:
+Create `skills/mockoon-gen/src/generators/whistle.ts`:
 
 ```ts
 import type { WhistleRoute } from "../artifact/types.js";
@@ -1685,7 +1688,7 @@ function ruleFor(route: WhistleRoute): string {
 Run:
 
 ```bash
-npm test -- tests/generators/whistle.test.ts
+npm --prefix skills/mockoon-gen test -- tests/generators/whistle.test.ts
 ```
 
 Expected: PASS.
@@ -1693,19 +1696,19 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/generators/whistle.ts tests/generators/whistle.test.ts
+git add skills/mockoon-gen/src/generators/whistle.ts skills/mockoon-gen/tests/generators/whistle.test.ts
 git commit -m "feat: generate whistle rules"
 ```
 
 ## Task 7: Generate Mockoon JSON
 
 **Files:**
-- Create: `src/generators/mockoon.ts`
-- Test: `tests/generators/mockoon.test.ts`
+- Create: `skills/mockoon-gen/src/generators/mockoon.ts`
+- Test: `skills/mockoon-gen/tests/generators/mockoon.test.ts`
 
 - [ ] **Step 1: Write failing Mockoon tests**
 
-Create `tests/generators/mockoon.test.ts`:
+Create `skills/mockoon-gen/tests/generators/mockoon.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -1715,7 +1718,7 @@ import { generateMockoonEnvironment } from "../../src/generators/mockoon.js";
 const artifact: ApiArtifact = {
   schemaVersion: "0.2.0",
   sources: [],
-  openapi: { file: ".mockgen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
+  openapi: { file: ".mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
   reviewItems: [],
   endpoints: [
     {
@@ -1757,9 +1760,9 @@ const artifact: ApiArtifact = {
       origin: "generated",
       reviewStatus: "confirmed"
     },
-    whistle: { file: ".mockgen/whistle.txt", routes: [] },
+    whistle: { file: ".mockoon-gen/whistle.txt", routes: [] },
     mockoon: {
-      file: ".mockgen/mockoon.json",
+      file: ".mockoon-gen/mockoon.json",
       port: 3100,
       defaultHeaders: { "Content-Type": "application/json; charset=utf-8" },
       origin: "generated",
@@ -1793,14 +1796,14 @@ describe("generateMockoonEnvironment", () => {
 Run:
 
 ```bash
-npm test -- tests/generators/mockoon.test.ts
+npm --prefix skills/mockoon-gen test -- tests/generators/mockoon.test.ts
 ```
 
 Expected: FAIL because `generateMockoonEnvironment` does not exist.
 
 - [ ] **Step 3: Implement Mockoon generator**
 
-Create `src/generators/mockoon.ts`:
+Create `skills/mockoon-gen/src/generators/mockoon.ts`:
 
 ```ts
 import type { ApiArtifact } from "../artifact/types.js";
@@ -1839,9 +1842,9 @@ export function generateMockoonEnvironment(artifact: ApiArtifact): MockoonEnviro
   }
 
   return {
-    uuid: "mockgen-env",
+    uuid: "mockoon-gen-env",
     lastMigration: 32,
-    name: "mockgen",
+    name: "mockoon-gen",
     endpointPrefix: "",
     latency: 0,
     port,
@@ -1873,7 +1876,7 @@ export function generateMockoonEnvironment(artifact: ApiArtifact): MockoonEnviro
 Run:
 
 ```bash
-npm test -- tests/generators/mockoon.test.ts
+npm --prefix skills/mockoon-gen test -- tests/generators/mockoon.test.ts
 ```
 
 Expected: PASS.
@@ -1881,22 +1884,22 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/generators/mockoon.ts tests/generators/mockoon.test.ts
+git add skills/mockoon-gen/src/generators/mockoon.ts skills/mockoon-gen/tests/generators/mockoon.test.ts
 git commit -m "feat: generate mockoon environment"
 ```
 
 ## Task 8: Add Config Loading and CLI Commands
 
 **Files:**
-- Create: `src/config/types.ts`
-- Create: `src/config/load-config.ts`
-- Create: `src/utils/fs.ts`
-- Modify: `src/cli.ts`
-- Test: `tests/cli/cli.test.ts`
+- Create: `skills/mockoon-gen/src/config/types.ts`
+- Create: `skills/mockoon-gen/src/config/load-config.ts`
+- Create: `skills/mockoon-gen/src/utils/fs.ts`
+- Modify: `skills/mockoon-gen/src/cli.ts`
+- Test: `skills/mockoon-gen/tests/cli/cli.test.ts`
 
 - [ ] **Step 1: Extend CLI tests**
 
-Replace `tests/cli/cli.test.ts` with:
+Replace `skills/mockoon-gen/tests/cli/cli.test.ts` with:
 
 ```ts
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
@@ -1917,12 +1920,12 @@ describe("createProgram", () => {
     ]);
   });
 
-  it("init writes mockgen.config.json", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "mockgen-"));
+  it("init writes mockoon-gen.config.json", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
     const program = createProgram();
-    await program.parseAsync(["node", "mockgen", "init", "--cwd", dir], { from: "user" });
-    const config = JSON.parse(await readFile(join(dir, "mockgen.config.json"), "utf8"));
-    expect(config.artifactDir).toBe(".mockgen");
+    await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", dir], { from: "user" });
+    const config = JSON.parse(await readFile(join(dir, "mockoon-gen.config.json"), "utf8"));
+    expect(config.artifactDir).toBe(".mockoon-gen");
   });
 });
 ```
@@ -1932,14 +1935,14 @@ describe("createProgram", () => {
 Run:
 
 ```bash
-npm test -- tests/cli/cli.test.ts
+npm --prefix skills/mockoon-gen test -- tests/cli/cli.test.ts
 ```
 
 Expected: FAIL because commands are not implemented.
 
 - [ ] **Step 3: Create config types and loader**
 
-Create `src/config/types.ts`:
+Create `skills/mockoon-gen/src/config/types.ts`:
 
 ```ts
 export interface MockgenConfig {
@@ -1955,10 +1958,10 @@ export interface MockgenConfig {
 }
 
 export const defaultConfig: MockgenConfig = {
-  artifactDir: ".mockgen",
-  openapiFile: ".mockgen/openapi.yaml",
-  mockoonFile: ".mockgen/mockoon.json",
-  whistleFile: ".mockgen/whistle.txt",
+  artifactDir: ".mockoon-gen",
+  openapiFile: ".mockoon-gen/openapi.yaml",
+  mockoonFile: ".mockoon-gen/mockoon.json",
+  whistleFile: ".mockoon-gen/whistle.txt",
   apiOutput: "src/api/generated/api.generated.ts",
   splitApiOutput: false,
   transformResponse: true,
@@ -1967,7 +1970,7 @@ export const defaultConfig: MockgenConfig = {
 };
 ```
 
-Create `src/config/load-config.ts`:
+Create `skills/mockoon-gen/src/config/load-config.ts`:
 
 ```ts
 import { readFile } from "node:fs/promises";
@@ -1976,7 +1979,7 @@ import { defaultConfig, type MockgenConfig } from "./types.js";
 
 export async function loadConfig(cwd: string): Promise<MockgenConfig> {
   try {
-    const raw = await readFile(join(cwd, "mockgen.config.json"), "utf8");
+    const raw = await readFile(join(cwd, "mockoon-gen.config.json"), "utf8");
     return { ...defaultConfig, ...(JSON.parse(raw) as Partial<MockgenConfig>) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return defaultConfig;
@@ -1987,7 +1990,7 @@ export async function loadConfig(cwd: string): Promise<MockgenConfig> {
 
 - [ ] **Step 4: Create filesystem helper**
 
-Create `src/utils/fs.ts`:
+Create `skills/mockoon-gen/src/utils/fs.ts`:
 
 ```ts
 import { mkdir, writeFile } from "node:fs/promises";
@@ -2005,7 +2008,7 @@ export function prettyJson(value: unknown): string {
 
 - [ ] **Step 5: Implement CLI commands**
 
-Replace `src/cli.ts` with:
+Replace `skills/mockoon-gen/src/cli.ts` with:
 
 ```ts
 #!/usr/bin/env node
@@ -2027,16 +2030,16 @@ export function createProgram(): Command {
   const program = new Command();
 
   program
-    .name("mockgen")
+    .name("mockoon-gen")
     .description("Generate frontend API contracts and mock files from reviewed OpenAPI artifacts.")
     .version(MOCKGEN_VERSION);
 
   program
     .command("init")
-    .description("Create default mockgen config.")
+    .description("Create default mockoon-gen config.")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (options: { cwd: string }) => {
-      await writeTextFile(join(options.cwd, "mockgen.config.json"), prettyJson(defaultConfig));
+      await writeTextFile(join(options.cwd, "mockoon-gen.config.json"), prettyJson(defaultConfig));
     });
 
   program
@@ -2123,7 +2126,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 Run:
 
 ```bash
-npm test -- tests/cli/cli.test.ts
+npm --prefix skills/mockoon-gen test -- tests/cli/cli.test.ts
 ```
 
 Expected: PASS.
@@ -2133,8 +2136,8 @@ Expected: PASS.
 Run:
 
 ```bash
-npm run typecheck
-npm test
+npm --prefix skills/mockoon-gen run typecheck
+npm --prefix skills/mockoon-gen test
 ```
 
 Expected: both commands exit 0.
@@ -2142,19 +2145,19 @@ Expected: both commands exit 0.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/config/types.ts src/config/load-config.ts src/utils/fs.ts src/cli.ts tests/cli/cli.test.ts
-git commit -m "feat: wire mockgen cli commands"
+git add skills/mockoon-gen/src/config/types.ts skills/mockoon-gen/src/config/load-config.ts skills/mockoon-gen/src/utils/fs.ts skills/mockoon-gen/src/cli.ts skills/mockoon-gen/tests/cli/cli.test.ts
+git commit -m "feat: wire mockoon-gen cli commands"
 ```
 
 ## Task 9: Add README Usage and End-to-End Fixture Test
 
 **Files:**
-- Modify: `README.md`
-- Create: `tests/cli/e2e.test.ts`
+- Modify: `skills/mockoon-gen/README.md`
+- Create: `skills/mockoon-gen/tests/cli/e2e.test.ts`
 
 - [ ] **Step 1: Write end-to-end test**
 
-Create `tests/cli/e2e.test.ts`:
+Create `skills/mockoon-gen/tests/cli/e2e.test.ts`:
 
 ```ts
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -2164,12 +2167,12 @@ import { mkdtemp } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { createProgram } from "../../src/cli.js";
 
-describe("mockgen e2e", () => {
+describe("mockoon-gen e2e", () => {
   it("creates artifact and exports generated files", async () => {
-    const cwd = await mkdtemp(join(tmpdir(), "mockgen-e2e-"));
-    await mkdir(join(cwd, ".mockgen"), { recursive: true });
+    const cwd = await mkdtemp(join(tmpdir(), "mockoon-gen-e2e-"));
+    await mkdir(join(cwd, ".mockoon-gen"), { recursive: true });
     await writeFile(
-      join(cwd, ".mockgen/openapi.yaml"),
+      join(cwd, ".mockoon-gen/openapi.yaml"),
       `openapi: 3.0.3
 info:
   title: User API
@@ -2193,13 +2196,13 @@ paths:
     );
 
     const program = createProgram();
-    await program.parseAsync(["node", "mockgen", "init", "--cwd", cwd], { from: "user" });
-    await program.parseAsync(["node", "mockgen", "from-openapi", ".mockgen/openapi.yaml", "--cwd", cwd], { from: "user" });
-    await program.parseAsync(["node", "mockgen", "generate", "--from", ".mockgen/api-artifact.json", "--cwd", cwd], {
+    await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", cwd], { from: "user" });
+    await program.parseAsync(["node", "mockoon-gen", "from-openapi", ".mockoon-gen/openapi.yaml", "--cwd", cwd], { from: "user" });
+    await program.parseAsync(["node", "mockoon-gen", "generate", "--from", ".mockoon-gen/api-artifact.json", "--cwd", cwd], {
       from: "user"
     });
 
-    const artifact = await readFile(join(cwd, ".mockgen/api-artifact.json"), "utf8");
+    const artifact = await readFile(join(cwd, ".mockoon-gen/api-artifact.json"), "utf8");
     const apiCode = await readFile(join(cwd, "src/api/generated/api.generated.ts"), "utf8");
     expect(artifact).toContain("\"schemaVersion\": \"0.2.0\"");
     expect(apiCode).toContain("export async function getUser");
@@ -2212,38 +2215,38 @@ paths:
 Run:
 
 ```bash
-npm test -- tests/cli/e2e.test.ts
+npm --prefix skills/mockoon-gen test -- tests/cli/e2e.test.ts
 ```
 
 Expected: PASS if prior tasks are complete.
 
 - [ ] **Step 3: Update README**
 
-Replace `README.md` with:
+Replace `skills/mockoon-gen/README.md` with:
 
 ```md
-# api-mockgen
+# mockoon-gen
 
-`mockgen` is an artifact-first CLI for generating frontend API code, whistle rules, and Mockoon environments from reviewed OpenAPI contracts.
+`mockoon-gen` is an artifact-first CLI for generating frontend API code, whistle rules, and Mockoon environments from reviewed OpenAPI contracts.
 
 ## Commands
 
 ```bash
-mockgen init
-mockgen from-openapi .mockgen/openapi.yaml
-mockgen generate --from .mockgen/api-artifact.json
-mockgen export whistle --from .mockgen/api-artifact.json
-mockgen export mockoon --from .mockgen/api-artifact.json
-mockgen validate --from .mockgen/api-artifact.json --strict
+mockoon-gen init
+mockoon-gen from-openapi .mockoon-gen/openapi.yaml
+mockoon-gen generate --from .mockoon-gen/api-artifact.json
+mockoon-gen export whistle --from .mockoon-gen/api-artifact.json
+mockoon-gen export mockoon --from .mockoon-gen/api-artifact.json
+mockoon-gen validate --from .mockoon-gen/api-artifact.json --strict
 ```
 
-Loose Markdown or copied API docs are handled by the API mockgen skill before the CLI runs. The CLI only accepts structured OpenAPI or `api-artifact.json` inputs.
+Loose Markdown or copied API docs are handled by the Mockoon Gen skill before the CLI runs. The CLI only accepts structured OpenAPI or `api-artifact.json` inputs.
 
 ## Generated Files
 
-- `.mockgen/api-artifact.json`
-- `.mockgen/whistle.txt`
-- `.mockgen/mockoon.json`
+- `.mockoon-gen/api-artifact.json`
+- `.mockoon-gen/whistle.txt`
+- `.mockoon-gen/mockoon.json`
 - `src/api/generated/api.generated.ts`
 ```
 
@@ -2252,8 +2255,8 @@ Loose Markdown or copied API docs are handled by the API mockgen skill before th
 Run:
 
 ```bash
-npm run typecheck
-npm test
+npm --prefix skills/mockoon-gen run typecheck
+npm --prefix skills/mockoon-gen test
 ```
 
 Expected: both commands exit 0.
@@ -2261,8 +2264,8 @@ Expected: both commands exit 0.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add README.md tests/cli/e2e.test.ts
-git commit -m "docs: document mockgen usage"
+git add skills/mockoon-gen/README.md skills/mockoon-gen/tests/cli/e2e.test.ts
+git commit -m "docs: document mockoon-gen usage"
 ```
 
 ## Self-Review Checklist
