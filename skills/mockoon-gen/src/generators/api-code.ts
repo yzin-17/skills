@@ -1,6 +1,11 @@
 import type { ApiArtifact, ArtifactEndpoint, MapperStep } from "../artifact/types.js";
 import { sha256 } from "./hash.js";
 
+interface DtoFieldNode {
+  children: Map<string, DtoFieldNode>;
+  type?: string;
+}
+
 export function generateApiCode(artifact: ApiArtifact): string {
   const body = [
     "/* eslint-disable */",
@@ -18,10 +23,13 @@ function generateEndpoint(endpoint: ArtifactEndpoint, transformResponse: boolean
   const vo = endpoint.vo.name;
   const mapper = endpoint.mapper.name;
   const responseType = transformResponse ? vo : dto;
+  const dtoShape = buildDtoShape(endpoint);
+  const pathParams = extractPathParams(endpoint.path);
+  const requestPath = generateRequestPath(endpoint.path, pathParams);
 
   return [
     `export interface ${dto} {`,
-    ...endpoint.vo.fields.map((field) => `  ${dtoFieldName(field.sources[0]?.path ?? field.name)}: ${field.type};`),
+    ...generateDtoShapeLines(dtoShape, 1),
     "}",
     "",
     `export interface ${vo} {`,
@@ -30,29 +38,127 @@ function generateEndpoint(endpoint: ArtifactEndpoint, transformResponse: boolean
     "",
     `export function ${mapper}(dto: ${dto}): ${vo} {`,
     `  const vo = {} as ${vo};`,
-    ...endpoint.mapper.steps.slice().sort((left, right) => left.order - right.order).map((step) => generateMapperStep(step)),
+    ...endpoint.mapper.steps.slice().sort((left, right) => left.order - right.order).map((step) => generateMapperStep(step, mapper)),
     "  return vo;",
     "}",
     "",
-    `export async function ${endpoint.operationId}(): Promise<${responseType}> {`,
+    `export async function ${endpoint.operationId}(${generatePathParamSignature(pathParams)}): Promise<${responseType}> {`,
+    requestPath ? `  const path = ${requestPath};` : "",
     transformResponse
-      ? `  const dto = await request<${dto}>("${endpoint.path}", { method: "${endpoint.method}" });`
-      : `  return request<${dto}>("${endpoint.path}", { method: "${endpoint.method}" });`,
+      ? `  const dto = await request<${dto}>(${requestPath ? "path" : `"${endpoint.path}"`}, { method: "${endpoint.method}" });`
+      : `  return request<${dto}>(${requestPath ? "path" : `"${endpoint.path}"`}, { method: "${endpoint.method}" });`,
     transformResponse ? `  return ${mapper}(dto);` : "",
     "}",
     ""
   ].filter((line) => line !== "");
 }
 
-function generateMapperStep(step: MapperStep): string {
+function generateMapperStep(step: MapperStep, mapperName: string): string {
   if (step.operation === "rename" || step.operation === "assign") {
-    return `  ${step.output} = ${step.inputs[0]?.replace(/^response\.body\./, "dto.") ?? "undefined"};`;
+    return `  ${step.output} = ${sourcePathToAccessor(step.inputs[0]) ?? "undefined"};`;
   }
 
-  return `  // needsReview: Unsupported mapper operation ${step.operation}`;
+  return `  throw new Error("mockoon-gen needsReview: Unsupported mapper operation ${step.operation} in ${mapperName}");`;
 }
 
-function dtoFieldName(path: string): string {
-  const segments = path.split(".");
-  return segments[segments.length - 1] ?? path;
+function buildDtoShape(endpoint: ArtifactEndpoint): DtoFieldNode {
+  const root: DtoFieldNode = { children: new Map() };
+
+  for (const field of endpoint.vo.fields) {
+    const sourcePath = field.sources[0]?.path;
+    if (!sourcePath?.startsWith("response.body.")) {
+      continue;
+    }
+
+    const segments = sourcePath.slice("response.body.".length).split(".").filter(Boolean);
+    if (segments.length === 0) {
+      continue;
+    }
+
+    let current = root;
+    for (const segment of segments) {
+      let child = current.children.get(segment);
+      if (!child) {
+        child = { children: new Map() };
+        current.children.set(segment, child);
+      }
+      current = child;
+    }
+    current.type = field.type;
+  }
+
+  return root;
+}
+
+function generateDtoShapeLines(node: DtoFieldNode, depth: number): string[] {
+  const indent = "  ".repeat(depth);
+  const lines: string[] = [];
+
+  for (const [key, child] of node.children) {
+    if (child.children.size > 0) {
+      lines.push(`${indent}${formatPropertyKey(key)}: {`);
+      lines.push(...generateDtoShapeLines(child, depth + 1));
+      lines.push(`${indent}};`);
+      continue;
+    }
+
+    lines.push(`${indent}${formatPropertyKey(key)}: ${child.type ?? "unknown"};`);
+  }
+
+  return lines;
+}
+
+function formatPropertyKey(key: string): string {
+  return isIdentifier(key) ? key : JSON.stringify(key);
+}
+
+function sourcePathToAccessor(path?: string): string | null {
+  if (!path?.startsWith("response.body.")) {
+    return null;
+  }
+
+  const segments = path.slice("response.body.".length).split(".").filter(Boolean);
+  if (segments.length === 0) {
+    return "dto";
+  }
+
+  return `dto${segments.map((segment) => (isIdentifier(segment) ? `.${segment}` : `[${JSON.stringify(segment)}]`)).join("")}`;
+}
+
+function extractPathParams(path: string): string[] {
+  return [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1] ?? "").filter((segment) => segment.length > 0);
+}
+
+function generatePathParamSignature(pathParams: string[]): string {
+  return pathParams
+    .map((pathParam, index) => `${pathParamName(pathParam, index)}: string | number`)
+    .join(", ");
+}
+
+function generateRequestPath(path: string, pathParams: string[]): string | null {
+  if (pathParams.length === 0) {
+    return null;
+  }
+
+  let paramIndex = 0;
+  const template = path.replace(/\{([^}]+)\}/g, (_, pathParam: string) => {
+    const paramName = pathParamName(pathParam, paramIndex);
+    paramIndex += 1;
+    return `\${encodeURIComponent(String(${paramName}))}`;
+  });
+
+  return `\`${template}\``;
+}
+
+function pathParamName(pathParam: string, index: number): string {
+  const normalized = pathParam.replace(/[^A-Za-z0-9_$]/g, "_");
+  if (isIdentifier(normalized)) {
+    return normalized;
+  }
+
+  return `pathParam${index + 1}`;
+}
+
+function isIdentifier(value: string): boolean {
+  return /^[$A-Z_][0-9A-Z_$]*$/i.test(value);
 }
