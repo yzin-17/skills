@@ -1,0 +1,31 @@
+openapi: 3.0.3
+info:
+  title: User API
+  version: 1.0.0
+paths:
+  /api/users/{id}:
+    get:
+      operationId: getUser
+      summary: 获取用户
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, user_name, status]
+                properties:
+                  id:
+                    type: string
+                  user_name:
+                    type: string
+                  status:
+                    type: integer
+                    enum: [0, 1]
