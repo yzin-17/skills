@@ -46,4 +46,28 @@ describe("artifactFromOpenApi", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("rejects malformed OpenAPI documents with null path items", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const file = join(dir, "invalid-openapi-null-path-item.yaml");
+
+    try {
+      await writeFile(
+        file,
+        [
+          "openapi: 3.0.3",
+          "info:",
+          "  title: Broken API",
+          "  version: 1.0.0",
+          "paths:",
+          "  /api/users/{id}: null"
+        ].join("\n"),
+        "utf8"
+      );
+
+      await expect(loadOpenApi(file)).rejects.toThrow("Invalid OpenAPI document");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

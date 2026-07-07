@@ -15,6 +15,12 @@ export async function loadOpenApi(file: string): Promise<LoadedOpenApi> {
     throw new Error(`Invalid OpenAPI document: ${file}`);
   }
 
+  for (const pathItem of Object.values(document.paths)) {
+    if (!isPlainObject(pathItem)) {
+      throw new Error(`Invalid OpenAPI document: ${file}`);
+    }
+  }
+
   return {
     file,
     sha256: sha256(raw),
