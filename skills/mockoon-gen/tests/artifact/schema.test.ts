@@ -63,4 +63,32 @@ describe("artifactSchema", () => {
       })
     ).toThrow();
   });
+
+  it("accepts whistle routes with unresolved apiHost", () => {
+    expect(() =>
+      artifactSchema.parse({
+        ...minimalArtifact,
+        outputs: {
+          ...minimalArtifact.outputs,
+          whistle: {
+            ...minimalArtifact.outputs.whistle,
+            routes: [
+              {
+                endpointId: "endpoint-1",
+                operationId: "getThings",
+                method: "GET",
+                apiHost: "pending-confirmation",
+                sourcePath: "/things",
+                sourcePattern: "/things",
+                targetPort: null,
+                targetPath: "/things",
+                origin: "generated",
+                reviewStatus: "unreviewed"
+              }
+            ]
+          }
+        }
+      })
+    ).not.toThrow();
+  });
 });

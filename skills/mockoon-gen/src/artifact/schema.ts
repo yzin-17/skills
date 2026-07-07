@@ -175,7 +175,7 @@ export const artifactSchema = z
                   endpointId: z.string().min(1),
                   operationId: z.string().min(1),
                   method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
-                  apiHost: z.string().min(1),
+                  apiHost: z.union([z.string().min(1), z.literal("pending-confirmation")]),
                   sourcePath: z.string().min(1),
                   sourcePattern: z.string().min(1),
                   targetPort: z.number().int().positive().nullable(),
