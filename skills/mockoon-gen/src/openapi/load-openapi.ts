@@ -7,7 +7,11 @@ export async function loadOpenApi(file: string): Promise<LoadedOpenApi> {
   const raw = await readFile(file, "utf8");
   const document = YAML.parse(raw) as OpenApiDocument;
 
-  if (!document || typeof document !== "object" || !document.openapi || !document.paths) {
+  if (
+    !isPlainObject(document) ||
+    typeof document.openapi !== "string" ||
+    !isPlainObject(document.paths)
+  ) {
     throw new Error(`Invalid OpenAPI document: ${file}`);
   }
 
@@ -16,4 +20,8 @@ export async function loadOpenApi(file: string): Promise<LoadedOpenApi> {
     sha256: sha256(raw),
     document
   };
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
