@@ -97,7 +97,7 @@ function endpointFromOperation(
     id: `step-${String(index + 1).padStart(3, "0")}`,
     order: index + 1,
     operation: "rename",
-    inputs: [`response.body.${field}`],
+    inputs: [responseBodyPath(field)],
     output: `vo.${camel(field)}`,
     params: {},
     description: `Map ${field} to ${camel(field)}`,
@@ -149,7 +149,7 @@ function endpointFromOperation(
       fields: fieldNames.map((field) => ({
         name: camel(field),
         type: tsType(responseSchema?.properties?.[field]),
-        sources: [{ path: `response.body.${field}`, role: camel(field) }],
+        sources: [{ path: responseBodyPath(field), role: camel(field) }],
         confidence: "medium",
         origin: "inferred",
         reviewStatus: "unreviewed",
@@ -176,6 +176,10 @@ function endpointFromOperation(
     },
     reviewItems: []
   };
+}
+
+function responseBodyPath(field: string): string {
+  return /^[A-Za-z_$][0-9A-Za-z_$]*$/.test(field) ? `response.body.${field}` : `response.body[${JSON.stringify(field)}]`;
 }
 
 function mockBodyTemplate(schema: OpenApiSchema | undefined): string {

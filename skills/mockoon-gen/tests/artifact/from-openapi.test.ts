@@ -70,4 +70,52 @@ describe("artifactFromOpenApi", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("uses bracket notation source paths for dotted response property names", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const file = join(dir, "dotted-openapi.yaml");
+
+    try {
+      await writeFile(
+        file,
+        [
+          "openapi: 3.0.3",
+          "info:",
+          "  title: Dotted API",
+          "  version: 1.0.0",
+          "paths:",
+          "  /api/users/{id}:",
+          "    get:",
+          "      operationId: getUser",
+          "      responses:",
+          "        '200':",
+          "          description: ok",
+          "          content:",
+          "            application/json:",
+          "              schema:",
+          "                type: object",
+          "                properties:",
+          "                  x.y:",
+          "                    type: string",
+          "                  user_name:",
+          "                    type: string"
+        ].join("\n"),
+        "utf8"
+      );
+
+      const loaded = await loadOpenApi(file);
+      const artifact = artifactFromOpenApi(loaded, {
+        artifactDir: ".mockoon-gen",
+        apiOutput: "src/api/generated/api.generated.ts",
+        mockoonPort: 3100
+      });
+
+      expect(artifact.endpoints[0]?.vo.fields[0]?.sources[0]?.path).toBe('response.body["x.y"]');
+      expect(artifact.endpoints[0]?.mapper.steps[0]?.inputs[0]).toBe('response.body["x.y"]');
+      expect(artifact.endpoints[0]?.vo.fields[1]?.sources[0]?.path).toBe("response.body.user_name");
+      expect(artifact.endpoints[0]?.mapper.steps[1]?.inputs[0]).toBe("response.body.user_name");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

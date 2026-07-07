@@ -6,6 +6,84 @@ interface DtoFieldNode {
   type?: string;
 }
 
+const RESPONSE_BODY_PREFIX = "response.body";
+const TYPESCRIPT_RESERVED_WORDS = new Set([
+  "abstract",
+  "any",
+  "as",
+  "asserts",
+  "async",
+  "await",
+  "bigint",
+  "boolean",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "declare",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "from",
+  "function",
+  "get",
+  "if",
+  "implements",
+  "import",
+  "in",
+  "infer",
+  "instanceof",
+  "interface",
+  "is",
+  "keyof",
+  "let",
+  "module",
+  "namespace",
+  "never",
+  "new",
+  "null",
+  "number",
+  "object",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "readonly",
+  "require",
+  "global",
+  "return",
+  "set",
+  "static",
+  "string",
+  "super",
+  "switch",
+  "symbol",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "type",
+  "typeof",
+  "undefined",
+  "unique",
+  "unknown",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield"
+]);
+
 export function generateApiCode(artifact: ApiArtifact): string {
   const body = [
     "/* eslint-disable */",
@@ -25,7 +103,8 @@ function generateEndpoint(endpoint: ArtifactEndpoint, transformResponse: boolean
   const responseType = transformResponse ? vo : dto;
   const dtoShape = buildDtoShape(endpoint);
   const pathParams = extractPathParams(endpoint.path);
-  const requestPath = generateRequestPath(endpoint.path, pathParams);
+  const pathParamNames = generatePathParamNames(pathParams);
+  const requestPath = generateRequestPath(endpoint.path, pathParamNames);
 
   return [
     `export interface ${dto} {`,
@@ -42,7 +121,7 @@ function generateEndpoint(endpoint: ArtifactEndpoint, transformResponse: boolean
     "  return vo;",
     "}",
     "",
-    `export async function ${endpoint.operationId}(${generatePathParamSignature(pathParams)}): Promise<${responseType}> {`,
+    `export async function ${endpoint.operationId}(${generatePathParamSignature(pathParamNames)}): Promise<${responseType}> {`,
     requestPath ? `  const path = ${requestPath};` : "",
     transformResponse
       ? `  const dto = await request<${dto}>(${requestPath ? "path" : `"${endpoint.path}"`}, { method: "${endpoint.method}" });`
@@ -66,11 +145,11 @@ function buildDtoShape(endpoint: ArtifactEndpoint): DtoFieldNode {
 
   for (const field of endpoint.vo.fields) {
     const sourcePath = field.sources[0]?.path;
-    if (!sourcePath?.startsWith("response.body.")) {
+    const segments = parseResponseBodyPath(sourcePath);
+    if (!segments) {
       continue;
     }
 
-    const segments = sourcePath.slice("response.body.".length).split(".").filter(Boolean);
     if (segments.length === 0) {
       continue;
     }
@@ -113,11 +192,11 @@ function formatPropertyKey(key: string): string {
 }
 
 function sourcePathToAccessor(path?: string): string | null {
-  if (!path?.startsWith("response.body.")) {
+  const segments = parseResponseBodyPath(path);
+  if (!segments) {
     return null;
   }
 
-  const segments = path.slice("response.body.".length).split(".").filter(Boolean);
   if (segments.length === 0) {
     return "dto";
   }
@@ -129,20 +208,18 @@ function extractPathParams(path: string): string[] {
   return [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1] ?? "").filter((segment) => segment.length > 0);
 }
 
-function generatePathParamSignature(pathParams: string[]): string {
-  return pathParams
-    .map((pathParam, index) => `${pathParamName(pathParam, index)}: string | number`)
-    .join(", ");
+function generatePathParamSignature(pathParamNames: string[]): string {
+  return pathParamNames.map((pathParamName) => `${pathParamName}: string | number`).join(", ");
 }
 
-function generateRequestPath(path: string, pathParams: string[]): string | null {
-  if (pathParams.length === 0) {
+function generateRequestPath(path: string, pathParamNames: string[]): string | null {
+  if (pathParamNames.length === 0) {
     return null;
   }
 
   let paramIndex = 0;
-  const template = path.replace(/\{([^}]+)\}/g, (_, pathParam: string) => {
-    const paramName = pathParamName(pathParam, paramIndex);
+  const template = path.replace(/\{([^}]+)\}/g, () => {
+    const paramName = pathParamNames[paramIndex];
     paramIndex += 1;
     return `\${encodeURIComponent(String(${paramName}))}`;
   });
@@ -150,13 +227,129 @@ function generateRequestPath(path: string, pathParams: string[]): string | null 
   return `\`${template}\``;
 }
 
-function pathParamName(pathParam: string, index: number): string {
-  const normalized = pathParam.replace(/[^A-Za-z0-9_$]/g, "_");
-  if (isIdentifier(normalized)) {
-    return normalized;
+function generatePathParamNames(pathParams: string[]): string[] {
+  const usedNames = new Set<string>();
+
+  return pathParams.map((pathParam, index) => {
+    const baseName = sanitizePathParamName(pathParam, index);
+    let candidate = baseName;
+    let suffix = 2;
+
+    while (usedNames.has(candidate) || TYPESCRIPT_RESERVED_WORDS.has(candidate)) {
+      candidate = `${baseName}_${suffix}`;
+      suffix += 1;
+    }
+
+    usedNames.add(candidate);
+    return candidate;
+  });
+}
+
+function sanitizePathParamName(pathParam: string, index: number): string {
+  let normalized = pathParam.replace(/[^A-Za-z0-9_$]/g, "_");
+  if (!normalized) {
+    return `pathParam${index + 1}`;
   }
 
-  return `pathParam${index + 1}`;
+  if (!/^[$A-Z_]/i.test(normalized)) {
+    normalized = `_${normalized}`;
+  }
+
+  if (TYPESCRIPT_RESERVED_WORDS.has(normalized)) {
+    normalized = `${normalized}_`;
+  }
+
+  return isIdentifier(normalized) ? normalized : `pathParam${index + 1}`;
+}
+
+function parseResponseBodyPath(path?: string): string[] | null {
+  if (!path?.startsWith(RESPONSE_BODY_PREFIX)) {
+    return null;
+  }
+
+  const remainder = path.slice(RESPONSE_BODY_PREFIX.length);
+  if (remainder.length === 0) {
+    return [];
+  }
+
+  const segments: string[] = [];
+  let index = 0;
+
+  while (index < remainder.length) {
+    const marker = remainder[index];
+
+    if (marker === ".") {
+      const segmentStart = index + 1;
+      let segmentEnd = segmentStart;
+      while (segmentEnd < remainder.length && remainder[segmentEnd] !== "." && remainder[segmentEnd] !== "[") {
+        segmentEnd += 1;
+      }
+
+      if (segmentEnd === segmentStart) {
+        return null;
+      }
+
+      segments.push(remainder.slice(segmentStart, segmentEnd));
+      index = segmentEnd;
+      continue;
+    }
+
+    if (marker === "[") {
+      const literalEnd = findBracketLiteralEnd(remainder, index);
+      if (literalEnd < 0) {
+        return null;
+      }
+
+      const literal = remainder.slice(index + 1, literalEnd);
+      try {
+        segments.push(JSON.parse(literal));
+      } catch {
+        return null;
+      }
+      index = literalEnd + 1;
+      continue;
+    }
+
+    return null;
+  }
+
+  return segments;
+}
+
+function findBracketLiteralEnd(path: string, bracketStart: number): number {
+  let index = bracketStart + 1;
+  let inString = false;
+  let escaped = false;
+
+  while (index < path.length) {
+    const char = path[index];
+
+    if (escaped) {
+      escaped = false;
+      index += 1;
+      continue;
+    }
+
+    if (char === "\\") {
+      escaped = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = !inString;
+      index += 1;
+      continue;
+    }
+
+    if (char === "]" && !inString) {
+      return index;
+    }
+
+    index += 1;
+  }
+
+  return -1;
 }
 
 function isIdentifier(value: string): boolean {

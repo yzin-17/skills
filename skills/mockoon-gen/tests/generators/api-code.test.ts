@@ -161,6 +161,25 @@ describe("generateApiCode", () => {
     expect(code).toContain('const dto = await request<GetUserResponseDTO>(path, { method: "GET" });');
   });
 
+  it("sanitizes reserved and colliding path parameter names consistently", () => {
+    const code = generateApiCode(
+      createArtifact({
+        endpoints: [
+          createEndpoint({
+            path: "/api/{class}/{user-id}/{user_id}"
+          })
+        ]
+      })
+    );
+
+    expect(code).toContain(
+      "export async function getUser(class_: string | number, user_id: string | number, user_id_2: string | number): Promise<GetUserVO> {"
+    );
+    expect(code).toContain(
+      'const path = `/api/${encodeURIComponent(String(class_))}/${encodeURIComponent(String(user_id))}/${encodeURIComponent(String(user_id_2))}`;'
+    );
+  });
+
   it("throws explicit needsReview errors for unsupported mapper operations", () => {
     const code = generateApiCode(
       createArtifact({
@@ -231,6 +250,46 @@ describe("generateApiCode", () => {
     );
 
     expect(code.indexOf("vo.firstName = dto.first_name;")).toBeLessThan(code.indexOf("vo.displayName = dto.display_name;"));
+  });
+
+  it("parses bracket notation source paths for dotted property names", () => {
+    const code = generateApiCode(
+      createArtifact({
+        endpoints: [
+          createEndpoint({
+            vo: {
+              name: "GetUserVO",
+              owner: "api-skill",
+              origin: "inferred",
+              reviewStatus: "confirmed",
+              fields: [
+                {
+                  ...defaultField,
+                  name: "dottedValue",
+                  sources: [{ path: 'response.body["x.y"]', role: "dottedValue" }]
+                }
+              ]
+            },
+            mapper: {
+              name: "toGetUserVO",
+              enabled: true,
+              origin: "inferred",
+              reviewStatus: "confirmed",
+              steps: [
+                {
+                  ...defaultStep,
+                  inputs: ['response.body["x.y"]'],
+                  output: "vo.dottedValue"
+                }
+              ]
+            }
+          })
+        ]
+      })
+    );
+
+    expect(code).toContain('"x.y": string;');
+    expect(code).toContain('vo.dottedValue = dto["x.y"];');
   });
 
   it("returns DTO directly when transformResponse is false", () => {
