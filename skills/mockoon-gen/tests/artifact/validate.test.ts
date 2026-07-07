@@ -40,6 +40,69 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
   };
 }
 
+function endpoint(overrides: Partial<ApiArtifact["endpoints"][number]> = {}): ApiArtifact["endpoints"][number] {
+  return {
+    id: "ep-get-user",
+    operationId: "getUser",
+    method: "GET",
+    path: "/api/users/{id}",
+    origin: "generated",
+    reviewStatus: "unreviewed",
+    dto: {
+      response: "GetUserResponseDTO"
+    },
+    vo: {
+      name: "GetUserVO",
+      owner: "api-skill",
+      origin: "inferred",
+      reviewStatus: "unreviewed",
+      fields: [
+        {
+          name: "id",
+          type: "string",
+          sources: [{ path: "response.body.id", role: "id" }],
+          confidence: "medium",
+          origin: "inferred",
+          reviewStatus: "unreviewed",
+          description: "User id",
+          reason: "Generated from response field id"
+        }
+      ]
+    },
+    mapper: {
+      name: "toGetUserVO",
+      enabled: true,
+      origin: "inferred",
+      reviewStatus: "unreviewed",
+      steps: [
+        {
+          id: "step-001",
+          order: 1,
+          operation: "rename",
+          inputs: ["response.body.id"],
+          output: "vo.id",
+          params: {},
+          description: "Map id to id",
+          confidence: "medium",
+          reviewStatus: "unreviewed"
+        }
+      ]
+    },
+    mock: {
+      origin: "generated",
+      reviewStatus: "unreviewed",
+      selection: {
+        mode: "query",
+        key: "scenario",
+        defaultScenario: "success-default"
+      },
+      scenarios: []
+    },
+    reviewItems: [],
+    ...overrides
+  };
+}
+
 describe("validateArtifact", () => {
   it("fails strict mode when generated OpenAPI is unreviewed", () => {
     const result = validateArtifact(
@@ -92,5 +155,96 @@ describe("validateArtifact", () => {
     );
 
     expect(result.needsReview[0]?.path).toBe("outputs.whistle.routes[0].apiHost");
+  });
+
+  it("reports missing whistle target port as needsReview", () => {
+    const result = validateArtifact(
+      artifact({
+        outputs: {
+          ...artifact().outputs,
+          whistle: {
+            file: ".mockoon-gen/whistle.txt",
+            routes: [
+              {
+                endpointId: "ep-get-user",
+                operationId: "getUser",
+                method: "GET",
+                apiHost: "api.example.test",
+                sourcePath: "/api/users/{id}",
+                sourcePattern: "/api/users/*",
+                targetPort: null,
+                targetPath: "/api/users/:id",
+                origin: "generated",
+                reviewStatus: "unreviewed"
+              }
+            ]
+          }
+        }
+      }),
+      { strict: false, currentOpenApiSha256: "abc" }
+    );
+
+    expect(result.needsReview).toContainEqual(
+      expect.objectContaining({
+        path: "outputs.whistle.routes[0].targetPort",
+        message: "Mockoon target port is unconfirmed."
+      })
+    );
+  });
+
+  it("reports low-confidence VO fields as needsReview", () => {
+    const result = validateArtifact(
+      artifact({
+        endpoints: [
+          endpoint({
+            vo: {
+              ...endpoint().vo,
+              fields: [
+                {
+                  ...endpoint().vo.fields[0],
+                  confidence: "low"
+                }
+              ]
+            }
+          })
+        ]
+      }),
+      { strict: false, currentOpenApiSha256: "abc" }
+    );
+
+    expect(result.needsReview).toContainEqual(
+      expect.objectContaining({
+        path: "endpoints[0].vo.fields[0]",
+        message: "VO field id is low confidence."
+      })
+    );
+  });
+
+  it("reports low-confidence mapper steps as needsReview", () => {
+    const result = validateArtifact(
+      artifact({
+        endpoints: [
+          endpoint({
+            mapper: {
+              ...endpoint().mapper,
+              steps: [
+                {
+                  ...endpoint().mapper.steps[0],
+                  confidence: "low"
+                }
+              ]
+            }
+          })
+        ]
+      }),
+      { strict: false, currentOpenApiSha256: "abc" }
+    );
+
+    expect(result.needsReview).toContainEqual(
+      expect.objectContaining({
+        path: "endpoints[0].mapper.steps[0]",
+        message: "Mapper step step-001 is low confidence."
+      })
+    );
   });
 });
