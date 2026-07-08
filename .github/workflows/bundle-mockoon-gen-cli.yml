@@ -53,6 +53,7 @@ jobs:
       - name: Create bundle update PR
         uses: peter-evans/create-pull-request@v6
         with:
+          token: ${{ secrets.SKILLS_BOT_TOKEN || github.token }}
           branch: automation/mockoon-gen-cli-bundle
           delete-branch: true
           title: "chore: update bundled mockoon-gen cli"

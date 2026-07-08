@@ -29,3 +29,12 @@ Use it with:
 ```text
 $mockoon-gen 根据这个接口文档生成接口和 mock 配置
 ```
+
+## Automation
+
+The bundled `mockoon-gen` CLI is updated by `.github/workflows/bundle-mockoon-gen-cli.yml`.
+
+For the workflow to open pull requests, use one of these options:
+
+- Enable GitHub Actions pull request creation in the repository settings.
+- Or add a repository secret named `SKILLS_BOT_TOKEN` with permission to push branches and create pull requests.
