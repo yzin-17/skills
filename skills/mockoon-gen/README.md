@@ -27,7 +27,7 @@ Run `pnpm --dir skills/mockoon-gen build` first if you have not already built th
 ## Generated Files
 
 - `.mockoon-gen/api-artifact.json`
-- `.mockoon-gen/whistle.txt`
+- `.mockoon-gen/whistle.txt` as Whistle import JSON saved with the `.txt` extension
 - `.mockoon-gen/mockoon.json`
 - `src/api/generated/api.generated.ts`
 
@@ -36,10 +36,10 @@ Run `pnpm --dir skills/mockoon-gen build` first if you have not already built th
 Some outputs stay pending until a human confirms them:
 
 - `validate --strict` fails when the OpenAPI artifact has not been reviewed or when an endpoint field or mapper step still needs confirmation
-- Whistle exports require a confirmed `apiHost`
+- Whistle exports require a confirmed `whistleGroupName` and per-route `apiHost`
 - Mockoon exports require a concrete `mockoonPort`
 
-Those gates are deliberate; they keep the generated files aligned with the reviewed contract and the target runtime.
+The Whistle export writes only the reviewed demand-specific group and the import order list. It does not emit `Default`, so importing the file will not intentionally replace an existing Default group.
 
 ## Local Development
 

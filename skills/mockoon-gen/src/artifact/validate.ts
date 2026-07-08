@@ -27,6 +27,12 @@ export function validateArtifact(artifact: ApiArtifact, options: ValidationOptio
     );
   }
 
+  if (!artifact.outputs.whistle.groupName?.trim()) {
+    needsReview.push(
+      item("needsReview", "output", "outputs.whistle.groupName", "Whistle group name is unconfirmed.")
+    );
+  }
+
   artifact.outputs.whistle.routes.forEach((route, index) => {
     if (route.apiHost === "pending-confirmation") {
       needsReview.push(

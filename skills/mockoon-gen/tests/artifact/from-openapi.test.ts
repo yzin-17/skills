@@ -21,7 +21,20 @@ describe("artifactFromOpenApi", () => {
     expect(artifact.endpoints[0]?.vo.name).toBe("GetUserVO");
     expect(artifact.endpoints[0]?.mapper.steps[0]?.operation).toBe("rename");
     expect(artifact.endpoints[0]?.mock.selection.defaultScenario).toBe("success-default");
+    expect(artifact.outputs.whistle.groupName).toBeNull();
     expect(artifact.outputs.whistle.routes[0]?.endpointId).toBe("ep-get-user");
+  });
+
+  it("copies an LLM or human confirmed whistle group name from options", async () => {
+    const loaded = await loadOpenApi("tests/fixtures/openapi.user.yaml");
+    const artifact = artifactFromOpenApi(loaded, {
+      artifactDir: ".mockoon-gen",
+      apiOutput: "src/api/generated/api.generated.ts",
+      mockoonPort: 3100,
+      whistleGroupName: "User Detail Mock"
+    });
+
+    expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
   });
 
   it("rejects malformed OpenAPI documents with invalid paths", async () => {

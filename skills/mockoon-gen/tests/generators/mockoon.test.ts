@@ -65,7 +65,7 @@ const artifact: ApiArtifact = {
       origin: "generated",
       reviewStatus: "confirmed"
     },
-    whistle: { file: ".mockoon-gen/whistle.txt", routes: [] },
+    whistle: { file: ".mockoon-gen/whistle.txt", groupName: "User Detail Mock", routes: [] },
     mockoon: {
       file: ".mockoon-gen/mockoon.json",
       port: 3100,

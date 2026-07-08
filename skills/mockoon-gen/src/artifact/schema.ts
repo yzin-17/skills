@@ -169,6 +169,7 @@ export const artifactSchema = z
         whistle: z
           .object({
             file: z.string().min(1),
+            groupName: z.string().min(1).nullable(),
             routes: z.array(
               z
                 .object({

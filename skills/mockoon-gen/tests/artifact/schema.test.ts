@@ -24,6 +24,7 @@ const minimalArtifact = {
     },
     whistle: {
       file: ".mockoon-gen/whistle.txt",
+      groupName: null,
       routes: []
     },
     mockoon: {
@@ -86,6 +87,21 @@ describe("artifactSchema", () => {
                 reviewStatus: "unreviewed"
               }
             ]
+          }
+        }
+      })
+    ).not.toThrow();
+  });
+
+  it("accepts confirmed whistle group names", () => {
+    expect(() =>
+      artifactSchema.parse({
+        ...minimalArtifact,
+        outputs: {
+          ...minimalArtifact.outputs,
+          whistle: {
+            ...minimalArtifact.outputs.whistle,
+            groupName: "User Detail Mock"
           }
         }
       })

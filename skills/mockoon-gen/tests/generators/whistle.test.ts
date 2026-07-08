@@ -16,15 +16,25 @@ const route: WhistleRoute = {
 };
 
 describe("generateWhistleRules", () => {
-  it("generates host plus path forwarding", () => {
-    expect(generateWhistleRules([route])).toBe("api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id\n");
+  it("generates Whistle import JSON without Default rules", () => {
+    const exported = JSON.parse(generateWhistleRules([route], "User Detail Mock")) as Record<string, unknown>;
+
+    expect(exported).toEqual({
+      "User Detail Mock": "api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id\n",
+      "": ["User Detail Mock"]
+    });
+    expect(exported).not.toHaveProperty("Default");
+  });
+
+  it("throws when groupName is missing", () => {
+    expect(() => generateWhistleRules([route], null)).toThrow("groupName");
   });
 
   it("throws when apiHost is pending", () => {
-    expect(() => generateWhistleRules([{ ...route, apiHost: "pending-confirmation" }])).toThrow("apiHost");
+    expect(() => generateWhistleRules([{ ...route, apiHost: "pending-confirmation" }], "User Detail Mock")).toThrow("apiHost");
   });
 
   it("throws when targetPort is missing", () => {
-    expect(() => generateWhistleRules([{ ...route, targetPort: null }])).toThrow("targetPort");
+    expect(() => generateWhistleRules([{ ...route, targetPort: null }], "User Detail Mock")).toThrow("targetPort");
   });
 });

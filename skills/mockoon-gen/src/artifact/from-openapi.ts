@@ -5,6 +5,7 @@ interface FromOpenApiOptions {
   artifactDir: string;
   apiOutput: string;
   mockoonPort: number | null;
+  whistleGroupName?: string | null;
 }
 
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete"] as const;
@@ -66,6 +67,7 @@ export function artifactFromOpenApi(openapi: LoadedOpenApi, options: FromOpenApi
       },
       whistle: {
         file: `${options.artifactDir}/whistle.txt`,
+        groupName: options.whistleGroupName ?? null,
         routes
       },
       mockoon: {

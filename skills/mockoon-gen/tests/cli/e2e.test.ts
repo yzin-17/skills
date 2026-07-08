@@ -46,7 +46,8 @@ describe("mockoon-gen e2e", () => {
         {
           ...initialConfig,
           apiOutput: "src/api/generated/api.generated.ts",
-          mockoonPort: 3100
+          mockoonPort: 3100,
+          whistleGroupName: "User Detail Mock"
         },
         null,
         2
@@ -63,12 +64,13 @@ describe("mockoon-gen e2e", () => {
       schemaVersion: string;
       outputs: {
         apiCode: { suggestedFile: string };
-        whistle: { routes: Array<{ apiHost: string }> };
+        whistle: { groupName: string | null; routes: Array<{ apiHost: string }> };
         mockoon: { port: number | null };
       };
     };
     expect(artifact.schemaVersion).toBe("0.2.0");
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/api/generated/api.generated.ts");
+    expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.port).toBe(3100);
 
     artifact.outputs.whistle.routes = artifact.outputs.whistle.routes.map((route) => ({
@@ -90,15 +92,18 @@ describe("mockoon-gen e2e", () => {
     );
 
     const generatedApi = await readFile(join(cwd, "src/api/generated/api.generated.ts"), "utf8");
-    const whistleRules = await readFile(join(cwd, ".mockoon-gen/whistle.txt"), "utf8");
+    const whistleRules = JSON.parse(await readFile(join(cwd, ".mockoon-gen/whistle.txt"), "utf8")) as Record<string, unknown>;
     const mockoonEnvironment = JSON.parse(await readFile(join(cwd, ".mockoon-gen/mockoon.json"), "utf8")) as {
       port: number;
       routes: Array<{ endpoint: string; responses: Array<{ statusCode: number }> }>;
     };
 
     expect(generatedApi).toContain("export async function getUser");
-    expect(whistleRules).toContain("api.example.test");
-    expect(whistleRules).toContain("http://127.0.0.1:3100");
+    expect(whistleRules).toEqual({
+      "User Detail Mock": "api.example.test/api/users/* http://127.0.0.1:3100/api/users/:id\n",
+      "": ["User Detail Mock"]
+    });
+    expect(whistleRules).not.toHaveProperty("Default");
     expect(mockoonEnvironment.port).toBe(3100);
     expect(mockoonEnvironment.routes).toHaveLength(1);
     expect(mockoonEnvironment.routes[0]?.endpoint).toBe("api/users/:id");

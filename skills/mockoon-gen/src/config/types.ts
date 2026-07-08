@@ -7,6 +7,7 @@ export interface MockoonGenConfig {
   splitApiOutput: boolean;
   transformResponse: boolean;
   mockoonPort: number | null;
+  whistleGroupName: string | null;
   confirmPlacement: boolean;
 }
 
@@ -19,5 +20,6 @@ export const defaultConfig: MockoonGenConfig = {
   splitApiOutput: false,
   transformResponse: true,
   mockoonPort: null,
+  whistleGroupName: null,
   confirmPlacement: true
 };

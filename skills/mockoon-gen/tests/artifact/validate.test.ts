@@ -26,6 +26,7 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
       },
       whistle: {
         file: ".mockoon-gen/whistle.txt",
+        groupName: null,
         routes: []
       },
       mockoon: {
@@ -134,6 +135,7 @@ describe("validateArtifact", () => {
           ...artifact().outputs,
           whistle: {
             file: ".mockoon-gen/whistle.txt",
+            groupName: "User Detail Mock",
             routes: [
               {
                 endpointId: "ep-get-user",
@@ -164,6 +166,7 @@ describe("validateArtifact", () => {
           ...artifact().outputs,
           whistle: {
             file: ".mockoon-gen/whistle.txt",
+            groupName: "User Detail Mock",
             routes: [
               {
                 endpointId: "ep-get-user",
@@ -188,6 +191,17 @@ describe("validateArtifact", () => {
       expect.objectContaining({
         path: "outputs.whistle.routes[0].targetPort",
         message: "Mockoon target port is unconfirmed."
+      })
+    );
+  });
+
+  it("reports missing whistle group name as needsReview", () => {
+    const result = validateArtifact(artifact(), { strict: false, currentOpenApiSha256: "abc" });
+
+    expect(result.needsReview).toContainEqual(
+      expect.objectContaining({
+        path: "outputs.whistle.groupName",
+        message: "Whistle group name is unconfirmed."
       })
     );
   });

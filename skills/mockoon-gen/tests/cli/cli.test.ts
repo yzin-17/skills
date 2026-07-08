@@ -43,7 +43,8 @@ describe("createProgram", () => {
         {
           artifactDir: ".drafts",
           apiOutput: "src/generated/custom-api.ts",
-          mockoonPort: 4100
+          mockoonPort: 4100,
+          whistleGroupName: "User Detail Mock"
         },
         null,
         2
@@ -61,6 +62,7 @@ describe("createProgram", () => {
     const artifact = JSON.parse(await readFile(join(dir, ".drafts", "api-artifact.json"), "utf8"));
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/generated/custom-api.ts");
     expect(artifact.outputs.whistle.file).toBe(".drafts/whistle.txt");
+    expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.file).toBe(".drafts/mockoon.json");
     expect(artifact.outputs.mockoon.port).toBe(4100);
   });
@@ -131,6 +133,7 @@ describe("createProgram", () => {
     artifact.outputs.whistle.routes.forEach((route) => {
       route.apiHost = "api.example.com";
     });
+    artifact.outputs.whistle.groupName = "User Detail Mock";
 
     await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
 
@@ -139,8 +142,12 @@ describe("createProgram", () => {
     });
 
     const exported = await readFile(join(dir, ".mockoon-gen/whistle.txt"), "utf8");
-    expect(exported).toContain("api.example.com");
-    expect(exported).toContain("http://127.0.0.1:3100");
+    const parsed = JSON.parse(exported) as Record<string, unknown>;
+    expect(parsed).toEqual({
+      "User Detail Mock": "api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id\n",
+      "": ["User Detail Mock"]
+    });
+    expect(parsed).not.toHaveProperty("Default");
   });
 
   it("validate --strict sets exitCode when review items need confirmation", async () => {

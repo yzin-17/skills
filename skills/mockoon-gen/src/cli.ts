@@ -46,7 +46,8 @@ export function createProgram(): Command {
       const artifact = artifactFromOpenApi(openapi, {
         artifactDir: config.artifactDir,
         apiOutput: config.apiOutput,
-        mockoonPort: config.mockoonPort
+        mockoonPort: config.mockoonPort,
+        whistleGroupName: config.whistleGroupName
       });
 
       await writeTextFile(join(options.cwd, config.artifactDir, "api-artifact.json"), prettyJson(artifact));
@@ -77,7 +78,7 @@ export function createProgram(): Command {
       if (target === "whistle") {
         await writeTextFile(
           join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
-          generateWhistleRules(artifact.outputs.whistle.routes)
+          generateWhistleRules(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
         );
         return;
       }

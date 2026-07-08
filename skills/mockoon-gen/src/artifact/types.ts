@@ -156,6 +156,7 @@ export interface ApiArtifact {
     };
     whistle: {
       file: string;
+      groupName: string | null;
       routes: WhistleRoute[];
     };
     mockoon: {
