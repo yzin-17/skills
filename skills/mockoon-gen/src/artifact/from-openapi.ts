@@ -89,21 +89,25 @@ function endpointFromOperation(
   const operationId = operation.operationId ?? operationIdFrom(method, path);
   const responseSchema = operation.responses?.["200"]?.content?.["application/json"]?.schema;
   const fieldNames = Object.keys(responseSchema?.properties ?? {});
+  const fieldIdentifiers = createFieldIdentifiers(fieldNames);
   const dtoResponse = `${pascal(operationId)}ResponseDTO`;
   const voName = `${pascal(operationId)}VO`;
   const mapperName = `to${pascal(operationId)}VO`;
 
-  const steps: MapperStep[] = fieldNames.map((field, index) => ({
-    id: `step-${String(index + 1).padStart(3, "0")}`,
-    order: index + 1,
-    operation: "rename",
-    inputs: [responseBodyPath(field)],
-    output: `vo.${camel(field)}`,
-    params: {},
-    description: `Map ${field} to ${camel(field)}`,
-    confidence: "medium",
-    reviewStatus: "unreviewed"
-  }));
+  const steps: MapperStep[] = fieldNames.map((field, index) => {
+    const fieldIdentifier = fieldIdentifiers.get(field) ?? `field${index + 1}`;
+    return {
+      id: `step-${String(index + 1).padStart(3, "0")}`,
+      order: index + 1,
+      operation: "rename",
+      inputs: [responseBodyPath(field)],
+      output: `vo.${fieldIdentifier}`,
+      params: {},
+      description: `Map ${field} to ${fieldIdentifier}`,
+      confidence: "medium",
+      reviewStatus: "unreviewed"
+    };
+  });
 
   const scenarios: MockScenario[] = [
     {
@@ -146,16 +150,19 @@ function endpointFromOperation(
       owner: "api-skill",
       origin: "inferred",
       reviewStatus: "unreviewed",
-      fields: fieldNames.map((field) => ({
-        name: camel(field),
-        type: tsType(responseSchema?.properties?.[field]),
-        sources: [{ path: responseBodyPath(field), role: camel(field) }],
-        confidence: "medium",
-        origin: "inferred",
-        reviewStatus: "unreviewed",
-        description: operation.summary,
-        reason: `Generated from response field ${field}`
-      }))
+      fields: fieldNames.map((field, index) => {
+        const fieldIdentifier = fieldIdentifiers.get(field) ?? `field${index + 1}`;
+        return {
+          name: fieldIdentifier,
+          type: tsType(responseSchema?.properties?.[field]),
+          sources: [{ path: responseBodyPath(field), role: fieldIdentifier }],
+          confidence: "medium",
+          origin: "inferred",
+          reviewStatus: "unreviewed",
+          description: operation.summary,
+          reason: `Generated from response field ${field}`
+        };
+      })
     },
     mapper: {
       name: mapperName,
@@ -180,6 +187,33 @@ function endpointFromOperation(
 
 function responseBodyPath(field: string): string {
   return /^[A-Za-z_$][0-9A-Za-z_$]*$/.test(field) ? `response.body.${field}` : `response.body[${JSON.stringify(field)}]`;
+}
+
+function createFieldIdentifiers(fieldNames: string[]): Map<string, string> {
+  const identifiers = new Map<string, string>();
+  const used = new Set<string>();
+
+  for (const [index, fieldName] of fieldNames.entries()) {
+    const base = sanitizeIdentifier(fieldName, `field${index + 1}`);
+    let candidate = base;
+    let suffix = 2;
+
+    while (used.has(candidate)) {
+      candidate = `${base}${suffix}`;
+      suffix += 1;
+    }
+
+    used.add(candidate);
+    identifiers.set(fieldName, candidate);
+  }
+
+  return identifiers;
+}
+
+function sanitizeIdentifier(value: string, fallback: string): string {
+  const normalized = camel(value.replace(/[^A-Za-z0-9_$]+/g, "_"));
+  const candidate = normalized.length > 0 ? normalized : fallback;
+  return /^[A-Za-z_$]/.test(candidate) ? candidate : `_${candidate}`;
 }
 
 function mockBodyTemplate(schema: OpenApiSchema | undefined): string {

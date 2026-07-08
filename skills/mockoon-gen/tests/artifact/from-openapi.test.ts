@@ -110,7 +110,9 @@ describe("artifactFromOpenApi", () => {
         mockoonPort: 3100
       });
 
+      expect(artifact.endpoints[0]?.vo.fields[0]?.name).toBe("xY");
       expect(artifact.endpoints[0]?.vo.fields[0]?.sources[0]?.path).toBe('response.body["x.y"]');
+      expect(artifact.endpoints[0]?.mapper.steps[0]?.output).toBe("vo.xY");
       expect(artifact.endpoints[0]?.mapper.steps[0]?.inputs[0]).toBe('response.body["x.y"]');
       expect(artifact.endpoints[0]?.vo.fields[1]?.sources[0]?.path).toBe("response.body.user_name");
       expect(artifact.endpoints[0]?.mapper.steps[1]?.inputs[0]).toBe("response.body.user_name");

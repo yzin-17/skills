@@ -265,8 +265,8 @@ describe("generateApiCode", () => {
               fields: [
                 {
                   ...defaultField,
-                  name: "dottedValue",
-                  sources: [{ path: 'response.body["x.y"]', role: "dottedValue" }]
+                  name: "xY",
+                  sources: [{ path: 'response.body["x.y"]', role: "xY" }]
                 }
               ]
             },
@@ -279,7 +279,7 @@ describe("generateApiCode", () => {
                 {
                   ...defaultStep,
                   inputs: ['response.body["x.y"]'],
-                  output: "vo.dottedValue"
+                  output: "vo.xY"
                 }
               ]
             }
@@ -289,7 +289,8 @@ describe("generateApiCode", () => {
     );
 
     expect(code).toContain('"x.y": string;');
-    expect(code).toContain('vo.dottedValue = dto["x.y"];');
+    expect(code).toContain("xY: string;");
+    expect(code).toContain('vo.xY = dto["x.y"];');
   });
 
   it("returns DTO directly when transformResponse is false", () => {
