@@ -23,7 +23,7 @@ const minimalArtifact = {
       reviewStatus: "unreviewed"
     },
     whistle: {
-      file: ".mockoon-gen/whistle.txt",
+      file: ".mockoon-gen/whistle.json",
       groupName: null,
       routes: []
     },

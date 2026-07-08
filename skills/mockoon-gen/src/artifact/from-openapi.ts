@@ -66,7 +66,7 @@ export function artifactFromOpenApi(openapi: LoadedOpenApi, options: FromOpenApi
         reviewStatus: "unreviewed"
       },
       whistle: {
-        file: `${options.artifactDir}/whistle.txt`,
+        file: `${options.artifactDir}/whistle.json`,
         groupName: options.whistleGroupName ?? null,
         routes
       },

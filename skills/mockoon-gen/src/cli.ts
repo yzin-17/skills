@@ -68,7 +68,7 @@ export function createProgram(): Command {
 
   program
     .command("export")
-    .description("Export whistle.txt or mockoon.json.")
+    .description("Export whistle.json or mockoon.json.")
     .argument("<target>", "whistle or mockoon")
     .requiredOption("--from <artifact>")
     .option("--cwd <cwd>", "Working directory", process.cwd())

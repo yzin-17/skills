@@ -15,7 +15,7 @@ export const defaultConfig: MockoonGenConfig = {
   artifactDir: ".mockoon-gen",
   openapiFile: ".mockoon-gen/openapi.yaml",
   mockoonFile: ".mockoon-gen/mockoon.json",
-  whistleFile: ".mockoon-gen/whistle.txt",
+  whistleFile: ".mockoon-gen/whistle.json",
   apiOutput: "src/api/generated/api.generated.ts",
   splitApiOutput: false,
   transformResponse: true,

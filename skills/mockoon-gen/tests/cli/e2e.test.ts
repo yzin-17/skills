@@ -92,7 +92,7 @@ describe("mockoon-gen e2e", () => {
     );
 
     const generatedApi = await readFile(join(cwd, "src/api/generated/api.generated.ts"), "utf8");
-    const whistleRules = JSON.parse(await readFile(join(cwd, ".mockoon-gen/whistle.txt"), "utf8")) as Record<string, unknown>;
+    const whistleRules = JSON.parse(await readFile(join(cwd, ".mockoon-gen/whistle.json"), "utf8")) as Record<string, unknown>;
     const mockoonEnvironment = JSON.parse(await readFile(join(cwd, ".mockoon-gen/mockoon.json"), "utf8")) as {
       port: number;
       routes: Array<{ endpoint: string; responses: Array<{ statusCode: number }> }>;

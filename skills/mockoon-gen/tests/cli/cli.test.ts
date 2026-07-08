@@ -61,7 +61,7 @@ describe("createProgram", () => {
 
     const artifact = JSON.parse(await readFile(join(dir, ".drafts", "api-artifact.json"), "utf8"));
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/generated/custom-api.ts");
-    expect(artifact.outputs.whistle.file).toBe(".drafts/whistle.txt");
+    expect(artifact.outputs.whistle.file).toBe(".drafts/whistle.json");
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.file).toBe(".drafts/mockoon.json");
     expect(artifact.outputs.mockoon.port).toBe(4100);
@@ -141,7 +141,7 @@ describe("createProgram", () => {
       from: "user"
     });
 
-    const exported = await readFile(join(dir, ".mockoon-gen/whistle.txt"), "utf8");
+    const exported = await readFile(join(dir, ".mockoon-gen/whistle.json"), "utf8");
     const parsed = JSON.parse(exported) as Record<string, unknown>;
     expect(parsed).toEqual({
       "User Detail Mock": "api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id\n",

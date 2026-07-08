@@ -27,7 +27,7 @@ Run `pnpm --dir skills/mockoon-gen build` first if you have not already built th
 ## Generated Files
 
 - `.mockoon-gen/api-artifact.json`
-- `.mockoon-gen/whistle.txt` as Whistle import JSON saved with the `.txt` extension
+- `.mockoon-gen/whistle.json`
 - `.mockoon-gen/mockoon.json`
 - `src/api/generated/api.generated.ts`
 
