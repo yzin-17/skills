@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mockoon Gen"
+  short_description: "Generate reviewed API mock artifacts"
+  default_prompt: "Use $mockoon-gen to generate reviewed OpenAPI, Whistle, Mockoon, and frontend API artifacts."

@@ -24,6 +24,28 @@ pnpm --dir skills/mockoon-gen exec mockoon-gen validate --from .mockoon-gen/api-
 
 Run `pnpm --dir skills/mockoon-gen build` first if you have not already built the CLI binary.
 
+## Use As A Skill
+
+This package is also a Codex skill. The skill entrypoint is `SKILL.md`; the CLI is the deterministic executor used by that skill.
+
+Install or link `skills/mockoon-gen` into your Codex skills directory, for example:
+
+```bash
+ln -s /Users/yzin/code/skills/skills/mockoon-gen ~/.codex/skills/mockoon-gen
+```
+
+Then start a request with:
+
+```text
+$mockoon-gen 根据这个接口文档生成 OpenAPI、api-artifact、Mockoon 和 Whistle 配置
+```
+
+The expected division of labor is:
+
+- The skill reads loose API docs, asks for host/port/group/output confirmation, and reviews `api-artifact.json`.
+- The CLI runs deterministic commands such as `from-openapi`, `validate`, `generate`, and `export`.
+- The generated Whistle file defaults to `.mockoon-gen/whistle.json`; Mockoon defaults to `.mockoon-gen/mockoon.json`.
+
 ## Generated Files
 
 - `.mockoon-gen/api-artifact.json`
