@@ -1,6 +1,19 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
+import { isAbsolute, join, resolve } from "node:path";
 import { Command } from "commander";
+import { artifactFromOpenApi } from "./artifact/from-openapi.js";
+import { artifactSchema } from "./artifact/schema.js";
+import type { ApiArtifact } from "./artifact/types.js";
+import { validateArtifact } from "./artifact/validate.js";
+import { loadConfig } from "./config/load-config.js";
+import { defaultConfig } from "./config/types.js";
+import { generateApiCode } from "./generators/api-code.js";
+import { generateMockoonEnvironment } from "./generators/mockoon.js";
+import { generateWhistleRules } from "./generators/whistle.js";
 import { MOCKGEN_VERSION } from "./index.js";
+import { loadOpenApi } from "./openapi/load-openapi.js";
+import { prettyJson, writeTextFile } from "./utils/fs.js";
 
 export function createProgram(): Command {
   const program = new Command();
@@ -10,11 +23,123 @@ export function createProgram(): Command {
     .description("Generate frontend API contracts and mock files from reviewed OpenAPI artifacts.")
     .version(MOCKGEN_VERSION);
 
-  program.command("init").description("Create default mockoon-gen config.").action(() => {
-    console.log("mockoon-gen init is not implemented yet");
-  });
+  program
+    .command("init")
+    .description("Create default mockoon-gen config.")
+    .option("--cwd <cwd>", "Working directory", process.cwd())
+    .action(async (options: { cwd: string }) => {
+      await writeTextFile(join(options.cwd, "mockoon-gen.config.json"), prettyJson(defaultConfig));
+    });
+
+  program
+    .command("from-openapi")
+    .description("Create api-artifact.json from reviewed OpenAPI.")
+    .argument("<file>")
+    .option("--cwd <cwd>", "Working directory", process.cwd())
+    .action(async (file: string, options: { cwd: string }) => {
+      const config = await loadConfig(options.cwd);
+      const openapi = await loadOpenApi(resolveFromCwd(options.cwd, file));
+      const artifact = artifactFromOpenApi(openapi, {
+        artifactDir: config.artifactDir,
+        apiOutput: config.apiOutput,
+        mockoonPort: config.mockoonPort
+      });
+
+      await writeTextFile(join(options.cwd, config.artifactDir, "api-artifact.json"), prettyJson(artifact));
+    });
+
+  program
+    .command("generate")
+    .description("Generate TypeScript API code from artifact.")
+    .requiredOption("--from <artifact>")
+    .option("--cwd <cwd>", "Working directory", process.cwd())
+    .action(async (options: { from: string; cwd: string }) => {
+      const config = await loadConfig(options.cwd);
+      const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
+      const targetFile = artifact.outputs.apiCode.suggestedFile || config.apiOutput;
+
+      await writeTextFile(join(options.cwd, targetFile), generateApiCode(artifact));
+    });
+
+  program
+    .command("export")
+    .description("Export whistle.txt or mockoon.json.")
+    .argument("<target>", "whistle or mockoon")
+    .requiredOption("--from <artifact>")
+    .option("--cwd <cwd>", "Working directory", process.cwd())
+    .action(async (target: string, options: { from: string; cwd: string }) => {
+      const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
+
+      if (target === "whistle") {
+        await writeTextFile(
+          join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
+          generateWhistleRules(artifact.outputs.whistle.routes)
+        );
+        return;
+      }
+
+      if (target === "mockoon") {
+        await writeTextFile(
+          join(options.cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile),
+          prettyJson(generateMockoonEnvironment(artifact))
+        );
+        return;
+      }
+
+      throw new Error(`Unknown export target: ${target}`);
+    });
+
+  program
+    .command("validate")
+    .description("Validate artifact review gates.")
+    .requiredOption("--from <artifact>")
+    .option("--openapi <file>")
+    .option("--strict", "Fail on needsReview")
+    .option("--cwd <cwd>", "Working directory", process.cwd())
+    .action(async (options: { from: string; openapi?: string; strict?: boolean; cwd: string }) => {
+      const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
+      const openapiPath = options.openapi ?? artifact.openapi.file;
+      const openapi = await loadOpenApi(resolveFromCwd(options.cwd, openapiPath));
+      const result = validateArtifact(artifact, {
+        strict: Boolean(options.strict),
+        currentOpenApiSha256: openapi.sha256
+      });
+
+      console.log(prettyJson(result));
+
+      if (result.fatal.length > 0 || (options.strict && result.needsReview.length > 0)) {
+        process.exitCode = 1;
+      }
+    });
+
+  const parseAsync = program.parseAsync.bind(program);
+  program.parseAsync = ((argv?: readonly string[], parseOptions?: Parameters<Command["parseAsync"]>[1]) =>
+    parseAsync(normalizeArgv(argv, parseOptions), parseOptions)) as Command["parseAsync"];
 
   return program;
+}
+
+async function readArtifact(file: string): Promise<ApiArtifact> {
+  return artifactSchema.parse(JSON.parse(await readFile(file, "utf8"))) as unknown as ApiArtifact;
+}
+
+function resolveFromCwd(cwd: string, file: string): string {
+  return isAbsolute(file) ? file : resolve(cwd, file);
+}
+
+function normalizeArgv(
+  argv: readonly string[] | undefined,
+  parseOptions?: Parameters<Command["parseAsync"]>[1]
+): readonly string[] | undefined {
+  if (parseOptions?.from !== "user" || !argv || argv.length < 2) {
+    return argv;
+  }
+
+  if (argv[0] === "node" && argv[1] === "mockoon-gen") {
+    return argv.slice(2);
+  }
+
+  return argv;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
