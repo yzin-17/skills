@@ -1,6 +1,8 @@
 #!/usr/bin/env node
+import { realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { artifactFromOpenApi } from "./artifact/from-openapi.js";
 import { artifactSchema } from "./artifact/schema.js";
@@ -119,6 +121,19 @@ export function createProgram(): Command {
   return program;
 }
 
+export function shouldRunCli(importMetaUrl: string, argv: readonly string[] | undefined = process.argv): boolean {
+  const entryFile = argv?.[1];
+  if (!entryFile) {
+    return false;
+  }
+
+  try {
+    return realpathSync(fileURLToPath(importMetaUrl)) === realpathSync(entryFile);
+  } catch {
+    return false;
+  }
+}
+
 async function readArtifact(file: string): Promise<ApiArtifact> {
   return artifactSchema.parse(JSON.parse(await readFile(file, "utf8"))) as unknown as ApiArtifact;
 }
@@ -142,6 +157,6 @@ function normalizeArgv(
   return argv;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (shouldRunCli(import.meta.url, process.argv)) {
   await createProgram().parseAsync(process.argv);
 }

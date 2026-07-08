@@ -1,12 +1,18 @@
-import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { pathToFileURL } from "node:url";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { artifactFromOpenApi } from "../../src/artifact/from-openapi.js";
-import { createProgram } from "../../src/cli.js";
+import { createProgram, shouldRunCli } from "../../src/cli.js";
 import { loadOpenApi } from "../../src/openapi/load-openapi.js";
 
 describe("createProgram", () => {
+  afterEach(() => {
+    process.exitCode = undefined;
+    vi.restoreAllMocks();
+  });
+
   it("registers core commands", () => {
     const program = createProgram();
     expect(program.commands.map((command) => command.name())).toEqual([
@@ -88,5 +94,86 @@ describe("createProgram", () => {
     const generated = await readFile(join(dir, "src/api/generated/from-artifact.ts"), "utf8");
     expect(generated).toContain("mockoon-gen-sha256");
     await expect(stat(join(dir, "src/api/generated/from-config.ts"))).rejects.toThrow();
+  });
+
+  it("treats symlinked argv[1] as direct CLI execution", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const entryFile = join(dir, "cli-entry.mjs");
+    const symlinkFile = join(dir, "mockoon-gen");
+
+    await writeFile(entryFile, "", "utf8");
+    await symlink(entryFile, symlinkFile);
+
+    expect(shouldRunCli(pathToFileURL(entryFile).href, ["node", symlinkFile])).toBe(true);
+  });
+
+  it("skips CLI execution when argv[1] is missing", () => {
+    expect(shouldRunCli(import.meta.url, ["node"])).toBe(false);
+  });
+
+  it("export whistle writes the generated rules file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "openapi.yaml");
+
+    await writeFile(
+      openapiFile,
+      await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"),
+      "utf8"
+    );
+
+    const loaded = await loadOpenApi(openapiFile);
+    const artifact = artifactFromOpenApi(loaded, {
+      artifactDir: ".mockoon-gen",
+      apiOutput: "src/api/generated/from-config.ts",
+      mockoonPort: 3100
+    });
+    artifact.outputs.whistle.routes.forEach((route) => {
+      route.apiHost = "api.example.com";
+    });
+
+    await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
+
+    await program.parseAsync(["node", "mockoon-gen", "export", "whistle", "--from", "artifact.json", "--cwd", dir], {
+      from: "user"
+    });
+
+    const exported = await readFile(join(dir, ".mockoon-gen/whistle.txt"), "utf8");
+    expect(exported).toContain("api.example.com");
+    expect(exported).toContain("http://127.0.0.1:3100");
+  });
+
+  it("validate --strict sets exitCode when review items need confirmation", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "openapi.yaml");
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    await writeFile(
+      openapiFile,
+      await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"),
+      "utf8"
+    );
+
+    const loaded = await loadOpenApi(openapiFile);
+    const artifact = artifactFromOpenApi(loaded, {
+      artifactDir: ".mockoon-gen",
+      apiOutput: "src/api/generated/from-config.ts",
+      mockoonPort: 3100
+    });
+    artifact.endpoints[0]?.vo.fields.splice(0, 1, {
+      ...artifact.endpoints[0].vo.fields[0],
+      confidence: "low"
+    });
+
+    await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
+
+    await program.parseAsync(
+      ["node", "mockoon-gen", "validate", "--strict", "--from", "artifact.json", "--openapi", "openapi.yaml", "--cwd", dir],
+      { from: "user" }
+    );
+
+    expect(process.exitCode).toBe(1);
+    expect(logSpy).toHaveBeenCalledOnce();
   });
 });
