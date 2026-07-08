@@ -8,6 +8,7 @@ on:
     paths:
       - "packages/mockoon-gen-cli/**"
       - "skills/mockoon-gen/SKILL.md"
+      - "skills/mockoon-gen/bin/**"
       - ".github/workflows/bundle-mockoon-gen-cli.yml"
 
 permissions:
