@@ -15,23 +15,21 @@ Use this skill as the agent workflow layer around the bundled deterministic CLI.
 - Do not infer final host, forwarding paths, Mockoon port, API code placement, or final VO shape without human or project confirmation.
 - Prefer low project intrusion: write `.mockoon-gen/*` and only write API code to the confirmed artifact path.
 
-## CLI Location
+## Bundled CLI
 
-The CLI package lives in the same directory as this `SKILL.md`.
-
-Before calling the CLI:
+The deterministic CLI is bundled with this skill at:
 
 ```bash
-pnpm --dir <skill-dir> build
+<skill-dir>/bin/mockoon-gen.mjs
 ```
 
-Call the built CLI from a target project with:
+Call it from a target project with:
 
 ```bash
-node <skill-dir>/dist/src/cli.js <command> --cwd <project-dir>
+node <skill-dir>/bin/mockoon-gen.mjs <command> --cwd <project-dir>
 ```
 
-Use `pnpm --dir <skill-dir> exec mockoon-gen ...` only when the package is installed and pnpm is not trying to mutate dependencies.
+Do not run package installation from the installed skill. If the bundled CLI is missing, explain that the skill distribution is incomplete and ask the user to install a release that includes `bin/mockoon-gen.mjs`.
 
 ## Workflow
 
@@ -40,7 +38,7 @@ Use `pnpm --dir <skill-dir> exec mockoon-gen ...` only when the package is insta
 3. Initialize config when missing:
 
 ```bash
-node <skill-dir>/dist/src/cli.js init --cwd <project-dir>
+node <skill-dir>/bin/mockoon-gen.mjs init --cwd <project-dir>
 ```
 
 4. Confirm or populate these config values before generation when possible:
@@ -52,7 +50,7 @@ node <skill-dir>/dist/src/cli.js init --cwd <project-dir>
 5. Generate the artifact from reviewed OpenAPI:
 
 ```bash
-node <skill-dir>/dist/src/cli.js from-openapi .mockoon-gen/openapi.yaml --cwd <project-dir>
+node <skill-dir>/bin/mockoon-gen.mjs from-openapi .mockoon-gen/openapi.yaml --cwd <project-dir>
 ```
 
 6. Review `.mockoon-gen/api-artifact.json` before exporting:
@@ -67,15 +65,15 @@ node <skill-dir>/dist/src/cli.js from-openapi .mockoon-gen/openapi.yaml --cwd <p
 7. Validate before exporting:
 
 ```bash
-node <skill-dir>/dist/src/cli.js validate --from .mockoon-gen/api-artifact.json --strict --cwd <project-dir>
+node <skill-dir>/bin/mockoon-gen.mjs validate --from .mockoon-gen/api-artifact.json --strict --cwd <project-dir>
 ```
 
 8. Export derived files only after required review gates are satisfied:
 
 ```bash
-node <skill-dir>/dist/src/cli.js generate --from .mockoon-gen/api-artifact.json --cwd <project-dir>
-node <skill-dir>/dist/src/cli.js export whistle --from .mockoon-gen/api-artifact.json --cwd <project-dir>
-node <skill-dir>/dist/src/cli.js export mockoon --from .mockoon-gen/api-artifact.json --cwd <project-dir>
+node <skill-dir>/bin/mockoon-gen.mjs generate --from .mockoon-gen/api-artifact.json --cwd <project-dir>
+node <skill-dir>/bin/mockoon-gen.mjs export whistle --from .mockoon-gen/api-artifact.json --cwd <project-dir>
+node <skill-dir>/bin/mockoon-gen.mjs export mockoon --from .mockoon-gen/api-artifact.json --cwd <project-dir>
 ```
 
 ## Output Semantics

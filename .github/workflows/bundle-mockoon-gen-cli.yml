@@ -1,0 +1,61 @@
+name: Bundle Mockoon Gen CLI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/mockoon-gen-cli/**"
+      - "skills/mockoon-gen/SKILL.md"
+      - ".github/workflows/bundle-mockoon-gen-cli.yml"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: packages/mockoon-gen-cli/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm --dir packages/mockoon-gen-cli install --frozen-lockfile
+
+      - name: Test CLI
+        run: pnpm --dir packages/mockoon-gen-cli test
+
+      - name: Typecheck CLI
+        run: pnpm --dir packages/mockoon-gen-cli typecheck
+
+      - name: Bundle CLI into skill
+        run: pnpm --dir packages/mockoon-gen-cli bundle
+
+      - name: Verify bundled CLI
+        run: node skills/mockoon-gen/bin/mockoon-gen.mjs --version
+
+      - name: Create bundle update PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: automation/mockoon-gen-cli-bundle
+          delete-branch: true
+          title: "chore: update bundled mockoon-gen cli"
+          commit-message: "chore: update bundled mockoon-gen cli"
+          body: "This PR updates the bundled mockoon-gen CLI used by the installable skill."
+          add-paths: |
+            skills/mockoon-gen/bin/mockoon-gen.mjs
