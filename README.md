@@ -13,16 +13,14 @@ The repository is optimized for personal workflows rather than as a public produ
 Install the `mockoon-gen` skill from GitHub with:
 
 ```bash
-npx skills@latest add https://github.com/yzin/skills/tree/main/skills/mockoon-gen -a codex -g
+npx skills@latest add https://github.com/yzin/skills/tree/main/skills/mockoon-gen
 ```
 
 Or install from a local checkout while developing:
 
 ```bash
-npx skills@latest add ./skills/mockoon-gen -a codex -g
+npx skills@latest add ./skills/mockoon-gen
 ```
-
-`-a codex` means install for Codex. `-g` means install globally into the Codex skills directory instead of only the current project.
 
 Restart Codex after installing or updating skills so the new skill metadata is loaded.
 

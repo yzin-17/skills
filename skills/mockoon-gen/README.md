@@ -22,16 +22,14 @@ The skill does not install Whistle or Mockoon for you.
 Install from GitHub:
 
 ```bash
-npx skills@latest add https://github.com/yzin/skills/tree/main/skills/mockoon-gen -a codex -g
+npx skills@latest add https://github.com/yzin/skills/tree/main/skills/mockoon-gen
 ```
 
 Install from a local checkout:
 
 ```bash
-npx skills@latest add ./skills/mockoon-gen -a codex -g
+npx skills@latest add ./skills/mockoon-gen
 ```
-
-`-a codex` means install for Codex. `-g` means install globally into the Codex skills directory.
 
 Restart Codex after installation.
 
