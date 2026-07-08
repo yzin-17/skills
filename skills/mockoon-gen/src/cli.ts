@@ -17,6 +17,8 @@ import { MOCKGEN_VERSION } from "./index.js";
 import { loadOpenApi } from "./openapi/load-openapi.js";
 import { prettyJson, writeTextFile } from "./utils/fs.js";
 
+let validateCommandSetExitCode = false;
+
 export function createProgram(): Command {
   const program = new Command();
 
@@ -99,6 +101,11 @@ export function createProgram(): Command {
     .option("--strict", "Fail on needsReview")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (options: { from: string; openapi?: string; strict?: boolean; cwd: string }) => {
+      if (validateCommandSetExitCode && process.exitCode === 1) {
+        process.exitCode = undefined;
+      }
+      validateCommandSetExitCode = false;
+
       const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
       const openapiPath = options.openapi ?? artifact.openapi.file;
       const openapi = await loadOpenApi(resolveFromCwd(options.cwd, openapiPath));
@@ -111,6 +118,7 @@ export function createProgram(): Command {
 
       if (result.fatal.length > 0 || (options.strict && result.needsReview.length > 0)) {
         process.exitCode = 1;
+        validateCommandSetExitCode = true;
       }
     });
 

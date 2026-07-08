@@ -176,4 +176,44 @@ describe("createProgram", () => {
     expect(process.exitCode).toBe(1);
     expect(logSpy).toHaveBeenCalledOnce();
   });
+
+  it("validate clears a stale exitCode after a later successful run in the same process", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "openapi.yaml");
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    await writeFile(
+      openapiFile,
+      await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"),
+      "utf8"
+    );
+
+    const loaded = await loadOpenApi(openapiFile);
+    const artifact = artifactFromOpenApi(loaded, {
+      artifactDir: ".mockoon-gen",
+      apiOutput: "src/api/generated/from-config.ts",
+      mockoonPort: 3100
+    });
+    artifact.endpoints[0]?.vo.fields.splice(0, 1, {
+      ...artifact.endpoints[0].vo.fields[0],
+      confidence: "low"
+    });
+
+    await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
+
+    await program.parseAsync(
+      ["node", "mockoon-gen", "validate", "--strict", "--from", "artifact.json", "--openapi", "openapi.yaml", "--cwd", dir],
+      { from: "user" }
+    );
+    expect(process.exitCode).toBe(1);
+
+    await createProgram().parseAsync(
+      ["node", "mockoon-gen", "validate", "--from", "artifact.json", "--openapi", "openapi.yaml", "--cwd", dir],
+      { from: "user" }
+    );
+
+    expect(process.exitCode).toBeUndefined();
+    expect(logSpy).toHaveBeenCalledTimes(2);
+  });
 });
