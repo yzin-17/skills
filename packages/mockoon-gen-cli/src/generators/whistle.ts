@@ -38,9 +38,30 @@ function ruleFor(route: WhistleRoute): string {
     throw new Error(`Cannot export whistle rule for ${route.operationId}: targetPort is pending confirmation.`);
   }
 
-  return `${route.apiHost}${route.sourcePattern} http://127.0.0.1:${route.targetPort}${route.targetPath}`;
+  const sourceMatcher = sourceMatcherFor(route);
+  const targetPath = targetPathFor(route);
+
+  return `${sourceMatcher} http://127.0.0.1:${route.targetPort}${targetPath}`;
 }
 
 function escapeTemplateLiteral(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+}
+
+function sourceMatcherFor(route: WhistleRoute): string {
+  const matcher = `${route.apiHost}${route.sourcePattern}`.replace(/^\^+/, "");
+  return hasPathParams(route) ? `^${matcher}` : matcher;
+}
+
+function targetPathFor(route: WhistleRoute): string {
+  if (!hasPathParams(route)) {
+    return route.targetPath;
+  }
+
+  let captureIndex = 1;
+  return route.targetPath.replace(/\{[^}]+\}|:[A-Za-z_$][\w$-]*|\*/g, () => `$${captureIndex++}`);
+}
+
+function hasPathParams(route: WhistleRoute): boolean {
+  return /\{[^}]+\}/.test(route.sourcePath) || route.sourcePattern.includes("*");
 }

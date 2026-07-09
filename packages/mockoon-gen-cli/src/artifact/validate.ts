@@ -54,6 +54,16 @@ export function validateArtifact(artifact: ApiArtifact, options: ValidationOptio
         )
       );
     }
+    if (!hasExpectedWhistleCaptures(route.sourcePath, route.targetPath)) {
+      fatal.push(
+        item(
+          "fatal",
+          "output",
+          pathFor(["outputs", "whistle", "routes", index, "targetPath"]),
+          "Whistle target path must use $1, $2, ... captures for OpenAPI path params."
+        )
+      );
+    }
   });
 
   artifact.endpoints.forEach((endpoint, endpointIndex) => {
@@ -85,6 +95,21 @@ export function validateArtifact(artifact: ApiArtifact, options: ValidationOptio
   });
 
   return { fatal, needsReview, warning };
+}
+
+function hasExpectedWhistleCaptures(sourcePath: string, targetPath: string): boolean {
+  const pathParamCount = Array.from(sourcePath.matchAll(/\{[^}]+\}/g)).length;
+  if (pathParamCount === 0) {
+    return true;
+  }
+
+  if (/\{[^}]+\}|:[A-Za-z_$][\w$-]*|\*/.test(targetPath)) {
+    return false;
+  }
+
+  const captures = Array.from(targetPath.matchAll(/\$(\d+)/g), (match) => Number(match[1]));
+  const expected = Array.from({ length: pathParamCount }, (_, index) => index + 1);
+  return expected.length === captures.length && expected.every((value, index) => captures[index] === value);
 }
 
 function item(

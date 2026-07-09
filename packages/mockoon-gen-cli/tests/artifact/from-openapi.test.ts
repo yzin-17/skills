@@ -29,6 +29,8 @@ describe("artifactFromOpenApi", () => {
     expect(artifact.endpoints[0]?.mock.scenarios.find((scenario) => scenario.name === "error-default")?.statusCode).toBe(500);
     expect(artifact.outputs.whistle.groupName).toBeNull();
     expect(artifact.outputs.whistle.routes[0]?.endpointId).toBe("ep-get-user");
+    expect(artifact.outputs.whistle.routes[0]?.sourcePattern).toBe("/api/users/*");
+    expect(artifact.outputs.whistle.routes[0]?.targetPath).toBe("/api/users/$1");
   });
 
   it("creates a 20 item Faker scenario for list endpoints", async () => {

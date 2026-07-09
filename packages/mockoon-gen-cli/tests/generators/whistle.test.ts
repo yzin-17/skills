@@ -20,7 +20,7 @@ describe("generateWhistleRules", () => {
     const exported = JSON.parse(generateWhistleRules([route], "User Detail Mock")) as Record<string, unknown>;
 
     expect(exported).toEqual({
-      "User Detail Mock": "api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id\n",
+      "User Detail Mock": "^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1\n",
       "": ["User Detail Mock"]
     });
     expect(exported).not.toHaveProperty("Default");
@@ -29,9 +29,22 @@ describe("generateWhistleRules", () => {
   it("generates a Whistle CLI module for w2 add filepath", () => {
     expect(generateWhistleCliModule([route], "User Detail Mock")).toBe(`exports.groupName = "User Detail Mock";
 exports.name = "User Detail Mock";
-exports.rules = \`api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id
+exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1
 \`;
 `);
+  });
+
+  it("keeps static routes as plain URL matchers", () => {
+    const staticRoute: WhistleRoute = {
+      ...route,
+      sourcePath: "/api/profile",
+      sourcePattern: "/api/profile",
+      targetPath: "/api/profile"
+    };
+
+    const exported = JSON.parse(generateWhistleRules([staticRoute], "User Detail Mock")) as Record<string, unknown>;
+
+    expect(exported["User Detail Mock"]).toBe("api.example.com/api/profile http://127.0.0.1:3100/api/profile\n");
   });
 
   it("throws when groupName is missing", () => {

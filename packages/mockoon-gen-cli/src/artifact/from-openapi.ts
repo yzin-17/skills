@@ -31,7 +31,7 @@ export function artifactFromOpenApi(openapi: LoadedOpenApi, options: FromOpenApi
     sourcePath: endpoint.path,
     sourcePattern: endpoint.path.replace(/\{[^}]+\}/g, "*"),
     targetPort: options.mockoonPort,
-    targetPath: endpoint.path.replace(/\{([^}]+)\}/g, ":$1"),
+    targetPath: targetPathWithCaptures(endpoint.path),
     origin: "generated",
     reviewStatus: options.mockoonPort ? "needs-change" : "unreviewed"
   }));
@@ -84,6 +84,11 @@ export function artifactFromOpenApi(openapi: LoadedOpenApi, options: FromOpenApi
       }
     }
   };
+}
+
+function targetPathWithCaptures(path: string): string {
+  let captureIndex = 1;
+  return path.replace(/\{[^}]+\}/g, () => `$${captureIndex++}`);
 }
 
 function endpointFromOperation(

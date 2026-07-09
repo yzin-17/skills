@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -46,7 +46,11 @@ export function createProgram(): Command {
     .option("--page-dir <dir>", "Page, route, view, or feature directory for generated mock files")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (file: string, options: { pageDir?: string; cwd: string }) => {
-      const config = configWithPageDir(await loadConfig(configFilePath(options.cwd, options.pageDir)), options.pageDir, options.cwd);
+      const config = configWithPageDir(
+        await loadConfig(resolveConfigPath(options.cwd, options.pageDir)),
+        options.pageDir,
+        options.cwd
+      );
       const openapi = await loadOpenApi(resolveFromCwd(options.cwd, file));
       const artifact = artifactFromOpenApi(openapi, {
         artifactDir: config.artifactDir,
@@ -66,7 +70,7 @@ export function createProgram(): Command {
     .requiredOption("--from <artifact>")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (options: { from: string; cwd: string }) => {
-      const config = await loadConfig(configFilePath(options.cwd));
+      const config = await loadConfig(resolveConfigPath(options.cwd));
       const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
       if (!artifact.outputs.apiCode.enabled) {
         return;
@@ -86,16 +90,20 @@ export function createProgram(): Command {
       const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
 
       if (target === "whistle") {
+        const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
+        assertWhistleFileSuffix(target, outputFile);
         await writeTextFile(
-          join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
+          join(options.cwd, outputFile),
           generateWhistleRules(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
         );
         return;
       }
 
       if (target === "whistle-cli") {
+        const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
+        assertWhistleFileSuffix(target, outputFile);
         await writeTextFile(
-          join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
+          join(options.cwd, outputFile),
           generateWhistleCliModule(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
         );
         return;
@@ -175,7 +183,7 @@ function configWithPageDir<T extends typeof defaultConfig>(config: T, pageDir: s
   }
 
   const normalizedPageDir = normalizePageDir(pageDir, cwd);
-  const artifactDir = joinPortable(normalizedPageDir, ".mockoon-gen");
+  const artifactDir = joinPortable(normalizedPageDir, defaultConfig.artifactDir);
 
   return {
     ...config,
@@ -200,10 +208,38 @@ function joinPortable(...parts: string[]): string {
 
 function configFilePath(cwd: string, pageDir?: string): string {
   if (!pageDir) {
+    return join(cwd, defaultConfig.artifactDir, "mockoon-gen.config.json");
+  }
+
+  return join(cwd, normalizePageDir(pageDir, cwd), defaultConfig.artifactDir, "mockoon-gen.config.json");
+}
+
+function legacyConfigFilePath(cwd: string, pageDir?: string): string {
+  if (!pageDir) {
     return join(cwd, "mockoon-gen.config.json");
   }
 
   return join(cwd, normalizePageDir(pageDir, cwd), "mockoon-gen.config.json");
+}
+
+function resolveConfigPath(cwd: string, pageDir?: string): string {
+  const currentPath = configFilePath(cwd, pageDir);
+  if (existsSync(currentPath)) {
+    return currentPath;
+  }
+
+  const legacyPath = legacyConfigFilePath(cwd, pageDir);
+  return existsSync(legacyPath) ? legacyPath : currentPath;
+}
+
+function assertWhistleFileSuffix(target: "whistle" | "whistle-cli", file: string): void {
+  if (target === "whistle" && !file.endsWith(".json")) {
+    throw new Error(`Cannot export whistle JSON to ${file}. Set whistleFile to a .json path or run export whistle-cli.`);
+  }
+
+  if (target === "whistle-cli" && !file.endsWith(".js")) {
+    throw new Error(`Cannot export whistle-cli JS to ${file}. Set whistleFile to a whistle.js path or run export whistle.`);
+  }
 }
 
 function normalizeArgv(

@@ -30,12 +30,12 @@ Restart Codex after installation.
 ## What It Does
 
 - Converts loose API docs to reviewed OpenAPI when needed.
-- Creates `<page-dir>/mockoon-gen.config.json` for page-local generation settings.
-- Creates `<page-dir>/.mockoon-gen/api-artifact.json` as the review artifact.
+- Creates `<page-dir>/mockoon-gen/mockoon-gen.config.json` for page-local generation settings.
+- Creates `<page-dir>/mockoon-gen/api-artifact.json` as the review artifact.
 - Generates TypeScript API code with DTO/VO support when the input is not an existing API/interface code file.
-- Exports `<page-dir>/.mockoon-gen/whistle.json` for Whistle import.
-- Exports `<page-dir>/.mockoon-gen/whistle.js` for Whistle CLI import with `w2 add filepath`.
-- Exports `<page-dir>/.mockoon-gen/mockoon.json` for Mockoon import.
+- Exports `<page-dir>/mockoon-gen/whistle.json` for Whistle import.
+- Exports `<page-dir>/mockoon-gen/whistle.js` for Whistle CLI import with `w2 add filepath`.
+- Exports `<page-dir>/mockoon-gen/mockoon.json` for Mockoon import.
 - Creates success, empty, and failure mock scenarios for every endpoint.
 - Creates a 20-item Faker template scenario for list endpoints.
 - Asks you to confirm the page directory, host, Whistle group name, Whistle import mode (`.json` or `.js`), Mockoon port, and generated code path before final export.
@@ -45,14 +45,15 @@ Restart Codex after installation.
 - OpenAPI is treated as the backend contract source of truth.
 - If the input is an existing concrete API/interface code file, the skill disables API code generation and exports only mock config files.
 - Whistle JSON does not emit `Default`, so it should not overwrite your existing Default group.
-- Whistle CLI import uses `w2 add <page-dir>/.mockoon-gen/whistle.js`.
+- Whistle CLI import uses `w2 add <page-dir>/mockoon-gen/whistle.js`.
+- `export whistle` writes `.json` only; `export whistle-cli` writes `.js` only.
 - Whistle and Mockoon imports are manual steps in their apps.
 
 ## Generated Files
 
-- `<page-dir>/mockoon-gen.config.json`
-- `<page-dir>/.mockoon-gen/api-artifact.json`
-- `<page-dir>/.mockoon-gen/whistle.json`
-- `<page-dir>/.mockoon-gen/whistle.js`
-- `<page-dir>/.mockoon-gen/mockoon.json`
+- `<page-dir>/mockoon-gen/mockoon-gen.config.json`
+- `<page-dir>/mockoon-gen/api-artifact.json`
+- `<page-dir>/mockoon-gen/whistle.json`
+- `<page-dir>/mockoon-gen/whistle.js`
+- `<page-dir>/mockoon-gen/mockoon.json`
 - `<page-dir>/api.generated.ts` only when API code generation is enabled.

@@ -196,6 +196,42 @@ describe("validateArtifact", () => {
     );
   });
 
+  it("reports whistle path params without capture substitutions as fatal", () => {
+    const result = validateArtifact(
+      artifact({
+        outputs: {
+          ...artifact().outputs,
+          whistle: {
+            file: "mockoon-gen/whistle.json",
+            groupName: "User Detail Mock",
+            routes: [
+              {
+                endpointId: "ep-get-user",
+                operationId: "getUser",
+                method: "GET",
+                apiHost: "api.example.test",
+                sourcePath: "/api/users/{id}/orgs/{orgId}",
+                sourcePattern: "/api/users/*/orgs/*",
+                targetPort: 3100,
+                targetPath: "/api/users/:id/orgs/:orgId",
+                origin: "generated",
+                reviewStatus: "unreviewed"
+              }
+            ]
+          }
+        }
+      }),
+      { strict: false, currentOpenApiSha256: "abc" }
+    );
+
+    expect(result.fatal).toContainEqual(
+      expect.objectContaining({
+        path: "outputs.whistle.routes[0].targetPath",
+        message: "Whistle target path must use $1, $2, ... captures for OpenAPI path params."
+      })
+    );
+  });
+
   it("reports missing whistle group name as needsReview", () => {
     const result = validateArtifact(artifact(), { strict: false, currentOpenApiSha256: "abc" });
 

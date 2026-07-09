@@ -10354,7 +10354,7 @@ var require_dist = __commonJS({
 });
 
 // src/cli.ts
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { readFile as readFile3 } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10395,7 +10395,7 @@ function artifactFromOpenApi(openapi, options) {
     sourcePath: endpoint.path,
     sourcePattern: endpoint.path.replace(/\{[^}]+\}/g, "*"),
     targetPort: options.mockoonPort,
-    targetPath: endpoint.path.replace(/\{([^}]+)\}/g, ":$1"),
+    targetPath: targetPathWithCaptures(endpoint.path),
     origin: "generated",
     reviewStatus: options.mockoonPort ? "needs-change" : "unreviewed"
   }));
@@ -10447,6 +10447,10 @@ function artifactFromOpenApi(openapi, options) {
       }
     }
   };
+}
+function targetPathWithCaptures(path) {
+  let captureIndex = 1;
+  return path.replace(/\{[^}]+\}/g, () => `$${captureIndex++}`);
 }
 function endpointFromOperation(method, path, operation) {
   const operationId = operation.operationId ?? operationIdFrom(method, path);
@@ -14805,6 +14809,16 @@ function validateArtifact(artifact, options) {
         )
       );
     }
+    if (!hasExpectedWhistleCaptures(route.sourcePath, route.targetPath)) {
+      fatal.push(
+        item(
+          "fatal",
+          "output",
+          pathFor(["outputs", "whistle", "routes", index, "targetPath"]),
+          "Whistle target path must use $1, $2, ... captures for OpenAPI path params."
+        )
+      );
+    }
   });
   artifact.endpoints.forEach((endpoint, endpointIndex) => {
     endpoint.vo.fields.forEach((field, fieldIndex) => {
@@ -14834,6 +14848,18 @@ function validateArtifact(artifact, options) {
   });
   return { fatal, needsReview, warning };
 }
+function hasExpectedWhistleCaptures(sourcePath, targetPath) {
+  const pathParamCount = Array.from(sourcePath.matchAll(/\{[^}]+\}/g)).length;
+  if (pathParamCount === 0) {
+    return true;
+  }
+  if (/\{[^}]+\}|:[A-Za-z_$][\w$-]*|\*/.test(targetPath)) {
+    return false;
+  }
+  const captures = Array.from(targetPath.matchAll(/\$(\d+)/g), (match) => Number(match[1]));
+  const expected = Array.from({ length: pathParamCount }, (_, index) => index + 1);
+  return expected.length === captures.length && expected.every((value, index) => captures[index] === value);
+}
 function item(severity, scope, path, message) {
   return {
     id: `review-${severity}-${path.replace(/[^a-zA-Z0-9]+/g, "-")}`,
@@ -14850,10 +14876,10 @@ import { readFile } from "node:fs/promises";
 
 // src/config/types.ts
 var defaultConfig = {
-  artifactDir: ".mockoon-gen",
-  openapiFile: ".mockoon-gen/openapi.yaml",
-  mockoonFile: ".mockoon-gen/mockoon.json",
-  whistleFile: ".mockoon-gen/whistle.json",
+  artifactDir: "mockoon-gen",
+  openapiFile: "mockoon-gen/openapi.yaml",
+  mockoonFile: "mockoon-gen/mockoon.json",
+  whistleFile: "mockoon-gen/whistle.json",
   apiOutput: "src/api/generated/api.generated.ts",
   generateApiCode: true,
   splitApiOutput: false,
@@ -15251,10 +15277,26 @@ function ruleFor(route) {
   if (route.targetPort === null) {
     throw new Error(`Cannot export whistle rule for ${route.operationId}: targetPort is pending confirmation.`);
   }
-  return `${route.apiHost}${route.sourcePattern} http://127.0.0.1:${route.targetPort}${route.targetPath}`;
+  const sourceMatcher = sourceMatcherFor(route);
+  const targetPath = targetPathFor(route);
+  return `${sourceMatcher} http://127.0.0.1:${route.targetPort}${targetPath}`;
 }
 function escapeTemplateLiteral(value) {
   return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+}
+function sourceMatcherFor(route) {
+  const matcher = `${route.apiHost}${route.sourcePattern}`.replace(/^\^+/, "");
+  return hasPathParams(route) ? `^${matcher}` : matcher;
+}
+function targetPathFor(route) {
+  if (!hasPathParams(route)) {
+    return route.targetPath;
+  }
+  let captureIndex = 1;
+  return route.targetPath.replace(/\{[^}]+\}|:[A-Za-z_$][\w$-]*|\*/g, () => `$${captureIndex++}`);
+}
+function hasPathParams(route) {
+  return /\{[^}]+\}/.test(route.sourcePath) || route.sourcePattern.includes("*");
 }
 
 // src/index.ts
@@ -15308,7 +15350,11 @@ function createProgram() {
     );
   });
   program2.command("from-openapi").description("Create api-artifact.json from reviewed OpenAPI.").argument("<file>").option("--page-dir <dir>", "Page, route, view, or feature directory for generated mock files").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file, options) => {
-    const config = configWithPageDir(await loadConfig(configFilePath(options.cwd, options.pageDir)), options.pageDir, options.cwd);
+    const config = configWithPageDir(
+      await loadConfig(resolveConfigPath(options.cwd, options.pageDir)),
+      options.pageDir,
+      options.cwd
+    );
     const openapi = await loadOpenApi(resolveFromCwd(options.cwd, file));
     const artifact = artifactFromOpenApi(openapi, {
       artifactDir: config.artifactDir,
@@ -15321,7 +15367,7 @@ function createProgram() {
     await writeTextFile(join(options.cwd, config.artifactDir, "api-artifact.json"), prettyJson(artifact));
   });
   program2.command("generate").description("Generate TypeScript API code from artifact.").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
-    const config = await loadConfig(configFilePath(options.cwd));
+    const config = await loadConfig(resolveConfigPath(options.cwd));
     const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
     if (!artifact.outputs.apiCode.enabled) {
       return;
@@ -15332,15 +15378,19 @@ function createProgram() {
   program2.command("export").description("Export whistle.json, whistle.js, or mockoon.json.").argument("<target>", "whistle, whistle-cli, or mockoon").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (target, options) => {
     const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
     if (target === "whistle") {
+      const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
+      assertWhistleFileSuffix(target, outputFile);
       await writeTextFile(
-        join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
+        join(options.cwd, outputFile),
         generateWhistleRules(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
       );
       return;
     }
     if (target === "whistle-cli") {
+      const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
+      assertWhistleFileSuffix(target, outputFile);
       await writeTextFile(
-        join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
+        join(options.cwd, outputFile),
         generateWhistleCliModule(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
       );
       return;
@@ -15398,7 +15448,7 @@ function configWithPageDir(config, pageDir, cwd) {
     return config;
   }
   const normalizedPageDir = normalizePageDir(pageDir, cwd);
-  const artifactDir = joinPortable(normalizedPageDir, ".mockoon-gen");
+  const artifactDir = joinPortable(normalizedPageDir, defaultConfig.artifactDir);
   return {
     ...config,
     artifactDir: config.artifactDir === defaultConfig.artifactDir ? artifactDir : config.artifactDir,
@@ -15418,9 +15468,31 @@ function joinPortable(...parts) {
 }
 function configFilePath(cwd, pageDir) {
   if (!pageDir) {
+    return join(cwd, defaultConfig.artifactDir, "mockoon-gen.config.json");
+  }
+  return join(cwd, normalizePageDir(pageDir, cwd), defaultConfig.artifactDir, "mockoon-gen.config.json");
+}
+function legacyConfigFilePath(cwd, pageDir) {
+  if (!pageDir) {
     return join(cwd, "mockoon-gen.config.json");
   }
   return join(cwd, normalizePageDir(pageDir, cwd), "mockoon-gen.config.json");
+}
+function resolveConfigPath(cwd, pageDir) {
+  const currentPath = configFilePath(cwd, pageDir);
+  if (existsSync(currentPath)) {
+    return currentPath;
+  }
+  const legacyPath = legacyConfigFilePath(cwd, pageDir);
+  return existsSync(legacyPath) ? legacyPath : currentPath;
+}
+function assertWhistleFileSuffix(target, file) {
+  if (target === "whistle" && !file.endsWith(".json")) {
+    throw new Error(`Cannot export whistle JSON to ${file}. Set whistleFile to a .json path or run export whistle-cli.`);
+  }
+  if (target === "whistle-cli" && !file.endsWith(".js")) {
+    throw new Error(`Cannot export whistle-cli JS to ${file}. Set whistleFile to a whistle.js path or run export whistle.`);
+  }
 }
 function normalizeArgv(argv, parseOptions) {
   if (parseOptions?.from !== "user" || !argv || argv.length < 2) {

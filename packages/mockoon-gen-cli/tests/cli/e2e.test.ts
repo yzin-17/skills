@@ -29,25 +29,25 @@ describe("mockoon-gen e2e", () => {
     const cwd = await mkdtemp(join(tmpdir(), "mockoon-gen-e2e-"));
     const program = createProgram();
 
-    await mkdir(join(cwd, ".mockoon-gen"), { recursive: true });
-    await writeFile(join(cwd, ".mockoon-gen/openapi.yaml"), OPENAPI_FIXTURE, "utf8");
+    await mkdir(join(cwd, "mockoon-gen"), { recursive: true });
+    await writeFile(join(cwd, "mockoon-gen/openapi.yaml"), OPENAPI_FIXTURE, "utf8");
 
     await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", cwd], { from: "user" });
 
-    const initialConfig = JSON.parse(await readFile(join(cwd, "mockoon-gen.config.json"), "utf8")) as {
+    const initialConfig = JSON.parse(await readFile(join(cwd, "mockoon-gen/mockoon-gen.config.json"), "utf8")) as {
       artifactDir: string;
       mockoonPort: number | null;
     };
-    expect(initialConfig.artifactDir).toBe(".mockoon-gen");
+    expect(initialConfig.artifactDir).toBe("mockoon-gen");
 
     await writeFile(
-      join(cwd, "mockoon-gen.config.json"),
+      join(cwd, "mockoon-gen/mockoon-gen.config.json"),
       JSON.stringify(
         {
           ...initialConfig,
           apiOutput: "src/api/generated/api.generated.ts",
           mockoonPort: 3100,
-          whistleFile: ".mockoon-gen/whistle.js",
+          whistleFile: "mockoon-gen/whistle.js",
           whistleGroupName: "User Detail Mock"
         },
         null,
@@ -56,11 +56,11 @@ describe("mockoon-gen e2e", () => {
       "utf8"
     );
 
-    await program.parseAsync(["node", "mockoon-gen", "from-openapi", ".mockoon-gen/openapi.yaml", "--cwd", cwd], {
+    await program.parseAsync(["node", "mockoon-gen", "from-openapi", "mockoon-gen/openapi.yaml", "--cwd", cwd], {
       from: "user"
     });
 
-    const artifactPath = join(cwd, ".mockoon-gen/api-artifact.json");
+    const artifactPath = join(cwd, "mockoon-gen/api-artifact.json");
     const artifact = JSON.parse(await readFile(artifactPath, "utf8")) as {
       schemaVersion: string;
       outputs: {
@@ -71,7 +71,7 @@ describe("mockoon-gen e2e", () => {
     };
     expect(artifact.schemaVersion).toBe("0.2.0");
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/api/generated/api.generated.ts");
-    expect(artifact.outputs.whistle.file).toBe(".mockoon-gen/whistle.js");
+    expect(artifact.outputs.whistle.file).toBe("mockoon-gen/whistle.js");
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.port).toBe(3100);
 
@@ -81,21 +81,21 @@ describe("mockoon-gen e2e", () => {
     }));
     await writeFile(artifactPath, JSON.stringify(artifact, null, 2), "utf8");
 
-    await program.parseAsync(["node", "mockoon-gen", "generate", "--from", ".mockoon-gen/api-artifact.json", "--cwd", cwd], {
+    await program.parseAsync(["node", "mockoon-gen", "generate", "--from", "mockoon-gen/api-artifact.json", "--cwd", cwd], {
       from: "user"
     });
     await program.parseAsync(
-      ["node", "mockoon-gen", "export", "whistle-cli", "--from", ".mockoon-gen/api-artifact.json", "--cwd", cwd],
+      ["node", "mockoon-gen", "export", "whistle-cli", "--from", "mockoon-gen/api-artifact.json", "--cwd", cwd],
       { from: "user" }
     );
     await program.parseAsync(
-      ["node", "mockoon-gen", "export", "mockoon", "--from", ".mockoon-gen/api-artifact.json", "--cwd", cwd],
+      ["node", "mockoon-gen", "export", "mockoon", "--from", "mockoon-gen/api-artifact.json", "--cwd", cwd],
       { from: "user" }
     );
 
     const generatedApi = await readFile(join(cwd, "src/api/generated/api.generated.ts"), "utf8");
-    const whistleCliModule = await readFile(join(cwd, ".mockoon-gen/whistle.js"), "utf8");
-    const mockoonEnvironment = JSON.parse(await readFile(join(cwd, ".mockoon-gen/mockoon.json"), "utf8")) as {
+    const whistleCliModule = await readFile(join(cwd, "mockoon-gen/whistle.js"), "utf8");
+    const mockoonEnvironment = JSON.parse(await readFile(join(cwd, "mockoon-gen/mockoon.json"), "utf8")) as {
       port: number;
       routes: Array<{ endpoint: string; responses: Array<{ label: string; statusCode: number }> }>;
     };
@@ -103,7 +103,7 @@ describe("mockoon-gen e2e", () => {
     expect(generatedApi).toContain("export async function getUser");
     expect(whistleCliModule).toBe(`exports.groupName = "User Detail Mock";
 exports.name = "User Detail Mock";
-exports.rules = \`api.example.test/api/users/* http://127.0.0.1:3100/api/users/:id
+exports.rules = \`^api.example.test/api/users/* http://127.0.0.1:3100/api/users/$1
 \`;
 `);
     expect(mockoonEnvironment.port).toBe(3100);

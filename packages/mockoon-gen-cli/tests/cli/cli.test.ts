@@ -28,8 +28,8 @@ describe("createProgram", () => {
     const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
     const program = createProgram();
     await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", dir], { from: "user" });
-    const config = JSON.parse(await readFile(join(dir, "mockoon-gen.config.json"), "utf8"));
-    expect(config.artifactDir).toBe(".mockoon-gen");
+    const config = JSON.parse(await readFile(join(dir, "mockoon-gen/mockoon-gen.config.json"), "utf8"));
+    expect(config.artifactDir).toBe("mockoon-gen");
   });
 
   it("init --page-dir writes page-local output defaults", async () => {
@@ -41,11 +41,11 @@ describe("createProgram", () => {
       from: "user"
     });
 
-    const config = JSON.parse(await readFile(join(dir, pageDir, "mockoon-gen.config.json"), "utf8"));
-    expect(config.artifactDir).toBe("src/pages/user-detail/.mockoon-gen");
-    expect(config.openapiFile).toBe("src/pages/user-detail/.mockoon-gen/openapi.yaml");
-    expect(config.whistleFile).toBe("src/pages/user-detail/.mockoon-gen/whistle.json");
-    expect(config.mockoonFile).toBe("src/pages/user-detail/.mockoon-gen/mockoon.json");
+    const config = JSON.parse(await readFile(join(dir, pageDir, "mockoon-gen", "mockoon-gen.config.json"), "utf8"));
+    expect(config.artifactDir).toBe("src/pages/user-detail/mockoon-gen");
+    expect(config.openapiFile).toBe("src/pages/user-detail/mockoon-gen/openapi.yaml");
+    expect(config.whistleFile).toBe("src/pages/user-detail/mockoon-gen/whistle.json");
+    expect(config.mockoonFile).toBe("src/pages/user-detail/mockoon-gen/mockoon.json");
     expect(config.apiOutput).toBe("src/pages/user-detail/api.generated.ts");
     await expect(stat(join(dir, "mockoon-gen.config.json"))).rejects.toThrow();
   });
@@ -89,19 +89,19 @@ describe("createProgram", () => {
   it("from-openapi --page-dir writes artifact and derived outputs beside the page", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
     const pageDir = "src/pages/user-detail";
-    const openapiFile = join(dir, pageDir, ".mockoon-gen", "openapi.yaml");
+    const openapiFile = join(dir, pageDir, "mockoon-gen", "openapi.yaml");
     const program = createProgram();
 
-    await mkdir(join(dir, pageDir, ".mockoon-gen"), { recursive: true });
+    await mkdir(join(dir, pageDir, "mockoon-gen"), { recursive: true });
     await writeFile(
-      join(dir, pageDir, "mockoon-gen.config.json"),
+      join(dir, pageDir, "mockoon-gen", "mockoon-gen.config.json"),
       JSON.stringify(
         {
-          artifactDir: `${pageDir}/.mockoon-gen`,
+          artifactDir: `${pageDir}/mockoon-gen`,
           apiOutput: `${pageDir}/api.generated.ts`,
-          mockoonFile: `${pageDir}/.mockoon-gen/mockoon.json`,
-          openapiFile: `${pageDir}/.mockoon-gen/openapi.yaml`,
-          whistleFile: `${pageDir}/.mockoon-gen/whistle.js`,
+          mockoonFile: `${pageDir}/mockoon-gen/mockoon.json`,
+          openapiFile: `${pageDir}/mockoon-gen/openapi.yaml`,
+          whistleFile: `${pageDir}/mockoon-gen/whistle.js`,
           mockoonPort: 3100,
           whistleGroupName: "User Detail Mock"
         },
@@ -117,15 +117,15 @@ describe("createProgram", () => {
     );
 
     await program.parseAsync(
-      ["node", "mockoon-gen", "from-openapi", `${pageDir}/.mockoon-gen/openapi.yaml`, "--page-dir", pageDir, "--cwd", dir],
+      ["node", "mockoon-gen", "from-openapi", `${pageDir}/mockoon-gen/openapi.yaml`, "--page-dir", pageDir, "--cwd", dir],
       { from: "user" }
     );
 
-    const artifact = JSON.parse(await readFile(join(dir, pageDir, ".mockoon-gen", "api-artifact.json"), "utf8"));
+    const artifact = JSON.parse(await readFile(join(dir, pageDir, "mockoon-gen", "api-artifact.json"), "utf8"));
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/pages/user-detail/api.generated.ts");
-    expect(artifact.outputs.whistle.file).toBe("src/pages/user-detail/.mockoon-gen/whistle.js");
+    expect(artifact.outputs.whistle.file).toBe("src/pages/user-detail/mockoon-gen/whistle.js");
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
-    expect(artifact.outputs.mockoon.file).toBe("src/pages/user-detail/.mockoon-gen/mockoon.json");
+    expect(artifact.outputs.mockoon.file).toBe("src/pages/user-detail/mockoon-gen/mockoon.json");
     expect(artifact.outputs.mockoon.port).toBe(3100);
   });
 
@@ -235,7 +235,7 @@ describe("createProgram", () => {
     const exported = await readFile(join(dir, ".mockoon-gen/whistle.json"), "utf8");
     const parsed = JSON.parse(exported) as Record<string, unknown>;
     expect(parsed).toEqual({
-      "User Detail Mock": "api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id\n",
+      "User Detail Mock": "^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1\n",
       "": ["User Detail Mock"]
     });
     expect(parsed).not.toHaveProperty("Default");
@@ -262,7 +262,7 @@ describe("createProgram", () => {
       route.apiHost = "api.example.com";
     });
     artifact.outputs.whistle.groupName = "User Detail Mock";
-    artifact.outputs.whistle.file = ".mockoon-gen/whistle.js";
+    artifact.outputs.whistle.file = "mockoon-gen/whistle.js";
 
     await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
 
@@ -270,12 +270,44 @@ describe("createProgram", () => {
       from: "user"
     });
 
-    const exported = await readFile(join(dir, ".mockoon-gen/whistle.js"), "utf8");
+    const exported = await readFile(join(dir, "mockoon-gen/whistle.js"), "utf8");
     expect(exported).toBe(`exports.groupName = "User Detail Mock";
 exports.name = "User Detail Mock";
-exports.rules = \`api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id
+exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1
 \`;
 `);
+  });
+
+  it("export whistle-cli refuses to write JavaScript into a JSON file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "openapi.yaml");
+
+    await writeFile(
+      openapiFile,
+      await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"),
+      "utf8"
+    );
+
+    const loaded = await loadOpenApi(openapiFile);
+    const artifact = artifactFromOpenApi(loaded, {
+      artifactDir: "mockoon-gen",
+      apiOutput: "src/api/generated/from-config.ts",
+      mockoonPort: 3100,
+      whistleFile: "mockoon-gen/whistle.json",
+      whistleGroupName: "User Detail Mock"
+    });
+    artifact.outputs.whistle.routes.forEach((route) => {
+      route.apiHost = "api.example.com";
+    });
+
+    await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
+
+    await expect(
+      program.parseAsync(["node", "mockoon-gen", "export", "whistle-cli", "--from", "artifact.json", "--cwd", dir], {
+        from: "user"
+      })
+    ).rejects.toThrow("whistle.js");
   });
 
   it("validate --strict sets exitCode when review items need confirmation", async () => {
