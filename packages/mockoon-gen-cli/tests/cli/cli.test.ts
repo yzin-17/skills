@@ -30,6 +30,7 @@ describe("createProgram", () => {
     await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", dir], { from: "user" });
     const config = JSON.parse(await readFile(join(dir, "mockoon-gen/mockoon-gen.config.json"), "utf8"));
     expect(config.artifactDir).toBe("mockoon-gen");
+    expect(config.whistleFile).toBeNull();
   });
 
   it("init --page-dir writes page-local output defaults", async () => {
@@ -44,7 +45,7 @@ describe("createProgram", () => {
     const config = JSON.parse(await readFile(join(dir, pageDir, "mockoon-gen", "mockoon-gen.config.json"), "utf8"));
     expect(config.artifactDir).toBe("src/pages/user-detail/mockoon-gen");
     expect(config.openapiFile).toBe("src/pages/user-detail/mockoon-gen/openapi.yaml");
-    expect(config.whistleFile).toBe("src/pages/user-detail/mockoon-gen/whistle.json");
+    expect(config.whistleFile).toBeNull();
     expect(config.mockoonFile).toBe("src/pages/user-detail/mockoon-gen/mockoon.json");
     expect(config.apiOutput).toBe("src/pages/user-detail/api.generated.ts");
     await expect(stat(join(dir, "mockoon-gen.config.json"))).rejects.toThrow();
@@ -84,6 +85,23 @@ describe("createProgram", () => {
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.file).toBe(".drafts/mockoon.json");
     expect(artifact.outputs.mockoon.port).toBe(4100);
+  });
+
+  it("from-openapi refuses to run until Whistle import mode is confirmed", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const openapiFile = join(dir, "openapi.yaml");
+    const program = createProgram();
+
+    await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", dir], { from: "user" });
+    await writeFile(
+      openapiFile,
+      await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"),
+      "utf8"
+    );
+
+    await expect(
+      program.parseAsync(["node", "mockoon-gen", "from-openapi", "openapi.yaml", "--cwd", dir], { from: "user" })
+    ).rejects.toThrow("Whistle import mode");
   });
 
   it("from-openapi --page-dir writes artifact and derived outputs beside the page", async () => {
@@ -266,6 +284,8 @@ describe("createProgram", () => {
 
     await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
 
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
     await program.parseAsync(["node", "mockoon-gen", "export", "whistle-cli", "--from", "artifact.json", "--cwd", dir], {
       from: "user"
     });
@@ -276,6 +296,8 @@ exports.name = "User Detail Mock";
 exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1
 \`;
 `);
+    expect(logSpy).toHaveBeenCalledWith(`mockoon-cli start --data ${join(dir, ".mockoon-gen/mockoon.json")}`);
+    expect(logSpy).toHaveBeenCalledWith(`w2 add ${join(dir, "mockoon-gen/whistle.js")}`);
   });
 
   it("export whistle-cli refuses to write JavaScript into a JSON file", async () => {

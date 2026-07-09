@@ -2,7 +2,7 @@ export interface MockoonGenConfig {
   artifactDir: string;
   openapiFile: string;
   mockoonFile: string;
-  whistleFile: string;
+  whistleFile: string | null;
   apiOutput: string;
   generateApiCode: boolean;
   splitApiOutput: boolean;
@@ -16,7 +16,7 @@ export const defaultConfig: MockoonGenConfig = {
   artifactDir: "mockoon-gen",
   openapiFile: "mockoon-gen/openapi.yaml",
   mockoonFile: "mockoon-gen/mockoon.json",
-  whistleFile: "mockoon-gen/whistle.json",
+  whistleFile: null,
   apiOutput: "src/api/generated/api.generated.ts",
   generateApiCode: true,
   splitApiOutput: false,

@@ -38,7 +38,7 @@ Restart Codex after installation.
 - Exports `<page-dir>/mockoon-gen/mockoon.json` for Mockoon import.
 - Creates success, empty, and failure mock scenarios for every endpoint.
 - Creates a 20-item Faker template scenario for list endpoints.
-- Asks you to confirm the page directory, host, Whistle group name, Whistle import mode (`.json` or `.js`), Mockoon port, and generated code path before final export.
+- Asks you to confirm the page directory, host, Whistle group name, Whistle import mode (`GUI .json` or `CLI .js`), Mockoon port, and generated code path before generation or export.
 
 ## Notes
 
@@ -47,6 +47,7 @@ Restart Codex after installation.
 - Whistle JSON does not emit `Default`, so it should not overwrite your existing Default group.
 - Whistle CLI import uses `w2 add <page-dir>/mockoon-gen/whistle.js`.
 - `export whistle` writes `.json` only; `export whistle-cli` writes `.js` only.
+- If you choose CLI format, the skill prints `mockoon-cli start --data <page-dir>/mockoon-gen/mockoon.json` and `w2 add <page-dir>/mockoon-gen/whistle.js` after exporting.
 - Whistle and Mockoon imports are manual steps in their apps.
 
 ## Generated Files

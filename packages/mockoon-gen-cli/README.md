@@ -25,6 +25,13 @@ pnpm --dir packages/mockoon-gen-cli exec mockoon-gen validate --from src/pages/u
 
 With `--page-dir`, `init` writes `src/pages/user-detail/mockoon-gen/mockoon-gen.config.json`, and `from-openapi --page-dir` reads that page-local config.
 
+Before running `from-openapi`, set `whistleFile` in the config from an explicit user choice:
+
+- GUI format: `src/pages/user-detail/mockoon-gen/whistle.json`
+- CLI format: `src/pages/user-detail/mockoon-gen/whistle.js`
+
+`from-openapi` refuses to run while `whistleFile` is `null`.
+
 Use `export whistle-cli` when you want Whistle CLI import instead of UI JSON import:
 
 ```bash
@@ -32,6 +39,13 @@ w2 add src/pages/user-detail/mockoon-gen/whistle.js
 ```
 
 `export whistle` only writes `.json` files, and `export whistle-cli` only writes `.js` files. Set `whistleFile` to the confirmed import mode before exporting.
+
+After `export whistle-cli`, the CLI prints the matching startup commands:
+
+```bash
+mockoon-cli start --data /absolute/path/to/mockoon.json
+w2 add /absolute/path/to/whistle.js
+```
 
 Run `pnpm --dir packages/mockoon-gen-cli build` first if you have not already built the CLI binary.
 
@@ -61,6 +75,7 @@ Some outputs stay pending until a human confirms them:
 - `validate --strict` fails when the OpenAPI artifact has not been reviewed or when an endpoint field or mapper step still needs confirmation
 - Whistle exports require a confirmed `whistleGroupName` and per-route `apiHost`
 - Whistle JSON and CLI exports fail if `whistleFile` has the wrong suffix for the selected export mode
+- `from-openapi` fails until `whistleFile` records the confirmed GUI or CLI mode
 - Mockoon exports require a concrete `mockoonPort`
 - `generate` skips writing API code when `outputs.apiCode.enabled` is `false`
 - Generated Mockoon routes include success, empty, and failure scenarios

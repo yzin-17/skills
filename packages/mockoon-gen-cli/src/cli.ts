@@ -51,6 +51,7 @@ export function createProgram(): Command {
         options.pageDir,
         options.cwd
       );
+      assertWhistleImportModeConfirmed(config.whistleFile);
       const openapi = await loadOpenApi(resolveFromCwd(options.cwd, file));
       const artifact = artifactFromOpenApi(openapi, {
         artifactDir: config.artifactDir,
@@ -91,6 +92,7 @@ export function createProgram(): Command {
 
       if (target === "whistle") {
         const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
+        assertWhistleImportModeConfirmed(outputFile);
         assertWhistleFileSuffix(target, outputFile);
         await writeTextFile(
           join(options.cwd, outputFile),
@@ -101,11 +103,13 @@ export function createProgram(): Command {
 
       if (target === "whistle-cli") {
         const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
+        assertWhistleImportModeConfirmed(outputFile);
         assertWhistleFileSuffix(target, outputFile);
         await writeTextFile(
           join(options.cwd, outputFile),
           generateWhistleCliModule(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
         );
+        printCliImportCommands(options.cwd, artifact, outputFile);
         return;
       }
 
@@ -191,7 +195,7 @@ function configWithPageDir<T extends typeof defaultConfig>(config: T, pageDir: s
     openapiFile:
       config.openapiFile === defaultConfig.openapiFile ? joinPortable(artifactDir, "openapi.yaml") : config.openapiFile,
     mockoonFile: config.mockoonFile === defaultConfig.mockoonFile ? joinPortable(artifactDir, "mockoon.json") : config.mockoonFile,
-    whistleFile: config.whistleFile === defaultConfig.whistleFile ? joinPortable(artifactDir, "whistle.json") : config.whistleFile,
+    whistleFile: pageLocalWhistleFile(config.whistleFile, artifactDir),
     apiOutput: config.apiOutput === defaultConfig.apiOutput ? joinPortable(normalizedPageDir, "api.generated.ts") : config.apiOutput
   };
 }
@@ -204,6 +208,22 @@ function normalizePageDir(pageDir: string, cwd: string): string {
 
 function joinPortable(...parts: string[]): string {
   return parts.join("/").replace(/\/+/g, "/").replace(/^\.\//, "");
+}
+
+function pageLocalWhistleFile(file: string | null, artifactDir: string): string | null {
+  if (file === null) {
+    return null;
+  }
+
+  if (file === "mockoon-gen/whistle.json") {
+    return joinPortable(artifactDir, "whistle.json");
+  }
+
+  if (file === "mockoon-gen/whistle.js") {
+    return joinPortable(artifactDir, "whistle.js");
+  }
+
+  return file;
 }
 
 function configFilePath(cwd: string, pageDir?: string): string {
@@ -240,6 +260,23 @@ function assertWhistleFileSuffix(target: "whistle" | "whistle-cli", file: string
   if (target === "whistle-cli" && !file.endsWith(".js")) {
     throw new Error(`Cannot export whistle-cli JS to ${file}. Set whistleFile to a whistle.js path or run export whistle.`);
   }
+}
+
+function assertWhistleImportModeConfirmed(file: string | null): asserts file is string {
+  if (!file) {
+    throw new Error(
+      "Whistle import mode is not confirmed. Ask the user to choose GUI JSON or CLI JS, then set whistleFile to mockoon-gen/whistle.json or mockoon-gen/whistle.js."
+    );
+  }
+
+  if (!file.endsWith(".json") && !file.endsWith(".js")) {
+    throw new Error("Whistle import mode is not confirmed. whistleFile must end with .json for GUI import or .js for CLI import.");
+  }
+}
+
+function printCliImportCommands(cwd: string, artifact: ApiArtifact, whistleFile: string): void {
+  console.log(`mockoon-cli start --data ${resolveFromCwd(cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile)}`);
+  console.log(`w2 add ${resolveFromCwd(cwd, whistleFile)}`);
 }
 
 function normalizeArgv(
