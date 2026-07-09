@@ -1,6 +1,6 @@
 ---
 name: mockoon-gen
-description: "Use when turning frontend API documents or reviewed OpenAPI contracts into low-intrusion mock assets: api-artifact.json, TypeScript DTO/VO API code, Whistle import JSON/CLI JS, and Mockoon environment JSON. Trigger for requests about frontend API mock acceleration, OpenAPI-to-Mockoon workflows, Whistle forwarding rules, DTO/VO mapper generation, or reviewing mock artifacts before generation."
+description: "Use when turning frontend API documents or reviewed OpenAPI contracts into low-intrusion mock assets: api-artifact.json, TypeScript DTO/VO API code, Whistle import JSON/CLI CJS, and Mockoon environment JSON. Trigger for requests about frontend API mock acceleration, OpenAPI-to-Mockoon workflows, Whistle forwarding rules, DTO/VO mapper generation, or reviewing mock artifacts before generation."
 ---
 
 # Mockoon Gen
@@ -11,7 +11,7 @@ Use this skill as the agent workflow layer around the bundled deterministic CLI.
 
 - Treat OpenAPI as the backend contract source of truth.
 - Treat `mockoon-gen/api-artifact.json` as the reviewed frontend collaboration artifact.
-- Keep generated API code, Whistle JSON/CLI JS, and Mockoon JSON as derived outputs.
+- Keep generated API code, Whistle JSON/CLI CJS, and Mockoon JSON as derived outputs.
 - Do not infer final host, forwarding paths, Mockoon port, API code placement, or final VO shape without human or project confirmation.
 - Prefer low project intrusion: write mock artifacts under the related page directory, not the project root, and only write API code to the confirmed page-local artifact path.
 - If the related page directory is unclear, ask the user to identify it before initializing config, writing OpenAPI, generating artifacts, or exporting files.
@@ -40,7 +40,7 @@ Do not run package installation from the installed skill. If the bundled CLI is 
 3. Before generating anything, ask the user to choose the Whistle import mode:
 
 - GUI format: Whistle UI JSON import, set `whistleFile` to `<page-dir>/mockoon-gen/whistle.json`.
-- CLI format: Whistle CLI JS import, set `whistleFile` to `<page-dir>/mockoon-gen/whistle.js`.
+- CLI format: Whistle CLI CJS import, set `whistleFile` to `<page-dir>/mockoon-gen/whistle.cjs`.
 
 If the user has not explicitly chosen GUI or CLI format, stop and ask. Do not initialize from OpenAPI, generate artifacts, or export files yet.
 
@@ -58,8 +58,8 @@ This writes `<page-dir>/mockoon-gen/mockoon-gen.config.json`. Keep demand-specif
 - `whistleGroupName`: demand-specific Whistle group name.
 - `whistleFile`: must be set from the user's confirmed Whistle import mode before generation. The CLI default is `null` so generation cannot continue silently.
 - Use `<page-dir>/mockoon-gen/whistle.json` for Whistle UI JSON import.
-- Use `<page-dir>/mockoon-gen/whistle.js` for Whistle CLI import with `w2 add filepath`.
-- If the user did not clearly ask for UI import JSON or CLI JS, stop and ask which one they want instead of choosing silently.
+- Use `<page-dir>/mockoon-gen/whistle.cjs` for Whistle CLI import with `w2 add filepath`.
+- If the user did not clearly ask for UI import JSON or CLI CJS, stop and ask which one they want instead of choosing silently.
 - `artifactDir`: page-local artifact directory, usually `<page-dir>/mockoon-gen`.
 - `openapiFile`: page-local OpenAPI file, usually `<page-dir>/mockoon-gen/openapi.yaml`.
 - `mockoonFile`: page-local Mockoon export file, usually `<page-dir>/mockoon-gen/mockoon.json`.
@@ -102,19 +102,19 @@ Skip `generate` when `outputs.apiCode.enabled` is `false`; in that mode only exp
 
 Choose the export command that matches the confirmed `whistleFile` suffix.
 - `.json` => `export whistle`
-- `.js` => `export whistle-cli`
+- `.cjs` => `export whistle-cli`
 
 Use the CLI file with:
 
 ```bash
-w2 add <page-dir>/mockoon-gen/whistle.js
+w2 add <page-dir>/mockoon-gen/whistle.cjs
 ```
 
 When the confirmed mode is CLI format, tell the user these commands after exporting the config files:
 
 ```bash
+w2 add <page-dir>/mockoon-gen/whistle.cjs
 mockoon-cli start --data <page-dir>/mockoon-gen/mockoon.json
-w2 add <page-dir>/mockoon-gen/whistle.js
 ```
 
 ## Output Semantics
@@ -122,11 +122,11 @@ w2 add <page-dir>/mockoon-gen/whistle.js
 - Default page-local config output is `<page-dir>/mockoon-gen/mockoon-gen.config.json`.
 - Default artifact output is `<page-dir>/mockoon-gen/api-artifact.json`; avoid project-root `mockoon-gen` unless the user explicitly confirms that the project root is the page/feature location.
 - Default API code generation is enabled. When the input is an existing concrete API/interface code file, disable API code generation and do not emit `<page-dir>/api.generated.ts`.
-- Default `whistleFile` is `null`; the user must choose GUI JSON or CLI JS before generation.
+- Default `whistleFile` is `null`; the user must choose GUI JSON or CLI CJS before generation.
 - GUI Whistle output is `<page-dir>/mockoon-gen/whistle.json`.
 - Whistle JSON must contain only the demand-specific group and the order list; do not emit `Default`.
-- Default Whistle CLI output is `<page-dir>/mockoon-gen/whistle.js`.
-- Whistle CLI JS must export `groupName`, `name`, and `rules` so it can be imported with `w2 add filepath`.
+- Default Whistle CLI output is `<page-dir>/mockoon-gen/whistle.cjs`.
+- Whistle CLI CJS must export `groupName`, `name`, and `rules` so it can be imported with `w2 add filepath`.
 - Whistle rules for OpenAPI path params must use official wildcard capture syntax. Prefix the source matcher with `^`, replace each `{param}` with `*` in the source, and replace each `{param}` with `$1`, `$2`, ... in the target from left to right.
 - Keep `apiHost` semantically host-only in reviewed artifacts. Do not store Whistle matcher operators such as `^` or `$` in `apiHost`; apply them in the Whistle export step.
 - Default Mockoon output is `<page-dir>/mockoon-gen/mockoon.json`.
@@ -173,7 +173,7 @@ When validating a Whistle artifact, treat these as fatal issues:
 - If OpenAPI content changes, regenerate or validate the artifact rather than silently merging conflicting DTO fields.
 - If the related page directory is unknown, pause and ask instead of falling back to project-root `mockoon-gen` or `src/api/generated`.
 - If the input file is existing API/interface code, set `generateApiCode: false`, do not run `generate`, and only export mock configuration files.
-- If the user has not made the Whistle import mode explicit, ask whether they want GUI JSON import or CLI JS import before initializing from OpenAPI, generating the artifact, or exporting files.
+- If the user has not made the Whistle import mode explicit, ask whether they want GUI JSON import or CLI CJS import before initializing from OpenAPI, generating the artifact, or exporting files.
 - If `apiHost`, `targetPort`, or `whistleGroupName` is missing, do not export Whistle.
 - If a Whistle route for an OpenAPI path param would export without `^` capture or without matching `$n` target substitutions, fix the artifact or generator before exporting.
 - If `mockoonPort` is missing, do not export Mockoon.

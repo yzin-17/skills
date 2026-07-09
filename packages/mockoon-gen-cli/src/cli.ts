@@ -83,7 +83,7 @@ export function createProgram(): Command {
 
   program
     .command("export")
-    .description("Export whistle.json, whistle.js, or mockoon.json.")
+    .description("Export whistle.json, whistle.cjs, or mockoon.json.")
     .argument("<target>", "whistle, whistle-cli, or mockoon")
     .requiredOption("--from <artifact>")
     .option("--cwd <cwd>", "Working directory", process.cwd())
@@ -219,8 +219,8 @@ function pageLocalWhistleFile(file: string | null, artifactDir: string): string 
     return joinPortable(artifactDir, "whistle.json");
   }
 
-  if (file === "mockoon-gen/whistle.js") {
-    return joinPortable(artifactDir, "whistle.js");
+  if (file === "mockoon-gen/whistle.cjs") {
+    return joinPortable(artifactDir, "whistle.cjs");
   }
 
   return file;
@@ -257,26 +257,26 @@ function assertWhistleFileSuffix(target: "whistle" | "whistle-cli", file: string
     throw new Error(`Cannot export whistle JSON to ${file}. Set whistleFile to a .json path or run export whistle-cli.`);
   }
 
-  if (target === "whistle-cli" && !file.endsWith(".js")) {
-    throw new Error(`Cannot export whistle-cli JS to ${file}. Set whistleFile to a whistle.js path or run export whistle.`);
+  if (target === "whistle-cli" && !file.endsWith(".cjs")) {
+    throw new Error(`Cannot export whistle-cli CJS to ${file}. Set whistleFile to a whistle.cjs path or run export whistle.`);
   }
 }
 
 function assertWhistleImportModeConfirmed(file: string | null): asserts file is string {
   if (!file) {
     throw new Error(
-      "Whistle import mode is not confirmed. Ask the user to choose GUI JSON or CLI JS, then set whistleFile to mockoon-gen/whistle.json or mockoon-gen/whistle.js."
+      "Whistle import mode is not confirmed. Ask the user to choose GUI JSON or CLI CJS, then set whistleFile to mockoon-gen/whistle.json or mockoon-gen/whistle.cjs."
     );
   }
 
-  if (!file.endsWith(".json") && !file.endsWith(".js")) {
-    throw new Error("Whistle import mode is not confirmed. whistleFile must end with .json for GUI import or .js for CLI import.");
+  if (!file.endsWith(".json") && !file.endsWith(".cjs")) {
+    throw new Error("Whistle import mode is not confirmed. whistleFile must end with .json for GUI import or .cjs for CLI import.");
   }
 }
 
 function printCliImportCommands(cwd: string, artifact: ApiArtifact, whistleFile: string): void {
-  console.log(`mockoon-cli start --data ${resolveFromCwd(cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile)}`);
   console.log(`w2 add ${resolveFromCwd(cwd, whistleFile)}`);
+  console.log(`mockoon-cli start --data ${resolveFromCwd(cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile)}`);
 }
 
 function normalizeArgv(

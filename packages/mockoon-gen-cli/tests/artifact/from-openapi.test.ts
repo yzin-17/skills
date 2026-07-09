@@ -108,10 +108,10 @@ describe("artifactFromOpenApi", () => {
       artifactDir: ".mockoon-gen",
       apiOutput: "src/api/generated/api.generated.ts",
       mockoonPort: 3100,
-      whistleFile: ".mockoon-gen/whistle.js"
+      whistleFile: ".mockoon-gen/whistle.cjs"
     });
 
-    expect(artifact.outputs.whistle.file).toBe(".mockoon-gen/whistle.js");
+    expect(artifact.outputs.whistle.file).toBe(".mockoon-gen/whistle.cjs");
   });
 
   it("marks API code generation disabled when the input already has concrete API code", async () => {

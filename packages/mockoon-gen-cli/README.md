@@ -28,23 +28,23 @@ With `--page-dir`, `init` writes `src/pages/user-detail/mockoon-gen/mockoon-gen.
 Before running `from-openapi`, set `whistleFile` in the config from an explicit user choice:
 
 - GUI format: `src/pages/user-detail/mockoon-gen/whistle.json`
-- CLI format: `src/pages/user-detail/mockoon-gen/whistle.js`
+- CLI format: `src/pages/user-detail/mockoon-gen/whistle.cjs`
 
 `from-openapi` refuses to run while `whistleFile` is `null`.
 
 Use `export whistle-cli` when you want Whistle CLI import instead of UI JSON import:
 
 ```bash
-w2 add src/pages/user-detail/mockoon-gen/whistle.js
+w2 add src/pages/user-detail/mockoon-gen/whistle.cjs
 ```
 
-`export whistle` only writes `.json` files, and `export whistle-cli` only writes `.js` files. Set `whistleFile` to the confirmed import mode before exporting.
+`export whistle` only writes `.json` files, and `export whistle-cli` only writes `.cjs` files. Set `whistleFile` to the confirmed import mode before exporting.
 
 After `export whistle-cli`, the CLI prints the matching startup commands:
 
 ```bash
+w2 add /absolute/path/to/whistle.cjs
 mockoon-cli start --data /absolute/path/to/mockoon.json
-w2 add /absolute/path/to/whistle.js
 ```
 
 Run `pnpm --dir packages/mockoon-gen-cli build` first if you have not already built the CLI binary.
@@ -64,7 +64,7 @@ That command writes `skills/mockoon-gen/bin/mockoon-gen.mjs`. The GitHub Action 
 - `<page-dir>/mockoon-gen/mockoon-gen.config.json`
 - `<page-dir>/mockoon-gen/api-artifact.json`
 - `<page-dir>/mockoon-gen/whistle.json`
-- `<page-dir>/mockoon-gen/whistle.js`
+- `<page-dir>/mockoon-gen/whistle.cjs`
 - `<page-dir>/mockoon-gen/mockoon.json`
 - `<page-dir>/api.generated.ts` when `generateApiCode` is enabled
 

@@ -47,7 +47,7 @@ describe("mockoon-gen e2e", () => {
           ...initialConfig,
           apiOutput: "src/api/generated/api.generated.ts",
           mockoonPort: 3100,
-          whistleFile: "mockoon-gen/whistle.js",
+          whistleFile: "mockoon-gen/whistle.cjs",
           whistleGroupName: "User Detail Mock"
         },
         null,
@@ -71,7 +71,7 @@ describe("mockoon-gen e2e", () => {
     };
     expect(artifact.schemaVersion).toBe("0.2.0");
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/api/generated/api.generated.ts");
-    expect(artifact.outputs.whistle.file).toBe("mockoon-gen/whistle.js");
+    expect(artifact.outputs.whistle.file).toBe("mockoon-gen/whistle.cjs");
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.port).toBe(3100);
 
@@ -94,7 +94,7 @@ describe("mockoon-gen e2e", () => {
     );
 
     const generatedApi = await readFile(join(cwd, "src/api/generated/api.generated.ts"), "utf8");
-    const whistleCliModule = await readFile(join(cwd, "mockoon-gen/whistle.js"), "utf8");
+    const whistleCliModule = await readFile(join(cwd, "mockoon-gen/whistle.cjs"), "utf8");
     const mockoonEnvironment = JSON.parse(await readFile(join(cwd, "mockoon-gen/mockoon.json"), "utf8")) as {
       port: number;
       routes: Array<{ endpoint: string; responses: Array<{ label: string; statusCode: number }> }>;

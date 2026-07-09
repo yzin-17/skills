@@ -62,7 +62,7 @@ describe("createProgram", () => {
         {
           artifactDir: ".drafts",
           apiOutput: "src/generated/custom-api.ts",
-          whistleFile: ".drafts/whistle.js",
+          whistleFile: ".drafts/whistle.cjs",
           mockoonPort: 4100,
           whistleGroupName: "User Detail Mock"
         },
@@ -81,7 +81,7 @@ describe("createProgram", () => {
 
     const artifact = JSON.parse(await readFile(join(dir, ".drafts", "api-artifact.json"), "utf8"));
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/generated/custom-api.ts");
-    expect(artifact.outputs.whistle.file).toBe(".drafts/whistle.js");
+    expect(artifact.outputs.whistle.file).toBe(".drafts/whistle.cjs");
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.file).toBe(".drafts/mockoon.json");
     expect(artifact.outputs.mockoon.port).toBe(4100);
@@ -119,7 +119,7 @@ describe("createProgram", () => {
           apiOutput: `${pageDir}/api.generated.ts`,
           mockoonFile: `${pageDir}/mockoon-gen/mockoon.json`,
           openapiFile: `${pageDir}/mockoon-gen/openapi.yaml`,
-          whistleFile: `${pageDir}/mockoon-gen/whistle.js`,
+          whistleFile: `${pageDir}/mockoon-gen/whistle.cjs`,
           mockoonPort: 3100,
           whistleGroupName: "User Detail Mock"
         },
@@ -141,7 +141,7 @@ describe("createProgram", () => {
 
     const artifact = JSON.parse(await readFile(join(dir, pageDir, "mockoon-gen", "api-artifact.json"), "utf8"));
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/pages/user-detail/api.generated.ts");
-    expect(artifact.outputs.whistle.file).toBe("src/pages/user-detail/mockoon-gen/whistle.js");
+    expect(artifact.outputs.whistle.file).toBe("src/pages/user-detail/mockoon-gen/whistle.cjs");
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.file).toBe("src/pages/user-detail/mockoon-gen/mockoon.json");
     expect(artifact.outputs.mockoon.port).toBe(3100);
@@ -163,7 +163,7 @@ describe("createProgram", () => {
       artifactDir: ".mockoon-gen",
       apiOutput: "src/api/generated/from-config.ts",
       mockoonPort: 3100,
-      whistleFile: ".mockoon-gen/whistle.js"
+      whistleFile: ".mockoon-gen/whistle.cjs"
     });
     artifact.outputs.apiCode.suggestedFile = "src/api/generated/from-artifact.ts";
 
@@ -280,7 +280,7 @@ describe("createProgram", () => {
       route.apiHost = "api.example.com";
     });
     artifact.outputs.whistle.groupName = "User Detail Mock";
-    artifact.outputs.whistle.file = "mockoon-gen/whistle.js";
+    artifact.outputs.whistle.file = "mockoon-gen/whistle.cjs";
 
     await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
 
@@ -290,14 +290,16 @@ describe("createProgram", () => {
       from: "user"
     });
 
-    const exported = await readFile(join(dir, "mockoon-gen/whistle.js"), "utf8");
+    const exported = await readFile(join(dir, "mockoon-gen/whistle.cjs"), "utf8");
     expect(exported).toBe(`exports.groupName = "User Detail Mock";
 exports.name = "User Detail Mock";
 exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1
 \`;
 `);
-    expect(logSpy).toHaveBeenCalledWith(`mockoon-cli start --data ${join(dir, ".mockoon-gen/mockoon.json")}`);
-    expect(logSpy).toHaveBeenCalledWith(`w2 add ${join(dir, "mockoon-gen/whistle.js")}`);
+    expect(logSpy.mock.calls.map(([line]) => line)).toEqual([
+      `w2 add ${join(dir, "mockoon-gen/whistle.cjs")}`,
+      `mockoon-cli start --data ${join(dir, ".mockoon-gen/mockoon.json")}`
+    ]);
   });
 
   it("export whistle-cli refuses to write JavaScript into a JSON file", async () => {
@@ -329,7 +331,7 @@ exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$
       program.parseAsync(["node", "mockoon-gen", "export", "whistle-cli", "--from", "artifact.json", "--cwd", dir], {
         from: "user"
       })
-    ).rejects.toThrow("whistle.js");
+    ).rejects.toThrow("whistle.cjs");
   });
 
   it("validate --strict sets exitCode when review items need confirmation", async () => {
