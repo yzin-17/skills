@@ -57,6 +57,7 @@ const artifact: ApiArtifact = {
   ],
   outputs: {
     apiCode: {
+      enabled: true,
       suggestedFile: "src/api/generated/api.generated.ts",
       placement: "confirmed",
       integrationMode: "standalone",

@@ -146,6 +146,7 @@ export interface ApiArtifact {
   endpoints: ArtifactEndpoint[];
   outputs: {
     apiCode: {
+      enabled: boolean;
       suggestedFile: string;
       placement: "pending-confirmation" | "confirmed";
       integrationMode: "standalone";

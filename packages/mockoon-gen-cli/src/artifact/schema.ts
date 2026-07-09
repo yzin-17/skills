@@ -157,6 +157,7 @@ export const artifactSchema = z
       .object({
         apiCode: z
           .object({
+            enabled: z.boolean().default(true),
             suggestedFile: z.string().min(1),
             placement: z.enum(["pending-confirmation", "confirmed"]),
             integrationMode: z.literal("standalone"),

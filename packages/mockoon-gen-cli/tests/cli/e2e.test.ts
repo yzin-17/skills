@@ -47,6 +47,7 @@ describe("mockoon-gen e2e", () => {
           ...initialConfig,
           apiOutput: "src/api/generated/api.generated.ts",
           mockoonPort: 3100,
+          whistleFile: ".mockoon-gen/whistle.js",
           whistleGroupName: "User Detail Mock"
         },
         null,
@@ -64,12 +65,13 @@ describe("mockoon-gen e2e", () => {
       schemaVersion: string;
       outputs: {
         apiCode: { suggestedFile: string };
-        whistle: { groupName: string | null; routes: Array<{ apiHost: string }> };
+        whistle: { file: string; groupName: string | null; routes: Array<{ apiHost: string }> };
         mockoon: { port: number | null };
       };
     };
     expect(artifact.schemaVersion).toBe("0.2.0");
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/api/generated/api.generated.ts");
+    expect(artifact.outputs.whistle.file).toBe(".mockoon-gen/whistle.js");
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
     expect(artifact.outputs.mockoon.port).toBe(3100);
 
@@ -83,7 +85,7 @@ describe("mockoon-gen e2e", () => {
       from: "user"
     });
     await program.parseAsync(
-      ["node", "mockoon-gen", "export", "whistle", "--from", ".mockoon-gen/api-artifact.json", "--cwd", cwd],
+      ["node", "mockoon-gen", "export", "whistle-cli", "--from", ".mockoon-gen/api-artifact.json", "--cwd", cwd],
       { from: "user" }
     );
     await program.parseAsync(
@@ -92,22 +94,23 @@ describe("mockoon-gen e2e", () => {
     );
 
     const generatedApi = await readFile(join(cwd, "src/api/generated/api.generated.ts"), "utf8");
-    const whistleRules = JSON.parse(await readFile(join(cwd, ".mockoon-gen/whistle.json"), "utf8")) as Record<string, unknown>;
+    const whistleCliModule = await readFile(join(cwd, ".mockoon-gen/whistle.js"), "utf8");
     const mockoonEnvironment = JSON.parse(await readFile(join(cwd, ".mockoon-gen/mockoon.json"), "utf8")) as {
       port: number;
-      routes: Array<{ endpoint: string; responses: Array<{ statusCode: number }> }>;
+      routes: Array<{ endpoint: string; responses: Array<{ label: string; statusCode: number }> }>;
     };
 
     expect(generatedApi).toContain("export async function getUser");
-    expect(whistleRules).toEqual({
-      "User Detail Mock": "api.example.test/api/users/* http://127.0.0.1:3100/api/users/:id\n",
-      "": ["User Detail Mock"]
-    });
-    expect(whistleRules).not.toHaveProperty("Default");
+    expect(whistleCliModule).toBe(`exports.groupName = "User Detail Mock";
+exports.name = "User Detail Mock";
+exports.rules = \`api.example.test/api/users/* http://127.0.0.1:3100/api/users/:id
+\`;
+`);
     expect(mockoonEnvironment.port).toBe(3100);
     expect(mockoonEnvironment.routes).toHaveLength(1);
     expect(mockoonEnvironment.routes[0]?.endpoint).toBe("api/users/:id");
-    expect(mockoonEnvironment.routes[0]?.responses).toHaveLength(2);
+    expect(mockoonEnvironment.routes[0]?.responses).toHaveLength(3);
     expect(mockoonEnvironment.routes[0]?.responses[0]?.statusCode).toBe(200);
+    expect(mockoonEnvironment.routes[0]?.responses[2]).toMatchObject({ label: "error-default", statusCode: 500 });
   });
 });

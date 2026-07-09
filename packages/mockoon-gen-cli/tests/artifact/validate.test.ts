@@ -16,6 +16,7 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
     endpoints: [],
     outputs: {
       apiCode: {
+        enabled: true,
         suggestedFile: "src/api/generated/api.generated.ts",
         placement: "pending-confirmation",
         integrationMode: "standalone",

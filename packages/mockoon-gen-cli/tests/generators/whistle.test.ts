@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { WhistleRoute } from "../../src/artifact/types.js";
-import { generateWhistleRules } from "../../src/generators/whistle.js";
+import { generateWhistleCliModule, generateWhistleRules } from "../../src/generators/whistle.js";
 
 const route: WhistleRoute = {
   endpointId: "ep-get-user",
@@ -26,15 +26,26 @@ describe("generateWhistleRules", () => {
     expect(exported).not.toHaveProperty("Default");
   });
 
+  it("generates a Whistle CLI module for w2 add filepath", () => {
+    expect(generateWhistleCliModule([route], "User Detail Mock")).toBe(`exports.groupName = "User Detail Mock";
+exports.name = "User Detail Mock";
+exports.rules = \`api.example.com/api/users/* http://127.0.0.1:3100/api/users/:id
+\`;
+`);
+  });
+
   it("throws when groupName is missing", () => {
     expect(() => generateWhistleRules([route], null)).toThrow("groupName");
+    expect(() => generateWhistleCliModule([route], null)).toThrow("groupName");
   });
 
   it("throws when apiHost is pending", () => {
     expect(() => generateWhistleRules([{ ...route, apiHost: "pending-confirmation" }], "User Detail Mock")).toThrow("apiHost");
+    expect(() => generateWhistleCliModule([{ ...route, apiHost: "pending-confirmation" }], "User Detail Mock")).toThrow("apiHost");
   });
 
   it("throws when targetPort is missing", () => {
     expect(() => generateWhistleRules([{ ...route, targetPort: null }], "User Detail Mock")).toThrow("targetPort");
+    expect(() => generateWhistleCliModule([{ ...route, targetPort: null }], "User Detail Mock")).toThrow("targetPort");
   });
 });

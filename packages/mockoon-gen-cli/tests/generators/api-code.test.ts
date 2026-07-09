@@ -65,6 +65,7 @@ function createArtifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
     endpoints: [createEndpoint()],
     outputs: {
       apiCode: {
+        enabled: true,
         suggestedFile: "src/api/generated/api.generated.ts",
         placement: "confirmed",
         integrationMode: "standalone",

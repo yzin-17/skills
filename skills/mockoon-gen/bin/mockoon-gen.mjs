@@ -10356,7 +10356,7 @@ var require_dist = __commonJS({
 // src/cli.ts
 import { realpathSync } from "node:fs";
 import { readFile as readFile3 } from "node:fs/promises";
-import { isAbsolute, join as join2, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // node_modules/.pnpm/commander@12.1.0/node_modules/commander/esm.mjs
@@ -10422,6 +10422,7 @@ function artifactFromOpenApi(openapi, options) {
     endpoints,
     outputs: {
       apiCode: {
+        enabled: options.generateApiCode ?? true,
         suggestedFile: options.apiOutput,
         placement: "pending-confirmation",
         integrationMode: "standalone",
@@ -10431,7 +10432,7 @@ function artifactFromOpenApi(openapi, options) {
         reviewStatus: "unreviewed"
       },
       whistle: {
-        file: `${options.artifactDir}/whistle.json`,
+        file: options.whistleFile ?? `${options.artifactDir}/whistle.json`,
         groupName: options.whistleGroupName ?? null,
         routes
       },
@@ -10481,13 +10482,28 @@ function endpointFromOperation(method, path, operation) {
       reviewStatus: "unreviewed",
       enabled: true
     },
+    ...listScenarios(responseSchema),
     {
       name: "success-empty",
       statusCode: 200,
       headers: {
         "Content-Type": "application/json; charset=utf-8"
       },
-      bodyTemplate: "{}",
+      bodyTemplate: emptyBodyTemplate(responseSchema),
+      origin: "generated",
+      reviewStatus: "unreviewed",
+      enabled: true
+    },
+    {
+      name: "error-default",
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      bodyTemplate: `{
+  "code": "MOCK_ERROR",
+  "message": "{{faker 'lorem.sentence'}}"
+}`,
       origin: "generated",
       reviewStatus: "unreviewed",
       enabled: true
@@ -10568,11 +10584,79 @@ function sanitizeIdentifier(value, fallback) {
   return /^[A-Za-z_$]/.test(candidate) ? candidate : `_${candidate}`;
 }
 function mockBodyTemplate(schema) {
+  if (schema?.type === "array") return arrayBodyTemplate(schema.items, 1);
   if (!schema?.properties) return "{}";
   const entries = Object.entries(schema.properties).map(([name, prop]) => {
+    if (prop.type === "array") return `"${name}": ${arrayBodyTemplate(prop.items, 1)}`;
     if (prop.enum?.length) return `"${name}": ${JSON.stringify(prop.enum[0])}`;
     if (prop.type === "integer" || prop.type === "number") return `"${name}": "{{faker 'number.int'}}"`;
     return `"${name}": "{{faker 'string.sample'}}"`;
+  });
+  return `{
+  ${entries.join(",\n  ")}
+}`;
+}
+function listScenarios(schema) {
+  const listTemplate = listBodyTemplate(schema);
+  if (!listTemplate) {
+    return [];
+  }
+  return [
+    {
+      name: "success-list-20",
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      bodyTemplate: listTemplate,
+      origin: "generated",
+      reviewStatus: "unreviewed",
+      enabled: true
+    }
+  ];
+}
+function listBodyTemplate(schema) {
+  if (schema?.type === "array") {
+    return arrayBodyTemplate(schema.items, 20);
+  }
+  const listProperty = Object.entries(schema?.properties ?? {}).find(([, prop2]) => prop2.type === "array");
+  if (!listProperty) {
+    return null;
+  }
+  const [name, prop] = listProperty;
+  return `{
+  "${name}": ${arrayBodyTemplate(prop.items, 20).replace(/\n/g, "\n  ")}
+}`;
+}
+function arrayBodyTemplate(itemSchema, count) {
+  return `[
+{{#repeat ${count}}}
+  ${mockItemTemplate(itemSchema)}{{#unless @last}},{{/unless}}
+{{/repeat}}
+]`;
+}
+function mockItemTemplate(schema) {
+  if (schema?.type === "object" && schema.properties) {
+    const entries = Object.entries(schema.properties).map(([name, prop]) => `    "${name}": ${mockScalarTemplate(prop)}`);
+    return `{
+${entries.join(",\n")}
+  }`;
+  }
+  return mockScalarTemplate(schema);
+}
+function mockScalarTemplate(schema) {
+  if (schema?.enum?.length) return JSON.stringify(schema.enum[0]);
+  if (schema?.type === "integer" || schema?.type === "number") return `"{{faker 'number.int'}}"`;
+  if (schema?.type === "boolean") return `"{{faker 'datatype.boolean'}}"`;
+  return `"{{faker 'string.sample'}}"`;
+}
+function emptyBodyTemplate(schema) {
+  if (schema?.type === "array") return "[]";
+  if (!schema?.properties) return "{}";
+  const entries = Object.entries(schema.properties).map(([name, prop]) => {
+    if (prop.type === "array") return `"${name}": []`;
+    if (prop.type === "object") return `"${name}": {}`;
+    return `"${name}": null`;
   });
   return `{
   ${entries.join(",\n  ")}
@@ -14637,6 +14721,7 @@ var artifactSchema = z.object({
   endpoints: z.array(endpointSchema),
   outputs: z.object({
     apiCode: z.object({
+      enabled: z.boolean().default(true),
       suggestedFile: z.string().min(1),
       placement: z.enum(["pending-confirmation", "confirmed"]),
       integrationMode: z.literal("standalone"),
@@ -14762,7 +14847,6 @@ function item(severity, scope, path, message) {
 
 // src/config/load-config.ts
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 
 // src/config/types.ts
 var defaultConfig = {
@@ -14771,6 +14855,7 @@ var defaultConfig = {
   mockoonFile: ".mockoon-gen/mockoon.json",
   whistleFile: ".mockoon-gen/whistle.json",
   apiOutput: "src/api/generated/api.generated.ts",
+  generateApiCode: true,
   splitApiOutput: false,
   transformResponse: true,
   mockoonPort: null,
@@ -14779,9 +14864,9 @@ var defaultConfig = {
 };
 
 // src/config/load-config.ts
-async function loadConfig(cwd) {
+async function loadConfig(file) {
   try {
-    const raw = await readFile(join(cwd, "mockoon-gen.config.json"), "utf8");
+    const raw = await readFile(file, "utf8");
     return { ...defaultConfig, ...JSON.parse(raw) };
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -15134,15 +15219,30 @@ function generateMockoonEnvironment(artifact) {
 
 // src/generators/whistle.ts
 function generateWhistleRules(routes, groupName) {
+  const confirmedGroupName = requireGroupName(groupName);
+  const rulesText = generateRulesText(routes);
+  return `${JSON.stringify({ [confirmedGroupName]: rulesText, "": [confirmedGroupName] }, null, 2)}
+`;
+}
+function generateWhistleCliModule(routes, groupName) {
+  const confirmedGroupName = requireGroupName(groupName);
+  const rulesText = generateRulesText(routes);
+  return `exports.groupName = ${JSON.stringify(confirmedGroupName)};
+exports.name = ${JSON.stringify(confirmedGroupName)};
+exports.rules = \`${escapeTemplateLiteral(rulesText)}\`;
+`;
+}
+function requireGroupName(groupName) {
   const confirmedGroupName = groupName?.trim();
   if (!confirmedGroupName) {
     throw new Error("Cannot export whistle rules: groupName is pending confirmation.");
   }
+  return confirmedGroupName;
+}
+function generateRulesText(routes) {
   const lines = routes.map((route) => ruleFor(route));
-  const rulesText = lines.length > 0 ? `${lines.join("\n")}
+  return lines.length > 0 ? `${lines.join("\n")}
 ` : "";
-  return `${JSON.stringify({ [confirmedGroupName]: rulesText, "": [confirmedGroupName] }, null, 2)}
-`;
 }
 function ruleFor(route) {
   if (route.apiHost === "pending-confirmation") {
@@ -15152,6 +15252,9 @@ function ruleFor(route) {
     throw new Error(`Cannot export whistle rule for ${route.operationId}: targetPort is pending confirmation.`);
   }
   return `${route.apiHost}${route.sourcePattern} http://127.0.0.1:${route.targetPort}${route.targetPath}`;
+}
+function escapeTemplateLiteral(value) {
+  return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
 }
 
 // src/index.ts
@@ -15199,37 +15302,52 @@ function createProgram() {
   const program2 = new Command();
   program2.name("mockoon-gen").description("Generate frontend API contracts and mock files from reviewed OpenAPI artifacts.").version(MOCKGEN_VERSION);
   program2.command("init").description("Create default mockoon-gen config.").option("--page-dir <dir>", "Page, route, view, or feature directory for generated mock files").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
-    await writeTextFile(join2(options.cwd, "mockoon-gen.config.json"), prettyJson(configWithPageDir(defaultConfig, options.pageDir, options.cwd)));
+    await writeTextFile(
+      configFilePath(options.cwd, options.pageDir),
+      prettyJson(configWithPageDir(defaultConfig, options.pageDir, options.cwd))
+    );
   });
   program2.command("from-openapi").description("Create api-artifact.json from reviewed OpenAPI.").argument("<file>").option("--page-dir <dir>", "Page, route, view, or feature directory for generated mock files").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file, options) => {
-    const config = configWithPageDir(await loadConfig(options.cwd), options.pageDir, options.cwd);
+    const config = configWithPageDir(await loadConfig(configFilePath(options.cwd, options.pageDir)), options.pageDir, options.cwd);
     const openapi = await loadOpenApi(resolveFromCwd(options.cwd, file));
     const artifact = artifactFromOpenApi(openapi, {
       artifactDir: config.artifactDir,
       apiOutput: config.apiOutput,
+      generateApiCode: config.generateApiCode,
       mockoonPort: config.mockoonPort,
+      whistleFile: config.whistleFile,
       whistleGroupName: config.whistleGroupName
     });
-    await writeTextFile(join2(options.cwd, config.artifactDir, "api-artifact.json"), prettyJson(artifact));
+    await writeTextFile(join(options.cwd, config.artifactDir, "api-artifact.json"), prettyJson(artifact));
   });
   program2.command("generate").description("Generate TypeScript API code from artifact.").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
-    const config = await loadConfig(options.cwd);
+    const config = await loadConfig(configFilePath(options.cwd));
     const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
+    if (!artifact.outputs.apiCode.enabled) {
+      return;
+    }
     const targetFile = artifact.outputs.apiCode.suggestedFile || config.apiOutput;
-    await writeTextFile(join2(options.cwd, targetFile), generateApiCode(artifact));
+    await writeTextFile(join(options.cwd, targetFile), generateApiCode(artifact));
   });
-  program2.command("export").description("Export whistle.json or mockoon.json.").argument("<target>", "whistle or mockoon").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (target, options) => {
+  program2.command("export").description("Export whistle.json, whistle.js, or mockoon.json.").argument("<target>", "whistle, whistle-cli, or mockoon").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (target, options) => {
     const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
     if (target === "whistle") {
       await writeTextFile(
-        join2(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
+        join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
         generateWhistleRules(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
+      );
+      return;
+    }
+    if (target === "whistle-cli") {
+      await writeTextFile(
+        join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
+        generateWhistleCliModule(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
       );
       return;
     }
     if (target === "mockoon") {
       await writeTextFile(
-        join2(options.cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile),
+        join(options.cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile),
         prettyJson(generateMockoonEnvironment(artifact))
       );
       return;
@@ -15283,11 +15401,11 @@ function configWithPageDir(config, pageDir, cwd) {
   const artifactDir = joinPortable(normalizedPageDir, ".mockoon-gen");
   return {
     ...config,
-    artifactDir,
-    openapiFile: joinPortable(artifactDir, "openapi.yaml"),
-    mockoonFile: joinPortable(artifactDir, "mockoon.json"),
-    whistleFile: joinPortable(artifactDir, "whistle.json"),
-    apiOutput: joinPortable(normalizedPageDir, "api.generated.ts")
+    artifactDir: config.artifactDir === defaultConfig.artifactDir ? artifactDir : config.artifactDir,
+    openapiFile: config.openapiFile === defaultConfig.openapiFile ? joinPortable(artifactDir, "openapi.yaml") : config.openapiFile,
+    mockoonFile: config.mockoonFile === defaultConfig.mockoonFile ? joinPortable(artifactDir, "mockoon.json") : config.mockoonFile,
+    whistleFile: config.whistleFile === defaultConfig.whistleFile ? joinPortable(artifactDir, "whistle.json") : config.whistleFile,
+    apiOutput: config.apiOutput === defaultConfig.apiOutput ? joinPortable(normalizedPageDir, "api.generated.ts") : config.apiOutput
   };
 }
 function normalizePageDir(pageDir, cwd) {
@@ -15297,6 +15415,12 @@ function normalizePageDir(pageDir, cwd) {
 }
 function joinPortable(...parts) {
   return parts.join("/").replace(/\/+/g, "/").replace(/^\.\//, "");
+}
+function configFilePath(cwd, pageDir) {
+  if (!pageDir) {
+    return join(cwd, "mockoon-gen.config.json");
+  }
+  return join(cwd, normalizePageDir(pageDir, cwd), "mockoon-gen.config.json");
 }
 function normalizeArgv(argv, parseOptions) {
   if (parseOptions?.from !== "user" || !argv || argv.length < 2) {

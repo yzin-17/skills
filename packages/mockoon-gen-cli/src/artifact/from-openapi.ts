@@ -4,7 +4,9 @@ import type { LoadedOpenApi, OpenApiOperation, OpenApiSchema } from "../openapi/
 interface FromOpenApiOptions {
   artifactDir: string;
   apiOutput: string;
+  generateApiCode?: boolean;
   mockoonPort: number | null;
+  whistleFile?: string;
   whistleGroupName?: string | null;
 }
 
@@ -57,6 +59,7 @@ export function artifactFromOpenApi(openapi: LoadedOpenApi, options: FromOpenApi
     endpoints,
     outputs: {
       apiCode: {
+        enabled: options.generateApiCode ?? true,
         suggestedFile: options.apiOutput,
         placement: "pending-confirmation",
         integrationMode: "standalone",
@@ -66,7 +69,7 @@ export function artifactFromOpenApi(openapi: LoadedOpenApi, options: FromOpenApi
         reviewStatus: "unreviewed"
       },
       whistle: {
-        file: `${options.artifactDir}/whistle.json`,
+        file: options.whistleFile ?? `${options.artifactDir}/whistle.json`,
         groupName: options.whistleGroupName ?? null,
         routes
       },
@@ -123,13 +126,25 @@ function endpointFromOperation(
       reviewStatus: "unreviewed",
       enabled: true
     },
+    ...listScenarios(responseSchema),
     {
       name: "success-empty",
       statusCode: 200,
       headers: {
         "Content-Type": "application/json; charset=utf-8"
       },
-      bodyTemplate: "{}",
+      bodyTemplate: emptyBodyTemplate(responseSchema),
+      origin: "generated",
+      reviewStatus: "unreviewed",
+      enabled: true
+    },
+    {
+      name: "error-default",
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      bodyTemplate: '{\n  "code": "MOCK_ERROR",\n  "message": "{{faker \'lorem.sentence\'}}"\n}',
       origin: "generated",
       reviewStatus: "unreviewed",
       enabled: true
@@ -219,11 +234,80 @@ function sanitizeIdentifier(value: string, fallback: string): string {
 }
 
 function mockBodyTemplate(schema: OpenApiSchema | undefined): string {
+  if (schema?.type === "array") return arrayBodyTemplate(schema.items, 1);
   if (!schema?.properties) return "{}";
   const entries = Object.entries(schema.properties).map(([name, prop]) => {
+    if (prop.type === "array") return `"${name}": ${arrayBodyTemplate(prop.items, 1)}`;
     if (prop.enum?.length) return `"${name}": ${JSON.stringify(prop.enum[0])}`;
     if (prop.type === "integer" || prop.type === "number") return `"${name}": "{{faker 'number.int'}}"`;
     return `"${name}": "{{faker 'string.sample'}}"`;
+  });
+  return `{\n  ${entries.join(",\n  ")}\n}`;
+}
+
+function listScenarios(schema: OpenApiSchema | undefined): MockScenario[] {
+  const listTemplate = listBodyTemplate(schema);
+  if (!listTemplate) {
+    return [];
+  }
+
+  return [
+    {
+      name: "success-list-20",
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      bodyTemplate: listTemplate,
+      origin: "generated",
+      reviewStatus: "unreviewed",
+      enabled: true
+    }
+  ];
+}
+
+function listBodyTemplate(schema: OpenApiSchema | undefined): string | null {
+  if (schema?.type === "array") {
+    return arrayBodyTemplate(schema.items, 20);
+  }
+
+  const listProperty = Object.entries(schema?.properties ?? {}).find(([, prop]) => prop.type === "array");
+  if (!listProperty) {
+    return null;
+  }
+
+  const [name, prop] = listProperty;
+  return `{\n  "${name}": ${arrayBodyTemplate(prop.items, 20).replace(/\n/g, "\n  ")}\n}`;
+}
+
+function arrayBodyTemplate(itemSchema: OpenApiSchema | undefined, count: number): string {
+  return `[\n{{#repeat ${count}}}\n  ${mockItemTemplate(itemSchema)}{{#unless @last}},{{/unless}}\n{{/repeat}}\n]`;
+}
+
+function mockItemTemplate(schema: OpenApiSchema | undefined): string {
+  if (schema?.type === "object" && schema.properties) {
+    const entries = Object.entries(schema.properties).map(([name, prop]) => `    "${name}": ${mockScalarTemplate(prop)}`);
+    return `{\n${entries.join(",\n")}\n  }`;
+  }
+
+  return mockScalarTemplate(schema);
+}
+
+function mockScalarTemplate(schema: OpenApiSchema | undefined): string {
+  if (schema?.enum?.length) return JSON.stringify(schema.enum[0]);
+  if (schema?.type === "integer" || schema?.type === "number") return `"{{faker 'number.int'}}"`;
+  if (schema?.type === "boolean") return `"{{faker 'datatype.boolean'}}"`;
+  return `"{{faker 'string.sample'}}"`;
+}
+
+function emptyBodyTemplate(schema: OpenApiSchema | undefined): string {
+  if (schema?.type === "array") return "[]";
+  if (!schema?.properties) return "{}";
+
+  const entries = Object.entries(schema.properties).map(([name, prop]) => {
+    if (prop.type === "array") return `"${name}": []`;
+    if (prop.type === "object") return `"${name}": {}`;
+    return `"${name}": null`;
   });
   return `{\n  ${entries.join(",\n  ")}\n}`;
 }

@@ -12,7 +12,7 @@ import { loadConfig } from "./config/load-config.js";
 import { defaultConfig } from "./config/types.js";
 import { generateApiCode } from "./generators/api-code.js";
 import { generateMockoonEnvironment } from "./generators/mockoon.js";
-import { generateWhistleRules } from "./generators/whistle.js";
+import { generateWhistleCliModule, generateWhistleRules } from "./generators/whistle.js";
 import { MOCKGEN_VERSION } from "./index.js";
 import { loadOpenApi } from "./openapi/load-openapi.js";
 import { prettyJson, writeTextFile } from "./utils/fs.js";
@@ -33,7 +33,10 @@ export function createProgram(): Command {
     .option("--page-dir <dir>", "Page, route, view, or feature directory for generated mock files")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (options: { pageDir?: string; cwd: string }) => {
-      await writeTextFile(join(options.cwd, "mockoon-gen.config.json"), prettyJson(configWithPageDir(defaultConfig, options.pageDir, options.cwd)));
+      await writeTextFile(
+        configFilePath(options.cwd, options.pageDir),
+        prettyJson(configWithPageDir(defaultConfig, options.pageDir, options.cwd))
+      );
     });
 
   program
@@ -43,12 +46,14 @@ export function createProgram(): Command {
     .option("--page-dir <dir>", "Page, route, view, or feature directory for generated mock files")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (file: string, options: { pageDir?: string; cwd: string }) => {
-      const config = configWithPageDir(await loadConfig(options.cwd), options.pageDir, options.cwd);
+      const config = configWithPageDir(await loadConfig(configFilePath(options.cwd, options.pageDir)), options.pageDir, options.cwd);
       const openapi = await loadOpenApi(resolveFromCwd(options.cwd, file));
       const artifact = artifactFromOpenApi(openapi, {
         artifactDir: config.artifactDir,
         apiOutput: config.apiOutput,
+        generateApiCode: config.generateApiCode,
         mockoonPort: config.mockoonPort,
+        whistleFile: config.whistleFile,
         whistleGroupName: config.whistleGroupName
       });
 
@@ -61,8 +66,11 @@ export function createProgram(): Command {
     .requiredOption("--from <artifact>")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (options: { from: string; cwd: string }) => {
-      const config = await loadConfig(options.cwd);
+      const config = await loadConfig(configFilePath(options.cwd));
       const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
+      if (!artifact.outputs.apiCode.enabled) {
+        return;
+      }
       const targetFile = artifact.outputs.apiCode.suggestedFile || config.apiOutput;
 
       await writeTextFile(join(options.cwd, targetFile), generateApiCode(artifact));
@@ -70,8 +78,8 @@ export function createProgram(): Command {
 
   program
     .command("export")
-    .description("Export whistle.json or mockoon.json.")
-    .argument("<target>", "whistle or mockoon")
+    .description("Export whistle.json, whistle.js, or mockoon.json.")
+    .argument("<target>", "whistle, whistle-cli, or mockoon")
     .requiredOption("--from <artifact>")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (target: string, options: { from: string; cwd: string }) => {
@@ -81,6 +89,14 @@ export function createProgram(): Command {
         await writeTextFile(
           join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
           generateWhistleRules(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
+        );
+        return;
+      }
+
+      if (target === "whistle-cli") {
+        await writeTextFile(
+          join(options.cwd, artifact.outputs.whistle.file || defaultConfig.whistleFile),
+          generateWhistleCliModule(artifact.outputs.whistle.routes, artifact.outputs.whistle.groupName)
         );
         return;
       }
@@ -163,11 +179,12 @@ function configWithPageDir<T extends typeof defaultConfig>(config: T, pageDir: s
 
   return {
     ...config,
-    artifactDir,
-    openapiFile: joinPortable(artifactDir, "openapi.yaml"),
-    mockoonFile: joinPortable(artifactDir, "mockoon.json"),
-    whistleFile: joinPortable(artifactDir, "whistle.json"),
-    apiOutput: joinPortable(normalizedPageDir, "api.generated.ts")
+    artifactDir: config.artifactDir === defaultConfig.artifactDir ? artifactDir : config.artifactDir,
+    openapiFile:
+      config.openapiFile === defaultConfig.openapiFile ? joinPortable(artifactDir, "openapi.yaml") : config.openapiFile,
+    mockoonFile: config.mockoonFile === defaultConfig.mockoonFile ? joinPortable(artifactDir, "mockoon.json") : config.mockoonFile,
+    whistleFile: config.whistleFile === defaultConfig.whistleFile ? joinPortable(artifactDir, "whistle.json") : config.whistleFile,
+    apiOutput: config.apiOutput === defaultConfig.apiOutput ? joinPortable(normalizedPageDir, "api.generated.ts") : config.apiOutput
   };
 }
 
@@ -179,6 +196,14 @@ function normalizePageDir(pageDir: string, cwd: string): string {
 
 function joinPortable(...parts: string[]): string {
   return parts.join("/").replace(/\/+/g, "/").replace(/^\.\//, "");
+}
+
+function configFilePath(cwd: string, pageDir?: string): string {
+  if (!pageDir) {
+    return join(cwd, "mockoon-gen.config.json");
+  }
+
+  return join(cwd, normalizePageDir(pageDir, cwd), "mockoon-gen.config.json");
 }
 
 function normalizeArgv(

@@ -4,6 +4,7 @@ export interface MockoonGenConfig {
   mockoonFile: string;
   whistleFile: string;
   apiOutput: string;
+  generateApiCode: boolean;
   splitApiOutput: boolean;
   transformResponse: boolean;
   mockoonPort: number | null;
@@ -17,6 +18,7 @@ export const defaultConfig: MockoonGenConfig = {
   mockoonFile: ".mockoon-gen/mockoon.json",
   whistleFile: ".mockoon-gen/whistle.json",
   apiOutput: "src/api/generated/api.generated.ts",
+  generateApiCode: true,
   splitApiOutput: false,
   transformResponse: true,
   mockoonPort: null,
