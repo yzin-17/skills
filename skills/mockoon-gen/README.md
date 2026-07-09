@@ -30,11 +30,11 @@ Restart Codex after installation.
 ## What It Does
 
 - Converts loose API docs to reviewed OpenAPI when needed.
-- Creates `.mockoon-gen/api-artifact.json` as the review artifact.
+- Creates `<page-dir>/.mockoon-gen/api-artifact.json` as the review artifact.
 - Generates TypeScript API code with DTO/VO support.
-- Exports `.mockoon-gen/whistle.json` for Whistle import.
-- Exports `.mockoon-gen/mockoon.json` for Mockoon import.
-- Asks you to confirm host, Whistle group name, Mockoon port, and generated code path before final export.
+- Exports `<page-dir>/.mockoon-gen/whistle.json` for Whistle import.
+- Exports `<page-dir>/.mockoon-gen/mockoon.json` for Mockoon import.
+- Asks you to confirm the page directory, host, Whistle group name, Mockoon port, and generated code path before final export.
 
 ## Notes
 
@@ -44,7 +44,7 @@ Restart Codex after installation.
 
 ## Generated Files
 
-- `.mockoon-gen/api-artifact.json`
-- `.mockoon-gen/whistle.json`
-- `.mockoon-gen/mockoon.json`
-- `src/api/generated/api.generated.ts` by default, unless changed during review.
+- `<page-dir>/.mockoon-gen/api-artifact.json`
+- `<page-dir>/.mockoon-gen/whistle.json`
+- `<page-dir>/.mockoon-gen/mockoon.json`
+- `<page-dir>/api.generated.ts` by default, unless changed during review.

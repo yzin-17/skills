@@ -6,20 +6,20 @@
 
 The CLI works with structured inputs only:
 
-- `.mockoon-gen/openapi.yaml` as the source OpenAPI document
-- `.mockoon-gen/api-artifact.json` as the reviewed artifact for downstream generation
+- `<page-dir>/.mockoon-gen/openapi.yaml` as the source OpenAPI document
+- `<page-dir>/.mockoon-gen/api-artifact.json` as the reviewed artifact for downstream generation
 
 Loose Markdown notes and copied API docs are handled before the CLI step. Once you are in `mockoon-gen`, the workflow is OpenAPI to artifact to generated outputs.
 
 ## Commands
 
 ```bash
-pnpm --dir packages/mockoon-gen-cli exec mockoon-gen init
-pnpm --dir packages/mockoon-gen-cli exec mockoon-gen from-openapi .mockoon-gen/openapi.yaml
-pnpm --dir packages/mockoon-gen-cli exec mockoon-gen generate --from .mockoon-gen/api-artifact.json
-pnpm --dir packages/mockoon-gen-cli exec mockoon-gen export whistle --from .mockoon-gen/api-artifact.json
-pnpm --dir packages/mockoon-gen-cli exec mockoon-gen export mockoon --from .mockoon-gen/api-artifact.json
-pnpm --dir packages/mockoon-gen-cli exec mockoon-gen validate --from .mockoon-gen/api-artifact.json --strict
+pnpm --dir packages/mockoon-gen-cli exec mockoon-gen init --page-dir src/pages/user-detail
+pnpm --dir packages/mockoon-gen-cli exec mockoon-gen from-openapi src/pages/user-detail/.mockoon-gen/openapi.yaml --page-dir src/pages/user-detail
+pnpm --dir packages/mockoon-gen-cli exec mockoon-gen generate --from src/pages/user-detail/.mockoon-gen/api-artifact.json
+pnpm --dir packages/mockoon-gen-cli exec mockoon-gen export whistle --from src/pages/user-detail/.mockoon-gen/api-artifact.json
+pnpm --dir packages/mockoon-gen-cli exec mockoon-gen export mockoon --from src/pages/user-detail/.mockoon-gen/api-artifact.json
+pnpm --dir packages/mockoon-gen-cli exec mockoon-gen validate --from src/pages/user-detail/.mockoon-gen/api-artifact.json --strict
 ```
 
 Run `pnpm --dir packages/mockoon-gen-cli build` first if you have not already built the CLI binary.
@@ -36,10 +36,10 @@ That command writes `skills/mockoon-gen/bin/mockoon-gen.mjs`. The GitHub Action 
 
 ## Generated Files
 
-- `.mockoon-gen/api-artifact.json`
-- `.mockoon-gen/whistle.json`
-- `.mockoon-gen/mockoon.json`
-- `src/api/generated/api.generated.ts`
+- `<page-dir>/.mockoon-gen/api-artifact.json`
+- `<page-dir>/.mockoon-gen/whistle.json`
+- `<page-dir>/.mockoon-gen/mockoon.json`
+- `<page-dir>/api.generated.ts`
 
 ## Confirmation Gates
 

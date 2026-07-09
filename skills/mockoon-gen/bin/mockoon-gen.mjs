@@ -10356,7 +10356,7 @@ var require_dist = __commonJS({
 // src/cli.ts
 import { realpathSync } from "node:fs";
 import { readFile as readFile3 } from "node:fs/promises";
-import { isAbsolute, join as join2, resolve } from "node:path";
+import { isAbsolute, join as join2, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // node_modules/.pnpm/commander@12.1.0/node_modules/commander/esm.mjs
@@ -15198,11 +15198,11 @@ var validateCommandSetExitCode = false;
 function createProgram() {
   const program2 = new Command();
   program2.name("mockoon-gen").description("Generate frontend API contracts and mock files from reviewed OpenAPI artifacts.").version(MOCKGEN_VERSION);
-  program2.command("init").description("Create default mockoon-gen config.").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
-    await writeTextFile(join2(options.cwd, "mockoon-gen.config.json"), prettyJson(defaultConfig));
+  program2.command("init").description("Create default mockoon-gen config.").option("--page-dir <dir>", "Page, route, view, or feature directory for generated mock files").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
+    await writeTextFile(join2(options.cwd, "mockoon-gen.config.json"), prettyJson(configWithPageDir(defaultConfig, options.pageDir, options.cwd)));
   });
-  program2.command("from-openapi").description("Create api-artifact.json from reviewed OpenAPI.").argument("<file>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file, options) => {
-    const config = await loadConfig(options.cwd);
+  program2.command("from-openapi").description("Create api-artifact.json from reviewed OpenAPI.").argument("<file>").option("--page-dir <dir>", "Page, route, view, or feature directory for generated mock files").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file, options) => {
+    const config = configWithPageDir(await loadConfig(options.cwd), options.pageDir, options.cwd);
     const openapi = await loadOpenApi(resolveFromCwd(options.cwd, file));
     const artifact = artifactFromOpenApi(openapi, {
       artifactDir: config.artifactDir,
@@ -15274,6 +15274,29 @@ async function readArtifact(file) {
 }
 function resolveFromCwd(cwd, file) {
   return isAbsolute(file) ? file : resolve(cwd, file);
+}
+function configWithPageDir(config, pageDir, cwd) {
+  if (!pageDir) {
+    return config;
+  }
+  const normalizedPageDir = normalizePageDir(pageDir, cwd);
+  const artifactDir = joinPortable(normalizedPageDir, ".mockoon-gen");
+  return {
+    ...config,
+    artifactDir,
+    openapiFile: joinPortable(artifactDir, "openapi.yaml"),
+    mockoonFile: joinPortable(artifactDir, "mockoon.json"),
+    whistleFile: joinPortable(artifactDir, "whistle.json"),
+    apiOutput: joinPortable(normalizedPageDir, "api.generated.ts")
+  };
+}
+function normalizePageDir(pageDir, cwd) {
+  const relativePageDir = isAbsolute(pageDir) ? relative(cwd, pageDir) : pageDir;
+  const normalized = relativePageDir.replace(/\\/g, "/").replace(/\/+$/, "");
+  return normalized === "" ? "." : normalized;
+}
+function joinPortable(...parts) {
+  return parts.join("/").replace(/\/+/g, "/").replace(/^\.\//, "");
 }
 function normalizeArgv(argv, parseOptions) {
   if (parseOptions?.from !== "user" || !argv || argv.length < 2) {
