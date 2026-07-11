@@ -10354,10 +10354,14 @@ var require_dist = __commonJS({
 });
 
 // src/cli.ts
+import { execFile as execFileCallback } from "node:child_process";
+import { createHash as createHash2 } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
-import { readFile as readFile3 } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { mkdir as mkdir2, readFile as readFile3, unlink, writeFile as writeFile2 } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname as dirname2, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 // node_modules/.pnpm/commander@12.1.0/node_modules/commander/esm.mjs
 var import_index = __toESM(require_commander(), 1);
@@ -14819,6 +14823,16 @@ function validateArtifact(artifact, options) {
         )
       );
     }
+    if (hasMatcherOperators(route.sourcePattern)) {
+      fatal.push(
+        item(
+          "fatal",
+          "output",
+          pathFor(["outputs", "whistle", "routes", index, "sourcePattern"]),
+          "Whistle sourcePattern must be path-only; do not store matcher operators such as ^ or $ in the artifact."
+        )
+      );
+    }
   });
   artifact.endpoints.forEach((endpoint, endpointIndex) => {
     endpoint.vo.fields.forEach((field, fieldIndex) => {
@@ -14859,6 +14873,9 @@ function hasExpectedWhistleCaptures(sourcePath, targetPath) {
   const captures = Array.from(targetPath.matchAll(/\$(\d+)/g), (match) => Number(match[1]));
   const expected = Array.from({ length: pathParamCount }, (_, index) => index + 1);
   return expected.length === captures.length && expected.every((value, index) => captures[index] === value);
+}
+function hasMatcherOperators(sourcePattern) {
+  return sourcePattern.startsWith("^") || sourcePattern.endsWith("$");
 }
 function item(severity, scope, path, message) {
   return {
@@ -15266,7 +15283,7 @@ function requireGroupName(groupName) {
   return confirmedGroupName;
 }
 function generateRulesText(routes) {
-  const lines = routes.map((route) => ruleFor(route));
+  const lines = [...new Set(routes.map((route) => ruleFor(route)))];
   return lines.length > 0 ? `${lines.join("\n")}
 ` : "";
 }
@@ -15285,7 +15302,7 @@ function escapeTemplateLiteral(value) {
   return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
 }
 function sourceMatcherFor(route) {
-  const matcher = `${route.apiHost}${route.sourcePattern}`.replace(/^\^+/, "");
+  const matcher = `${route.apiHost}${route.sourcePattern}`;
   return hasPathParams(route) ? `^${matcher}` : matcher;
 }
 function targetPathFor(route) {
@@ -15339,6 +15356,7 @@ function prettyJson(value) {
 }
 
 // src/cli.ts
+var execFile = promisify(execFileCallback);
 var validateCommandSetExitCode = false;
 function createProgram() {
   const program2 = new Command();
@@ -15377,7 +15395,8 @@ function createProgram() {
     await writeTextFile(join(options.cwd, targetFile), generateApiCode(artifact));
   });
   program2.command("export").description("Export whistle.json, whistle.cjs, or mockoon.json.").argument("<target>", "whistle, whistle-cli, or mockoon").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (target, options) => {
-    const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
+    const artifactFile = resolveFromCwd(options.cwd, options.from);
+    const artifact = await readArtifact(artifactFile);
     if (target === "whistle") {
       const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
       assertWhistleImportModeConfirmed(outputFile);
@@ -15400,13 +15419,27 @@ function createProgram() {
       return;
     }
     if (target === "mockoon") {
-      await writeTextFile(
-        join(options.cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile),
-        prettyJson(generateMockoonEnvironment(artifact))
-      );
+      const outputFile = artifact.outputs.mockoon.file || defaultConfig.mockoonFile;
+      await writeTextFile(join(options.cwd, outputFile), prettyJson(generateMockoonEnvironment(artifact)));
       return;
     }
     throw new Error(`Unknown export target: ${target}`);
+  });
+  program2.command("guard").description("Snapshot or check Git changes for a mock-only workflow.").argument("<action>", "begin or check").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (action, options) => {
+    const artifactFile = resolveFromCwd(options.cwd, options.from);
+    const artifact = await readArtifact(artifactFile);
+    if (artifact.outputs.apiCode.enabled) {
+      return;
+    }
+    if (action === "begin") {
+      await beginMockOnlyGuard(options.cwd, artifact);
+      return;
+    }
+    if (action === "check") {
+      await checkMockOnlyGuard(options.cwd, artifact);
+      return;
+    }
+    throw new Error(`Unknown guard action: ${action}`);
   });
   program2.command("validate").description("Validate artifact review gates.").requiredOption("--from <artifact>").option("--openapi <file>").option("--strict", "Fail on needsReview").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
     if (validateCommandSetExitCode && process.exitCode === 1) {
@@ -15523,6 +15556,113 @@ function assertWhistleImportModeConfirmed(file) {
 function printCliImportCommands(cwd, artifact, whistleFile) {
   console.log(`w2 add ${resolveFromCwd(cwd, whistleFile)}`);
   console.log(`mockoon-cli start --data ${resolveFromCwd(cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile)}`);
+}
+async function beginMockOnlyGuard(cwd, artifact) {
+  const before = await captureGitChangedPaths(cwd);
+  if (!before) {
+    return;
+  }
+  await writeGuardSnapshot(cwd, {
+    changed: [...before],
+    allowedOutputs: mockOnlyOutputFiles(cwd, artifact)
+  });
+}
+async function checkMockOnlyGuard(cwd, artifact) {
+  const before = await readGuardSnapshot(cwd);
+  if (!before) {
+    return;
+  }
+  const after = await captureGitChangedPaths(cwd);
+  if (!after) {
+    return;
+  }
+  const allowed = new Set(before.allowedOutputs.length > 0 ? before.allowedOutputs : mockOnlyOutputFiles(cwd, artifact));
+  const changedByExport = [...after].filter(([file, state]) => before.changed.get(file) !== state).map(([file]) => file);
+  const unexpected = changedByExport.filter((file) => !allowed.has(file));
+  if (unexpected.length > 0) {
+    throw new Error(
+      [
+        "Mock-only workflow changed files outside generated mock outputs.",
+        "When outputs.apiCode.enabled is false, the mockoon-gen workflow may only write Whistle and Mockoon config files.",
+        `Allowed output: ${[...allowed].join(", ")}`,
+        `Unexpected files: ${unexpected.join(", ")}`
+      ].join(" ")
+    );
+  }
+  await removeGuardSnapshot(cwd);
+}
+async function captureGitChangedPaths(cwd) {
+  const repoRoot = await gitRepoRoot(cwd);
+  if (!repoRoot) {
+    return null;
+  }
+  const files = await changedGitPaths(cwd, repoRoot);
+  return new Map(await Promise.all(files.map(async (file) => [file, await fileState(file)])));
+}
+async function gitRepoRoot(cwd) {
+  try {
+    const { stdout } = await execFile("git", ["-C", cwd, "rev-parse", "--show-toplevel"]);
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+async function changedGitPaths(cwd, repoRoot) {
+  const outputs = await Promise.all([
+    gitLines(cwd, ["diff", "--name-only", "--"]),
+    gitLines(cwd, ["diff", "--cached", "--name-only", "--"]),
+    gitLines(cwd, ["ls-files", "--others", "--exclude-standard", "--"])
+  ]);
+  return [...new Set(outputs.flat().map((file) => normalizeAbsolutePath(resolve(repoRoot, file))))];
+}
+async function gitLines(cwd, args) {
+  const { stdout } = await execFile("git", ["-C", cwd, ...args]);
+  return stdout.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+async function fileState(file) {
+  try {
+    return createHash2("sha256").update(await readFile3(file)).digest("hex");
+  } catch {
+    return "missing";
+  }
+}
+function normalizeAbsolutePath(file) {
+  return resolve(file).replace(/\\/g, "/");
+}
+function resolveFromRealCwd(cwd, file) {
+  return isAbsolute(file) ? file : resolve(realpathSync(cwd), file);
+}
+function mockOnlyOutputFiles(cwd, artifact) {
+  return [
+    artifact.outputs.whistle.file || defaultConfig.whistleFile,
+    artifact.outputs.mockoon.file || defaultConfig.mockoonFile
+  ].filter((file) => Boolean(file)).map((file) => normalizeAbsolutePath(resolveFromRealCwd(cwd, file)));
+}
+async function writeGuardSnapshot(cwd, snapshot) {
+  const file = guardSnapshotPath(cwd);
+  await mkdir2(dirname2(file), { recursive: true });
+  await writeFile2(file, JSON.stringify(snapshot), "utf8");
+}
+async function readGuardSnapshot(cwd) {
+  try {
+    const snapshot = JSON.parse(await readFile3(guardSnapshotPath(cwd), "utf8"));
+    return {
+      changed: new Map(snapshot.changed),
+      allowedOutputs: snapshot.allowedOutputs
+    };
+  } catch {
+    return null;
+  }
+}
+async function removeGuardSnapshot(cwd) {
+  try {
+    await unlink(guardSnapshotPath(cwd));
+  } catch {
+  }
+}
+function guardSnapshotPath(cwd) {
+  const id = createHash2("sha256").update(realpathSync(cwd)).digest("hex");
+  return join(tmpdir(), "mockoon-gen", `${id}.mock-only-guard.json`);
 }
 function normalizeArgv(argv, parseOptions) {
   if (parseOptions?.from !== "user" || !argv || argv.length < 2) {

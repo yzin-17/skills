@@ -64,6 +64,16 @@ export function validateArtifact(artifact: ApiArtifact, options: ValidationOptio
         )
       );
     }
+    if (hasMatcherOperators(route.sourcePattern)) {
+      fatal.push(
+        item(
+          "fatal",
+          "output",
+          pathFor(["outputs", "whistle", "routes", index, "sourcePattern"]),
+          "Whistle sourcePattern must be path-only; do not store matcher operators such as ^ or $ in the artifact."
+        )
+      );
+    }
   });
 
   artifact.endpoints.forEach((endpoint, endpointIndex) => {
@@ -110,6 +120,10 @@ function hasExpectedWhistleCaptures(sourcePath: string, targetPath: string): boo
   const captures = Array.from(targetPath.matchAll(/\$(\d+)/g), (match) => Number(match[1]));
   const expected = Array.from({ length: pathParamCount }, (_, index) => index + 1);
   return expected.length === captures.length && expected.every((value, index) => captures[index] === value);
+}
+
+function hasMatcherOperators(sourcePattern: string): boolean {
+  return sourcePattern.startsWith("^") || sourcePattern.endsWith("$");
 }
 
 function item(

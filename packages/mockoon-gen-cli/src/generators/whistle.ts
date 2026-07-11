@@ -25,7 +25,7 @@ function requireGroupName(groupName: string | null): string {
 }
 
 function generateRulesText(routes: WhistleRoute[]): string {
-  const lines = routes.map((route) => ruleFor(route));
+  const lines = [...new Set(routes.map((route) => ruleFor(route)))];
   return lines.length > 0 ? `${lines.join("\n")}\n` : "";
 }
 
@@ -49,7 +49,7 @@ function escapeTemplateLiteral(value: string): string {
 }
 
 function sourceMatcherFor(route: WhistleRoute): string {
-  const matcher = `${route.apiHost}${route.sourcePattern}`.replace(/^\^+/, "");
+  const matcher = `${route.apiHost}${route.sourcePattern}`;
   return hasPathParams(route) ? `^${matcher}` : matcher;
 }
 

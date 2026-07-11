@@ -232,6 +232,42 @@ describe("validateArtifact", () => {
     );
   });
 
+  it("reports whistle matcher operators in sourcePattern as fatal", () => {
+    const result = validateArtifact(
+      artifact({
+        outputs: {
+          ...artifact().outputs,
+          whistle: {
+            file: "mockoon-gen/whistle.json",
+            groupName: "SKU Mock",
+            routes: [
+              {
+                endpointId: "ep-get-available-warehouses",
+                operationId: "getAvailableWarehouses",
+                method: "GET",
+                apiHost: "localhost:3000",
+                sourcePath: "/api/skus/{skuId}/available-warehouses",
+                sourcePattern: "/api/skus/*/available-warehouses$",
+                targetPort: 6000,
+                targetPath: "/api/skus/$1/available-warehouses",
+                origin: "generated",
+                reviewStatus: "unreviewed"
+              }
+            ]
+          }
+        }
+      }),
+      { strict: false, currentOpenApiSha256: "abc" }
+    );
+
+    expect(result.fatal).toContainEqual(
+      expect.objectContaining({
+        path: "outputs.whistle.routes[0].sourcePattern",
+        message: "Whistle sourcePattern must be path-only; do not store matcher operators such as ^ or $ in the artifact."
+      })
+    );
+  });
+
   it("reports missing whistle group name as needsReview", () => {
     const result = validateArtifact(artifact(), { strict: false, currentOpenApiSha256: "abc" });
 

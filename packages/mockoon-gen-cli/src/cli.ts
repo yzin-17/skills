@@ -1,8 +1,12 @@
 #!/usr/bin/env node
+import { execFile as execFileCallback } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { Command } from "commander";
 import { artifactFromOpenApi } from "./artifact/from-openapi.js";
 import { artifactSchema } from "./artifact/schema.js";
@@ -16,6 +20,8 @@ import { generateWhistleCliModule, generateWhistleRules } from "./generators/whi
 import { MOCKGEN_VERSION } from "./index.js";
 import { loadOpenApi } from "./openapi/load-openapi.js";
 import { prettyJson, writeTextFile } from "./utils/fs.js";
+
+const execFile = promisify(execFileCallback);
 
 let validateCommandSetExitCode = false;
 
@@ -88,7 +94,8 @@ export function createProgram(): Command {
     .requiredOption("--from <artifact>")
     .option("--cwd <cwd>", "Working directory", process.cwd())
     .action(async (target: string, options: { from: string; cwd: string }) => {
-      const artifact = await readArtifact(resolveFromCwd(options.cwd, options.from));
+      const artifactFile = resolveFromCwd(options.cwd, options.from);
+      const artifact = await readArtifact(artifactFile);
 
       if (target === "whistle") {
         const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
@@ -114,14 +121,38 @@ export function createProgram(): Command {
       }
 
       if (target === "mockoon") {
-        await writeTextFile(
-          join(options.cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile),
-          prettyJson(generateMockoonEnvironment(artifact))
-        );
+        const outputFile = artifact.outputs.mockoon.file || defaultConfig.mockoonFile;
+        await writeTextFile(join(options.cwd, outputFile), prettyJson(generateMockoonEnvironment(artifact)));
         return;
       }
 
       throw new Error(`Unknown export target: ${target}`);
+    });
+
+  program
+    .command("guard")
+    .description("Snapshot or check Git changes for a mock-only workflow.")
+    .argument("<action>", "begin or check")
+    .requiredOption("--from <artifact>")
+    .option("--cwd <cwd>", "Working directory", process.cwd())
+    .action(async (action: string, options: { from: string; cwd: string }) => {
+      const artifactFile = resolveFromCwd(options.cwd, options.from);
+      const artifact = await readArtifact(artifactFile);
+      if (artifact.outputs.apiCode.enabled) {
+        return;
+      }
+
+      if (action === "begin") {
+        await beginMockOnlyGuard(options.cwd, artifact);
+        return;
+      }
+
+      if (action === "check") {
+        await checkMockOnlyGuard(options.cwd, artifact);
+        return;
+      }
+
+      throw new Error(`Unknown guard action: ${action}`);
     });
 
   program
@@ -277,6 +308,151 @@ function assertWhistleImportModeConfirmed(file: string | null): asserts file is 
 function printCliImportCommands(cwd: string, artifact: ApiArtifact, whistleFile: string): void {
   console.log(`w2 add ${resolveFromCwd(cwd, whistleFile)}`);
   console.log(`mockoon-cli start --data ${resolveFromCwd(cwd, artifact.outputs.mockoon.file || defaultConfig.mockoonFile)}`);
+}
+
+async function beginMockOnlyGuard(cwd: string, artifact: ApiArtifact): Promise<void> {
+  const before = await captureGitChangedPaths(cwd);
+  if (!before) {
+    return;
+  }
+
+  await writeGuardSnapshot(cwd, {
+    changed: [...before],
+    allowedOutputs: mockOnlyOutputFiles(cwd, artifact)
+  });
+}
+
+async function checkMockOnlyGuard(cwd: string, artifact: ApiArtifact): Promise<void> {
+  const before = await readGuardSnapshot(cwd);
+  if (!before) {
+    return;
+  }
+
+  const after = await captureGitChangedPaths(cwd);
+
+  if (!after) {
+    return;
+  }
+
+  const allowed = new Set(before.allowedOutputs.length > 0 ? before.allowedOutputs : mockOnlyOutputFiles(cwd, artifact));
+  const changedByExport = [...after].filter(([file, state]) => before.changed.get(file) !== state).map(([file]) => file);
+  const unexpected = changedByExport.filter((file) => !allowed.has(file));
+
+  if (unexpected.length > 0) {
+    throw new Error(
+      [
+        "Mock-only workflow changed files outside generated mock outputs.",
+        "When outputs.apiCode.enabled is false, the mockoon-gen workflow may only write Whistle and Mockoon config files.",
+        `Allowed output: ${[...allowed].join(", ")}`,
+        `Unexpected files: ${unexpected.join(", ")}`
+      ].join(" ")
+    );
+  }
+
+  await removeGuardSnapshot(cwd);
+}
+
+async function captureGitChangedPaths(cwd: string): Promise<Map<string, string> | null> {
+  const repoRoot = await gitRepoRoot(cwd);
+  if (!repoRoot) {
+    return null;
+  }
+
+  const files = await changedGitPaths(cwd, repoRoot);
+  return new Map(await Promise.all(files.map(async (file) => [file, await fileState(file)] as const)));
+}
+
+async function gitRepoRoot(cwd: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFile("git", ["-C", cwd, "rev-parse", "--show-toplevel"]);
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+async function changedGitPaths(cwd: string, repoRoot: string): Promise<string[]> {
+  const outputs = await Promise.all([
+    gitLines(cwd, ["diff", "--name-only", "--"]),
+    gitLines(cwd, ["diff", "--cached", "--name-only", "--"]),
+    gitLines(cwd, ["ls-files", "--others", "--exclude-standard", "--"])
+  ]);
+
+  return [...new Set(outputs.flat().map((file) => normalizeAbsolutePath(resolve(repoRoot, file))))];
+}
+
+async function gitLines(cwd: string, args: string[]): Promise<string[]> {
+  const { stdout } = await execFile("git", ["-C", cwd, ...args]);
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+async function fileState(file: string): Promise<string> {
+  try {
+    return createHash("sha256").update(await readFile(file)).digest("hex");
+  } catch {
+    return "missing";
+  }
+}
+
+function normalizeAbsolutePath(file: string): string {
+  return resolve(file).replace(/\\/g, "/");
+}
+
+function resolveFromRealCwd(cwd: string, file: string): string {
+  return isAbsolute(file) ? file : resolve(realpathSync(cwd), file);
+}
+
+interface GuardSnapshotFile {
+  changed: [string, string][];
+  allowedOutputs: string[];
+}
+
+interface GuardSnapshot {
+  changed: Map<string, string>;
+  allowedOutputs: string[];
+}
+
+function mockOnlyOutputFiles(cwd: string, artifact: ApiArtifact): string[] {
+  return [
+    artifact.outputs.whistle.file || defaultConfig.whistleFile,
+    artifact.outputs.mockoon.file || defaultConfig.mockoonFile
+  ]
+    .filter((file): file is string => Boolean(file))
+    .map((file) => normalizeAbsolutePath(resolveFromRealCwd(cwd, file)));
+}
+
+async function writeGuardSnapshot(cwd: string, snapshot: GuardSnapshotFile): Promise<void> {
+  const file = guardSnapshotPath(cwd);
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, JSON.stringify(snapshot), "utf8");
+}
+
+async function readGuardSnapshot(cwd: string): Promise<GuardSnapshot | null> {
+  try {
+    const snapshot = JSON.parse(await readFile(guardSnapshotPath(cwd), "utf8")) as GuardSnapshotFile;
+    return {
+      changed: new Map(snapshot.changed),
+      allowedOutputs: snapshot.allowedOutputs
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function removeGuardSnapshot(cwd: string): Promise<void> {
+  try {
+    await unlink(guardSnapshotPath(cwd));
+  } catch {
+    // Snapshot cleanup is best-effort; a stale snapshot is overwritten by the next begin.
+  }
+}
+
+function guardSnapshotPath(cwd: string): string {
+  const id = createHash("sha256").update(realpathSync(cwd)).digest("hex");
+  return join(tmpdir(), "mockoon-gen", `${id}.mock-only-guard.json`);
 }
 
 function normalizeArgv(

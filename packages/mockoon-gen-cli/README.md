@@ -17,9 +17,11 @@ Loose Markdown notes and copied API docs are handled before the CLI step. Once y
 pnpm --dir packages/mockoon-gen-cli exec mockoon-gen init --page-dir src/pages/user-detail
 pnpm --dir packages/mockoon-gen-cli exec mockoon-gen from-openapi src/pages/user-detail/mockoon-gen/openapi.yaml --page-dir src/pages/user-detail
 pnpm --dir packages/mockoon-gen-cli exec mockoon-gen generate --from src/pages/user-detail/mockoon-gen/api-artifact.json
+pnpm --dir packages/mockoon-gen-cli exec mockoon-gen guard begin --from src/pages/user-detail/mockoon-gen/api-artifact.json
 pnpm --dir packages/mockoon-gen-cli exec mockoon-gen export whistle --from src/pages/user-detail/mockoon-gen/api-artifact.json
 pnpm --dir packages/mockoon-gen-cli exec mockoon-gen export whistle-cli --from src/pages/user-detail/mockoon-gen/api-artifact.json
 pnpm --dir packages/mockoon-gen-cli exec mockoon-gen export mockoon --from src/pages/user-detail/mockoon-gen/api-artifact.json
+pnpm --dir packages/mockoon-gen-cli exec mockoon-gen guard check --from src/pages/user-detail/mockoon-gen/api-artifact.json
 pnpm --dir packages/mockoon-gen-cli exec mockoon-gen validate --from src/pages/user-detail/mockoon-gen/api-artifact.json --strict
 ```
 
@@ -78,12 +80,13 @@ Some outputs stay pending until a human confirms them:
 - `from-openapi` fails until `whistleFile` records the confirmed GUI or CLI mode
 - Mockoon exports require a concrete `mockoonPort`
 - `generate` skips writing API code when `outputs.apiCode.enabled` is `false`
+- When `outputs.apiCode.enabled` is `false`, run `guard begin` before mock exports and `guard check` after all mock exports. The guard refuses if the workflow changed any file other than the Whistle and Mockoon config outputs.
 - Generated Mockoon routes include success, empty, and failure scenarios
 - List endpoints also include a 20-item Mockoon/Faker template scenario
 
 The Whistle export writes only the reviewed demand-specific group and the import order list. It does not emit `Default`, so importing the file will not intentionally replace an existing Default group.
 
-The Whistle CLI export writes a CommonJS module with `groupName`, `name`, and `rules` exports for `w2 add filepath`.
+The Whistle CLI export writes a CommonJS module with `groupName`, `name`, and `rules` exports for `w2 add filepath`. Dynamic-path Whistle rules use a leading `^` prefix matcher only; they do not add a terminal `$` anchor. Repeated identical rules are deduplicated during export.
 
 ## Local Development
 

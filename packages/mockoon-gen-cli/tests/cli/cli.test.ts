@@ -1,11 +1,15 @@
+import { execFile as execFileCallback } from "node:child_process";
 import { mkdir, mkdtemp, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { artifactFromOpenApi } from "../../src/artifact/from-openapi.js";
 import { createProgram, shouldRunCli } from "../../src/cli.js";
 import { loadOpenApi } from "../../src/openapi/load-openapi.js";
+
+const execFile = promisify(execFileCallback);
 
 describe("createProgram", () => {
   afterEach(() => {
@@ -20,6 +24,7 @@ describe("createProgram", () => {
       "from-openapi",
       "generate",
       "export",
+      "guard",
       "validate"
     ]);
   });
@@ -205,6 +210,108 @@ describe("createProgram", () => {
     });
 
     await expect(stat(join(dir, "src/api/generated/api.generated.ts"))).rejects.toThrow();
+  });
+
+  it("allows mock-only export when unrelated files were already dirty", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "mockoon-gen/openapi.yaml");
+
+    await execFile("git", ["init"], { cwd: dir });
+    await mkdir(join(dir, "mockoon-gen"), { recursive: true });
+    await mkdir(join(dir, "src/api"), { recursive: true });
+    await writeFile(openapiFile, await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"), "utf8");
+    await writeFile(join(dir, "src/api/user.ts"), "export const existingApi = true;\n", "utf8");
+
+    const loaded = await loadOpenApi(openapiFile);
+    const artifact = artifactFromOpenApi(loaded, {
+      artifactDir: "mockoon-gen",
+      apiOutput: "src/api/generated/api.generated.ts",
+      generateApiCode: false,
+      mockoonPort: 3100,
+      whistleFile: "mockoon-gen/whistle.cjs",
+      whistleGroupName: "User Detail Mock"
+    });
+    artifact.outputs.whistle.routes.forEach((route) => {
+      route.apiHost = "api.example.com";
+    });
+
+    await writeFile(join(dir, "mockoon-gen/api-artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
+    await execFile("git", ["add", "."], { cwd: dir });
+    await execFile("git", ["commit", "-m", "initial"], {
+      cwd: dir,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "mockoon-gen",
+        GIT_AUTHOR_EMAIL: "mockoon-gen@example.test",
+        GIT_COMMITTER_NAME: "mockoon-gen",
+        GIT_COMMITTER_EMAIL: "mockoon-gen@example.test"
+      }
+    });
+    await writeFile(join(dir, "src/api/user.ts"), "export const existingApi = false;\n", "utf8");
+
+    await program.parseAsync(["node", "mockoon-gen", "export", "whistle-cli", "--from", "mockoon-gen/api-artifact.json", "--cwd", dir], {
+      from: "user"
+    });
+
+    await expect(readFile(join(dir, "mockoon-gen/whistle.cjs"), "utf8")).resolves.toContain(
+      "exports.groupName = \"User Detail Mock\";"
+    );
+  });
+
+  it("checks mock-only changes across a full guarded workflow", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "mockoon-gen/openapi.yaml");
+
+    await execFile("git", ["init"], { cwd: dir });
+    await mkdir(join(dir, "mockoon-gen"), { recursive: true });
+    await mkdir(join(dir, "src/api"), { recursive: true });
+    await writeFile(openapiFile, await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"), "utf8");
+    await writeFile(join(dir, "src/api/user.ts"), "export const existingApi = true;\n", "utf8");
+
+    const loaded = await loadOpenApi(openapiFile);
+    const artifact = artifactFromOpenApi(loaded, {
+      artifactDir: "mockoon-gen",
+      apiOutput: "src/api/generated/api.generated.ts",
+      generateApiCode: false,
+      mockoonPort: 3100,
+      whistleFile: "mockoon-gen/whistle.cjs",
+      whistleGroupName: "User Detail Mock"
+    });
+    artifact.outputs.whistle.routes.forEach((route) => {
+      route.apiHost = "api.example.com";
+    });
+
+    await writeFile(join(dir, "mockoon-gen/api-artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
+    await execFile("git", ["add", "."], { cwd: dir });
+    await execFile("git", ["commit", "-m", "initial"], {
+      cwd: dir,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: "mockoon-gen",
+        GIT_AUTHOR_EMAIL: "mockoon-gen@example.test",
+        GIT_COMMITTER_NAME: "mockoon-gen",
+        GIT_COMMITTER_EMAIL: "mockoon-gen@example.test"
+      }
+    });
+
+    await program.parseAsync(["node", "mockoon-gen", "guard", "begin", "--from", "mockoon-gen/api-artifact.json", "--cwd", dir], {
+      from: "user"
+    });
+    await program.parseAsync(["node", "mockoon-gen", "export", "whistle-cli", "--from", "mockoon-gen/api-artifact.json", "--cwd", dir], {
+      from: "user"
+    });
+    await writeFile(join(dir, "src/api/user.ts"), "export const existingApi = false;\n", "utf8");
+    await program.parseAsync(["node", "mockoon-gen", "export", "mockoon", "--from", "mockoon-gen/api-artifact.json", "--cwd", dir], {
+      from: "user"
+    });
+
+    await expect(
+      program.parseAsync(["node", "mockoon-gen", "guard", "check", "--from", "mockoon-gen/api-artifact.json", "--cwd", dir], {
+        from: "user"
+      })
+    ).rejects.toThrow("Mock-only workflow changed files outside generated mock outputs");
   });
 
   it("treats symlinked argv[1] as direct CLI execution", async () => {
