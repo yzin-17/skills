@@ -6,7 +6,7 @@ The repository is optimized for personal workflows rather than as a public produ
 
 ## Skills
 
-- `mockoon-gen`: Generate frontend API and mock artifacts from API docs or OpenAPI. It can create/review OpenAPI, produce `.mockoon-gen/api-artifact.json`, generate TypeScript API code, and export Whistle/Mockoon config files.
+- `mockoon-gen`: Generate frontend API and mock artifacts from API docs or OpenAPI. It can create/review OpenAPI, produce `mockoon-gen/api-artifact.json`, generate TypeScript API code, and export Whistle/Mockoon config files.
 
 ## Install
 

@@ -38,6 +38,29 @@ describe("createProgram", () => {
     expect(config.whistleFile).toBeNull();
   });
 
+  it("rejects hidden or renamed artifact directories", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "openapi.yaml");
+    const hiddenArtifactDir = [".", "mockoon-gen"].join("");
+
+    await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", dir], { from: "user" });
+    await writeFile(
+      join(dir, "mockoon-gen", "mockoon-gen.config.json"),
+      JSON.stringify({ artifactDir: hiddenArtifactDir, whistleFile: `${hiddenArtifactDir}/whistle.cjs` }),
+      "utf8"
+    );
+    await writeFile(
+      openapiFile,
+      await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"),
+      "utf8"
+    );
+
+    await expect(
+      program.parseAsync(["node", "mockoon-gen", "from-openapi", "openapi.yaml", "--cwd", dir], { from: "user" })
+    ).rejects.toThrow('artifactDir must end with "mockoon-gen"');
+  });
+
   it("init --page-dir writes page-local output defaults", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
     const pageDir = "src/pages/user-detail";
@@ -56,7 +79,7 @@ describe("createProgram", () => {
     await expect(stat(join(dir, "mockoon-gen.config.json"))).rejects.toThrow();
   });
 
-  it("from-openapi uses config defaults when drafting an artifact", async () => {
+  it("from-openapi uses visible mockoon-gen config paths when drafting an artifact", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
     const openapiFile = join(dir, "openapi.yaml");
     const program = createProgram();
@@ -65,9 +88,9 @@ describe("createProgram", () => {
       join(dir, "mockoon-gen.config.json"),
       JSON.stringify(
         {
-          artifactDir: ".drafts",
+          artifactDir: "mockoon-gen",
           apiOutput: "src/generated/custom-api.ts",
-          whistleFile: ".drafts/whistle.cjs",
+          whistleFile: "mockoon-gen/whistle.cjs",
           mockoonPort: 4100,
           whistleGroupName: "User Detail Mock"
         },
@@ -84,11 +107,11 @@ describe("createProgram", () => {
 
     await program.parseAsync(["node", "mockoon-gen", "from-openapi", "openapi.yaml", "--cwd", dir], { from: "user" });
 
-    const artifact = JSON.parse(await readFile(join(dir, ".drafts", "api-artifact.json"), "utf8"));
+    const artifact = JSON.parse(await readFile(join(dir, "mockoon-gen", "api-artifact.json"), "utf8"));
     expect(artifact.outputs.apiCode.suggestedFile).toBe("src/generated/custom-api.ts");
-    expect(artifact.outputs.whistle.file).toBe(".drafts/whistle.cjs");
+    expect(artifact.outputs.whistle.file).toBe("mockoon-gen/whistle.cjs");
     expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
-    expect(artifact.outputs.mockoon.file).toBe(".drafts/mockoon.json");
+    expect(artifact.outputs.mockoon.file).toBe("mockoon-gen/mockoon.json");
     expect(artifact.outputs.mockoon.port).toBe(4100);
   });
 
@@ -165,10 +188,10 @@ describe("createProgram", () => {
 
     const loaded = await loadOpenApi(openapiFile);
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/from-config.ts",
       mockoonPort: 3100,
-      whistleFile: ".mockoon-gen/whistle.cjs"
+      whistleFile: "mockoon-gen/whistle.cjs"
     });
     artifact.outputs.apiCode.suggestedFile = "src/api/generated/from-artifact.ts";
 
@@ -197,7 +220,7 @@ describe("createProgram", () => {
 
     const loaded = await loadOpenApi(openapiFile);
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/api.generated.ts",
       generateApiCode: false,
       mockoonPort: 3100
@@ -342,7 +365,7 @@ describe("createProgram", () => {
 
     const loaded = await loadOpenApi(openapiFile);
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/from-config.ts",
       mockoonPort: 3100
     });
@@ -357,7 +380,7 @@ describe("createProgram", () => {
       from: "user"
     });
 
-    const exported = await readFile(join(dir, ".mockoon-gen/whistle.json"), "utf8");
+    const exported = await readFile(join(dir, "mockoon-gen/whistle.json"), "utf8");
     const parsed = JSON.parse(exported) as Record<string, unknown>;
     expect(parsed).toEqual({
       "User Detail Mock": "^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1\n",
@@ -379,7 +402,7 @@ describe("createProgram", () => {
 
     const loaded = await loadOpenApi(openapiFile);
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/from-config.ts",
       mockoonPort: 3100
     });
@@ -405,7 +428,7 @@ exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$
 `);
     expect(logSpy.mock.calls.map(([line]) => line)).toEqual([
       `w2 add ${join(dir, "mockoon-gen/whistle.cjs")}`,
-      `mockoon-cli start --data ${join(dir, ".mockoon-gen/mockoon.json")}`
+      `mockoon-cli start --data ${join(dir, "mockoon-gen/mockoon.json")}`
     ]);
   });
 
@@ -455,7 +478,7 @@ exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$
 
     const loaded = await loadOpenApi(openapiFile);
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/from-config.ts",
       mockoonPort: 3100
     });
@@ -489,7 +512,7 @@ exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$
 
     const loaded = await loadOpenApi(openapiFile);
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/from-config.ts",
       mockoonPort: 3100
     });

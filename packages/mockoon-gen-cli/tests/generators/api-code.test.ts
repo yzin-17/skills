@@ -60,7 +60,7 @@ function createArtifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
   return {
     schemaVersion: "0.2.0",
     sources: [],
-    openapi: { file: ".mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
+    openapi: { file: "mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
     reviewItems: [],
     endpoints: [createEndpoint()],
     outputs: {
@@ -74,9 +74,9 @@ function createArtifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
         origin: "generated",
         reviewStatus: "confirmed"
       },
-      whistle: { file: ".mockoon-gen/whistle.json", groupName: "User Detail Mock", routes: [] },
+      whistle: { file: "mockoon-gen/whistle.json", groupName: "User Detail Mock", routes: [] },
       mockoon: {
-        file: ".mockoon-gen/mockoon.json",
+        file: "mockoon-gen/mockoon.json",
         port: 3100,
         defaultHeaders: {},
         origin: "generated",

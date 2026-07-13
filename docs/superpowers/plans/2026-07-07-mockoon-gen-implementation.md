@@ -162,7 +162,7 @@ export default defineConfig({
 ```gitignore
 node_modules/
 dist/
-.mockoon-gen/
+mockoon-gen/
 .superpowers/
 coverage/
 *.log
@@ -266,7 +266,7 @@ const minimalArtifact = {
   schemaVersion: "0.2.0",
   sources: [],
   openapi: {
-    file: ".mockoon-gen/openapi.yaml",
+    file: "mockoon-gen/openapi.yaml",
     sha256: "abc123",
     origin: "generated",
     reviewStatus: "confirmed"
@@ -284,11 +284,11 @@ const minimalArtifact = {
       reviewStatus: "unreviewed"
     },
     whistle: {
-      file: ".mockoon-gen/whistle.txt",
+      file: "mockoon-gen/whistle.txt",
       routes: []
     },
     mockoon: {
-      file: ".mockoon-gen/mockoon.json",
+      file: "mockoon-gen/mockoon.json",
       port: null,
       defaultHeaders: {
         "Content-Type": "application/json; charset=utf-8"
@@ -802,7 +802,7 @@ describe("artifactFromOpenApi", () => {
   it("creates endpoint, route, DTO, VO, mapper, and mock draft", async () => {
     const loaded = await loadOpenApi("tests/fixtures/openapi.user.yaml");
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/api.generated.ts",
       mockoonPort: 3100
     });
@@ -1178,7 +1178,7 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
     schemaVersion: "0.2.0",
     sources: [],
     openapi: {
-      file: ".mockoon-gen/openapi.yaml",
+      file: "mockoon-gen/openapi.yaml",
       sha256: "abc",
       origin: "generated",
       reviewStatus: "confirmed"
@@ -1196,11 +1196,11 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
         reviewStatus: "unreviewed"
       },
       whistle: {
-        file: ".mockoon-gen/whistle.txt",
+        file: "mockoon-gen/whistle.txt",
         routes: []
       },
       mockoon: {
-        file: ".mockoon-gen/mockoon.json",
+        file: "mockoon-gen/mockoon.json",
         port: null,
         defaultHeaders: {},
         origin: "generated",
@@ -1216,7 +1216,7 @@ describe("validateArtifact", () => {
     const result = validateArtifact(
       artifact({
         openapi: {
-          file: ".mockoon-gen/openapi.yaml",
+          file: "mockoon-gen/openapi.yaml",
           sha256: "abc",
           origin: "generated",
           reviewStatus: "unreviewed"
@@ -1239,7 +1239,7 @@ describe("validateArtifact", () => {
         outputs: {
           ...artifact().outputs,
           whistle: {
-            file: ".mockoon-gen/whistle.txt",
+            file: "mockoon-gen/whistle.txt",
             routes: [
               {
                 endpointId: "ep-get-user",
@@ -1419,7 +1419,7 @@ import { generateApiCode } from "../../src/generators/api-code.js";
 const artifact: ApiArtifact = {
   schemaVersion: "0.2.0",
   sources: [],
-  openapi: { file: ".mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
+  openapi: { file: "mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
   reviewItems: [],
   endpoints: [
     {
@@ -1483,9 +1483,9 @@ const artifact: ApiArtifact = {
       origin: "generated",
       reviewStatus: "confirmed"
     },
-    whistle: { file: ".mockoon-gen/whistle.txt", routes: [] },
+    whistle: { file: "mockoon-gen/whistle.txt", routes: [] },
     mockoon: {
-      file: ".mockoon-gen/mockoon.json",
+      file: "mockoon-gen/mockoon.json",
       port: 3100,
       defaultHeaders: {},
       origin: "generated",
@@ -1718,7 +1718,7 @@ import { generateMockoonEnvironment } from "../../src/generators/mockoon.js";
 const artifact: ApiArtifact = {
   schemaVersion: "0.2.0",
   sources: [],
-  openapi: { file: ".mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
+  openapi: { file: "mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
   reviewItems: [],
   endpoints: [
     {
@@ -1760,9 +1760,9 @@ const artifact: ApiArtifact = {
       origin: "generated",
       reviewStatus: "confirmed"
     },
-    whistle: { file: ".mockoon-gen/whistle.txt", routes: [] },
+    whistle: { file: "mockoon-gen/whistle.txt", routes: [] },
     mockoon: {
-      file: ".mockoon-gen/mockoon.json",
+      file: "mockoon-gen/mockoon.json",
       port: 3100,
       defaultHeaders: { "Content-Type": "application/json; charset=utf-8" },
       origin: "generated",
@@ -1925,7 +1925,7 @@ describe("createProgram", () => {
     const program = createProgram();
     await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", dir], { from: "user" });
     const config = JSON.parse(await readFile(join(dir, "mockoon-gen.config.json"), "utf8"));
-    expect(config.artifactDir).toBe(".mockoon-gen");
+    expect(config.artifactDir).toBe("mockoon-gen");
   });
 });
 ```
@@ -1958,10 +1958,10 @@ export interface MockgenConfig {
 }
 
 export const defaultConfig: MockgenConfig = {
-  artifactDir: ".mockoon-gen",
-  openapiFile: ".mockoon-gen/openapi.yaml",
-  mockoonFile: ".mockoon-gen/mockoon.json",
-  whistleFile: ".mockoon-gen/whistle.txt",
+  artifactDir: "mockoon-gen",
+  openapiFile: "mockoon-gen/openapi.yaml",
+  mockoonFile: "mockoon-gen/mockoon.json",
+  whistleFile: "mockoon-gen/whistle.txt",
   apiOutput: "src/api/generated/api.generated.ts",
   splitApiOutput: false,
   transformResponse: true,
@@ -2170,9 +2170,9 @@ import { createProgram } from "../../src/cli.js";
 describe("mockoon-gen e2e", () => {
   it("creates artifact and exports generated files", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "mockoon-gen-e2e-"));
-    await mkdir(join(cwd, ".mockoon-gen"), { recursive: true });
+    await mkdir(join(cwd, "mockoon-gen"), { recursive: true });
     await writeFile(
-      join(cwd, ".mockoon-gen/openapi.yaml"),
+      join(cwd, "mockoon-gen/openapi.yaml"),
       `openapi: 3.0.3
 info:
   title: User API
@@ -2197,12 +2197,12 @@ paths:
 
     const program = createProgram();
     await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", cwd], { from: "user" });
-    await program.parseAsync(["node", "mockoon-gen", "from-openapi", ".mockoon-gen/openapi.yaml", "--cwd", cwd], { from: "user" });
-    await program.parseAsync(["node", "mockoon-gen", "generate", "--from", ".mockoon-gen/api-artifact.json", "--cwd", cwd], {
+    await program.parseAsync(["node", "mockoon-gen", "from-openapi", "mockoon-gen/openapi.yaml", "--cwd", cwd], { from: "user" });
+    await program.parseAsync(["node", "mockoon-gen", "generate", "--from", "mockoon-gen/api-artifact.json", "--cwd", cwd], {
       from: "user"
     });
 
-    const artifact = await readFile(join(cwd, ".mockoon-gen/api-artifact.json"), "utf8");
+    const artifact = await readFile(join(cwd, "mockoon-gen/api-artifact.json"), "utf8");
     const apiCode = await readFile(join(cwd, "src/api/generated/api.generated.ts"), "utf8");
     expect(artifact).toContain("\"schemaVersion\": \"0.2.0\"");
     expect(apiCode).toContain("export async function getUser");
@@ -2233,20 +2233,20 @@ Replace `skills/mockoon-gen/README.md` with:
 
 ```bash
 mockoon-gen init
-mockoon-gen from-openapi .mockoon-gen/openapi.yaml
-mockoon-gen generate --from .mockoon-gen/api-artifact.json
-mockoon-gen export whistle --from .mockoon-gen/api-artifact.json
-mockoon-gen export mockoon --from .mockoon-gen/api-artifact.json
-mockoon-gen validate --from .mockoon-gen/api-artifact.json --strict
+mockoon-gen from-openapi mockoon-gen/openapi.yaml
+mockoon-gen generate --from mockoon-gen/api-artifact.json
+mockoon-gen export whistle --from mockoon-gen/api-artifact.json
+mockoon-gen export mockoon --from mockoon-gen/api-artifact.json
+mockoon-gen validate --from mockoon-gen/api-artifact.json --strict
 ```
 
 Loose Markdown or copied API docs are handled by the Mockoon Gen skill before the CLI runs. The CLI only accepts structured OpenAPI or `api-artifact.json` inputs.
 
 ## Generated Files
 
-- `.mockoon-gen/api-artifact.json`
-- `.mockoon-gen/whistle.txt`
-- `.mockoon-gen/mockoon.json`
+- `mockoon-gen/api-artifact.json`
+- `mockoon-gen/whistle.txt`
+- `mockoon-gen/mockoon.json`
 - `src/api/generated/api.generated.ts`
 ```
 

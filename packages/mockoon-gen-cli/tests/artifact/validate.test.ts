@@ -7,7 +7,7 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
     schemaVersion: "0.2.0",
     sources: [],
     openapi: {
-      file: ".mockoon-gen/openapi.yaml",
+      file: "mockoon-gen/openapi.yaml",
       sha256: "abc",
       origin: "generated",
       reviewStatus: "confirmed"
@@ -26,12 +26,12 @@ function artifact(overrides: Partial<ApiArtifact> = {}): ApiArtifact {
         reviewStatus: "unreviewed"
       },
       whistle: {
-        file: ".mockoon-gen/whistle.json",
+        file: "mockoon-gen/whistle.json",
         groupName: null,
         routes: []
       },
       mockoon: {
-        file: ".mockoon-gen/mockoon.json",
+        file: "mockoon-gen/mockoon.json",
         port: null,
         defaultHeaders: {},
         origin: "generated",
@@ -110,7 +110,7 @@ describe("validateArtifact", () => {
     const result = validateArtifact(
       artifact({
         openapi: {
-          file: ".mockoon-gen/openapi.yaml",
+          file: "mockoon-gen/openapi.yaml",
           sha256: "abc",
           origin: "generated",
           reviewStatus: "unreviewed"
@@ -135,7 +135,7 @@ describe("validateArtifact", () => {
         outputs: {
           ...artifact().outputs,
           whistle: {
-            file: ".mockoon-gen/whistle.json",
+            file: "mockoon-gen/whistle.json",
             groupName: "User Detail Mock",
             routes: [
               {
@@ -166,7 +166,7 @@ describe("validateArtifact", () => {
         outputs: {
           ...artifact().outputs,
           whistle: {
-            file: ".mockoon-gen/whistle.json",
+            file: "mockoon-gen/whistle.json",
             groupName: "User Detail Mock",
             routes: [
               {

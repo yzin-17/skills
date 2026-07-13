@@ -11,6 +11,7 @@ Use this skill as the agent workflow layer around the bundled deterministic CLI.
 
 - Treat OpenAPI as the backend contract source of truth.
 - Treat `mockoon-gen/api-artifact.json` as the reviewed frontend collaboration artifact.
+- Require the artifact directory to be named exactly `mockoon-gen`, without a leading dot. Never suggest, create, preserve, or write to a hidden dot-prefixed variant, including when it appears in existing configuration or artifacts.
 - Keep generated API code, Whistle JSON/CLI CJS, and Mockoon JSON as derived outputs.
 - Do not infer final host, forwarding paths, Mockoon port, API code placement, or final VO shape without human or project confirmation.
 - Prefer low project intrusion: write mock artifacts under the related page directory, not the project root, and only write API code to the confirmed page-local artifact path.
@@ -60,7 +61,7 @@ This writes `<page-dir>/mockoon-gen/mockoon-gen.config.json`. Keep demand-specif
 - Use `<page-dir>/mockoon-gen/whistle.json` for Whistle UI JSON import.
 - Use `<page-dir>/mockoon-gen/whistle.cjs` for Whistle CLI import with `w2 add filepath`.
 - If the user did not clearly ask for UI import JSON or CLI CJS, stop and ask which one they want instead of choosing silently.
-- `artifactDir`: page-local artifact directory, usually `<page-dir>/mockoon-gen`.
+- `artifactDir`: mandatory page-local `<page-dir>/mockoon-gen` directory; do not omit `<page-dir>/` or use a hidden dot-prefixed variant.
 - `openapiFile`: page-local OpenAPI file, usually `<page-dir>/mockoon-gen/openapi.yaml`.
 - `mockoonFile`: page-local Mockoon export file, usually `<page-dir>/mockoon-gen/mockoon.json`.
 - `generateApiCode`: set to `false` when the input is an existing concrete API/interface code file; leave `true` for OpenAPI or loose API docs that need generated API code.
@@ -131,7 +132,7 @@ mockoon-cli start --data <page-dir>/mockoon-gen/mockoon.json
 ## Output Semantics
 
 - Default page-local config output is `<page-dir>/mockoon-gen/mockoon-gen.config.json`.
-- Default artifact output is `<page-dir>/mockoon-gen/api-artifact.json`; avoid project-root `mockoon-gen` unless the user explicitly confirms that the project root is the page/feature location.
+- Default artifact output is `<page-dir>/mockoon-gen/api-artifact.json`; the directory name is mandatory and must never be changed to a hidden dot-prefixed variant. Avoid project-root `mockoon-gen` unless the user explicitly confirms that the project root is the page/feature location.
 - Default API code generation is enabled. When the input is an existing concrete API/interface code file, disable API code generation and do not emit `<page-dir>/api.generated.ts`.
 - Default `whistleFile` is `null`; the user must choose GUI JSON or CLI CJS before generation.
 - GUI Whistle output is `<page-dir>/mockoon-gen/whistle.json`.

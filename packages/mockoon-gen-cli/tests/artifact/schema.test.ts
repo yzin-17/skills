@@ -5,7 +5,7 @@ const minimalArtifact = {
   schemaVersion: "0.2.0",
   sources: [],
   openapi: {
-    file: ".mockoon-gen/openapi.yaml",
+    file: "mockoon-gen/openapi.yaml",
     sha256: "abc123",
     origin: "generated",
     reviewStatus: "confirmed"
@@ -23,12 +23,12 @@ const minimalArtifact = {
       reviewStatus: "unreviewed"
     },
     whistle: {
-      file: ".mockoon-gen/whistle.json",
+      file: "mockoon-gen/whistle.json",
       groupName: null,
       routes: []
     },
     mockoon: {
-      file: ".mockoon-gen/mockoon.json",
+      file: "mockoon-gen/mockoon.json",
       port: null,
       defaultHeaders: {
         "Content-Type": "application/json; charset=utf-8"

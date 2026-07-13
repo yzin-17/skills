@@ -9,7 +9,7 @@ describe("artifactFromOpenApi", () => {
   it("creates endpoint, route, DTO, VO, mapper, and mock draft", async () => {
     const loaded = await loadOpenApi("tests/fixtures/openapi.user.yaml");
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/api.generated.ts",
       mockoonPort: 3100
     });
@@ -72,7 +72,7 @@ describe("artifactFromOpenApi", () => {
 
       const loaded = await loadOpenApi(file);
       const artifact = artifactFromOpenApi(loaded, {
-        artifactDir: ".mockoon-gen",
+        artifactDir: "mockoon-gen",
         apiOutput: "src/api/generated/api.generated.ts",
         mockoonPort: 3100
       });
@@ -92,10 +92,10 @@ describe("artifactFromOpenApi", () => {
   it("copies an LLM or human confirmed whistle group name from options", async () => {
     const loaded = await loadOpenApi("tests/fixtures/openapi.user.yaml");
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/api.generated.ts",
       mockoonPort: 3100,
-      whistleFile: ".mockoon-gen/whistle.json",
+      whistleFile: "mockoon-gen/whistle.json",
       whistleGroupName: "User Detail Mock"
     });
 
@@ -105,19 +105,19 @@ describe("artifactFromOpenApi", () => {
   it("uses the configured whistle file path in artifact outputs", async () => {
     const loaded = await loadOpenApi("tests/fixtures/openapi.user.yaml");
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/api.generated.ts",
       mockoonPort: 3100,
-      whistleFile: ".mockoon-gen/whistle.cjs"
+      whistleFile: "mockoon-gen/whistle.cjs"
     });
 
-    expect(artifact.outputs.whistle.file).toBe(".mockoon-gen/whistle.cjs");
+    expect(artifact.outputs.whistle.file).toBe("mockoon-gen/whistle.cjs");
   });
 
   it("marks API code generation disabled when the input already has concrete API code", async () => {
     const loaded = await loadOpenApi("tests/fixtures/openapi.user.yaml");
     const artifact = artifactFromOpenApi(loaded, {
-      artifactDir: ".mockoon-gen",
+      artifactDir: "mockoon-gen",
       apiOutput: "src/api/generated/api.generated.ts",
       generateApiCode: false,
       mockoonPort: 3100
@@ -207,7 +207,7 @@ describe("artifactFromOpenApi", () => {
 
       const loaded = await loadOpenApi(file);
       const artifact = artifactFromOpenApi(loaded, {
-        artifactDir: ".mockoon-gen",
+        artifactDir: "mockoon-gen",
         apiOutput: "src/api/generated/api.generated.ts",
         mockoonPort: 3100
       });

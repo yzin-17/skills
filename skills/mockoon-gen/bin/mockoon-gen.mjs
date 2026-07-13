@@ -14910,12 +14910,35 @@ var defaultConfig = {
 async function loadConfig(file) {
   try {
     const raw = await readFile(file, "utf8");
-    return { ...defaultConfig, ...JSON.parse(raw) };
+    const config = { ...defaultConfig, ...JSON.parse(raw) };
+    assertVisibleArtifactDirectory(config.artifactDir);
+    assertVisibleMockArtifactFile(config.openapiFile, "openapiFile");
+    assertVisibleMockArtifactFile(config.mockoonFile, "mockoonFile");
+    if (config.whistleFile) {
+      assertVisibleMockArtifactFile(config.whistleFile, "whistleFile");
+    }
+    return config;
   } catch (error) {
     if (error.code === "ENOENT") {
       return { ...defaultConfig };
     }
     throw error;
+  }
+}
+function assertVisibleMockArtifactFile(file, fieldName) {
+  const normalized = file.replace(/\\/g, "/").replace(/\/+$/, "");
+  const parentDirectory = normalized.split("/").at(-2);
+  if (parentDirectory !== "mockoon-gen") {
+    throw new Error(`${fieldName} must be written directly under a visible "mockoon-gen" directory; received: ${file}`);
+  }
+}
+function assertVisibleArtifactDirectory(artifactDir) {
+  const normalized = artifactDir.replace(/\\/g, "/").replace(/\/+$/, "");
+  const directoryName = normalized.split("/").at(-1);
+  if (directoryName !== "mockoon-gen") {
+    throw new Error(
+      `artifactDir must end with "mockoon-gen" (without a leading dot); received: ${artifactDir}`
+    );
   }
 }
 
@@ -15400,6 +15423,7 @@ function createProgram() {
     if (target === "whistle") {
       const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
       assertWhistleImportModeConfirmed(outputFile);
+      assertVisibleMockOutputPath(outputFile, "Whistle");
       assertWhistleFileSuffix(target, outputFile);
       await writeTextFile(
         join(options.cwd, outputFile),
@@ -15410,6 +15434,7 @@ function createProgram() {
     if (target === "whistle-cli") {
       const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
       assertWhistleImportModeConfirmed(outputFile);
+      assertVisibleMockOutputPath(outputFile, "Whistle");
       assertWhistleFileSuffix(target, outputFile);
       await writeTextFile(
         join(options.cwd, outputFile),
@@ -15420,6 +15445,7 @@ function createProgram() {
     }
     if (target === "mockoon") {
       const outputFile = artifact.outputs.mockoon.file || defaultConfig.mockoonFile;
+      assertVisibleMockOutputPath(outputFile, "Mockoon");
       await writeTextFile(join(options.cwd, outputFile), prettyJson(generateMockoonEnvironment(artifact)));
       return;
     }
@@ -15541,6 +15567,15 @@ function assertWhistleFileSuffix(target, file) {
   }
   if (target === "whistle-cli" && !file.endsWith(".cjs")) {
     throw new Error(`Cannot export whistle-cli CJS to ${file}. Set whistleFile to a whistle.cjs path or run export whistle.`);
+  }
+}
+function assertVisibleMockOutputPath(file, outputName) {
+  const normalized = file.replace(/\\/g, "/").replace(/\/+$/, "");
+  const parentDirectory = normalized.split("/").at(-2);
+  if (parentDirectory !== "mockoon-gen") {
+    throw new Error(
+      `${outputName} output must be written directly under a visible "mockoon-gen" directory; received: ${file}`
+    );
   }
 }
 function assertWhistleImportModeConfirmed(file) {

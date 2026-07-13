@@ -100,6 +100,7 @@ export function createProgram(): Command {
       if (target === "whistle") {
         const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
         assertWhistleImportModeConfirmed(outputFile);
+        assertVisibleMockOutputPath(outputFile, "Whistle");
         assertWhistleFileSuffix(target, outputFile);
         await writeTextFile(
           join(options.cwd, outputFile),
@@ -111,6 +112,7 @@ export function createProgram(): Command {
       if (target === "whistle-cli") {
         const outputFile = artifact.outputs.whistle.file || defaultConfig.whistleFile;
         assertWhistleImportModeConfirmed(outputFile);
+        assertVisibleMockOutputPath(outputFile, "Whistle");
         assertWhistleFileSuffix(target, outputFile);
         await writeTextFile(
           join(options.cwd, outputFile),
@@ -122,6 +124,7 @@ export function createProgram(): Command {
 
       if (target === "mockoon") {
         const outputFile = artifact.outputs.mockoon.file || defaultConfig.mockoonFile;
+        assertVisibleMockOutputPath(outputFile, "Mockoon");
         await writeTextFile(join(options.cwd, outputFile), prettyJson(generateMockoonEnvironment(artifact)));
         return;
       }
@@ -290,6 +293,17 @@ function assertWhistleFileSuffix(target: "whistle" | "whistle-cli", file: string
 
   if (target === "whistle-cli" && !file.endsWith(".cjs")) {
     throw new Error(`Cannot export whistle-cli CJS to ${file}. Set whistleFile to a whistle.cjs path or run export whistle.`);
+  }
+}
+
+function assertVisibleMockOutputPath(file: string, outputName: string): void {
+  const normalized = file.replace(/\\/g, "/").replace(/\/+$/, "");
+  const parentDirectory = normalized.split("/").at(-2);
+
+  if (parentDirectory !== "mockoon-gen") {
+    throw new Error(
+      `${outputName} output must be written directly under a visible \"mockoon-gen\" directory; received: ${file}`
+    );
   }
 }
 
