@@ -1,31 +1,31 @@
-# Mockoon Success Response Templates Design
+# Mockoon 成功响应模板设计
 
-## Goal
+## 目标
 
-Make generated Mockoon success responses return usable randomized data. Lists must include both a single-item success scenario and a multi-item success scenario.
+使生成的 Mockoon 成功响应返回可用的随机数据。列表接口必须同时包含单条数据和多条数据的成功场景。
 
-## Inference Rules
+## 推断规则
 
-- Resolve local OpenAPI references of the form `#/components/schemas/<name>`, including references nested in object properties and array items.
-- Generate Mockoon template expressions recursively for objects, arrays, strings, numbers, integers, booleans, enums, and nullable values.
-- For an array response, create a one-item success body and a multi-item success body. The multi-item count uses the existing list policy, whose default is 20 and whose configured value must exceed 1.
-- For an object containing a recognized list property, preserve the object envelope and apply the same one-item and multi-item variants to that property.
+- 解析 `#/components/schemas/<name>` 形式的本地 OpenAPI `$ref`，包括对象属性和数组元素中的嵌套引用。
+- 递归生成对象、数组、字符串、数值、整数、布尔值、枚举和可空值的 Mockoon 模板表达式。
+- 对数组响应，生成单条数据成功响应和多条数据成功响应。多条数据数量使用现有列表策略；默认值为 20，配置值必须大于 1。
+- 对包含可识别列表属性的对象响应，保留对象外层结构，并为该列表属性生成相应的单条与多条变体。
 
-## Review Gates
+## 审阅门槛
 
-- Missing response schema, external references, cyclic local references, and unsupported composition schemas (`oneOf`, `anyOf`, `allOf`) must create an open `needsReview` item.
-- Do not silently replace an unknown successful response with `{}`. The normal preflight gate blocks export until the review item is resolved.
-- Keep deterministic generation when a schema is fully supported; no human review is required for supported local references or primitive responses.
+- 缺少响应 schema、外部引用、循环本地引用和不支持的组合 schema（`oneOf`、`anyOf`、`allOf`）必须创建开放的 `needsReview` 项。
+- 不得将未知的成功响应静默替换为 `{}`；常规 preflight 门槛必须阻止导出，直至审阅项被确认。
+- 对完全受支持的 schema，保持确定性生成；受支持的本地引用和基本类型响应不需要人工审阅。
 
-## Artifact and Output
+## Artifact 与输出
 
-- Retain the existing mock artifact structure and generated scenario bodies.
-- Make scenario intent explicit: the default successful list response has one item, and the additional multi-item success response uses the policy count.
-- Do not change Whistle behavior, API-code generation, output paths, or the existing confirmation gates.
+- 保留现有 mock artifact 结构与生成的场景 body。
+- 明确场景意图：默认列表成功响应包含一条数据，额外的多条数据成功响应使用策略数量。
+- 不修改 Whistle 行为、API-code 生成、输出路径或既有确认门槛。
 
-## Tests
+## 测试
 
-- Add coverage for local and nested `$ref`, root primitive responses, root arrays, and object-wrapped lists.
-- Assert generated templates are non-empty and preserve JSON primitive types where applicable.
-- Assert list artifacts include one-item and multi-item success scenarios, with the latter containing more than one item.
-- Assert missing/unsupported schemas create open `needsReview` items and make preflight not ready.
+- 增加本地与嵌套 `$ref`、顶层基本类型响应、顶层数组响应和对象包裹列表的覆盖。
+- 断言生成的模板非空，并在适用时保留 JSON 基本类型。
+- 断言列表 artifact 包含单条和多条数据成功场景，且后者数量大于 1。
+- 断言缺少 schema 或不支持的 schema 会创建开放的 `needsReview` 项，并使 preflight 未就绪。
