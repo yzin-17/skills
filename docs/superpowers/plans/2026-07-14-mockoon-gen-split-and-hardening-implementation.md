@@ -739,7 +739,7 @@ git commit -m "feat: add mock artifact schema 0.3"
 - Create: `packages/mockoon-gen-cli/tests/generators/mockoon-v3.test.ts`
 - Expand: `packages/mockoon-gen-cli/tests/mock-artifact/from-openapi.test.ts`
 
-- [ ] **Step 1: Write failing scenario and type tests**
+- [x] **Step 1: Write failing scenario and type tests**
 
 Cover:
 
@@ -754,11 +754,11 @@ Cover:
 - string templates remain strings.
 - enum retains original JSON type.
 
-- [ ] **Step 2: Select supported success responses deterministically**
+- [x] **Step 2: Select supported success responses deterministically**
 
 Use the lowest numeric 2xx response with supported inline `application/json` schema. Report unsupported structures; do not silently emit `{}` for `$ref` or compositions.
 
-- [ ] **Step 3: Implement Mockoon v3 exporter**
+- [x] **Step 3: Implement Mockoon v3 exporter**
 
 Read only `MockArtifact`. The generator returns JSON data and does not write files.
 
@@ -769,7 +769,7 @@ pnpm --filter mockoon-gen test -- tests/mock-artifact/from-openapi.test.ts tests
 pnpm --filter mockoon-gen typecheck
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/mockoon-gen-cli/src/generators/mockoon-v3.ts packages/mockoon-gen-cli/src/openapi/mock-support.ts packages/mockoon-gen-cli/tests
