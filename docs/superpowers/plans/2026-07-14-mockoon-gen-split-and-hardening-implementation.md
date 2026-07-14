@@ -527,7 +527,7 @@ git commit -m "feat: migrate api code generation"
 - Modify: `packages/api-code-gen-cli/src/artifact/types.ts`
 - Modify: `packages/api-code-gen-cli/tests/artifact/schema.test.ts`
 
-- [ ] **Step 1: Write failing plan and grouping tests**
+- [x] **Step 1: Write failing plan and grouping tests**
 
 Cover:
 
@@ -543,22 +543,22 @@ Cover:
 - indexFile produces exports for every declared module exactly once.
 - relative nested member paths accepted; absolute and `..` member paths rejected.
 
-- [ ] **Step 2: Model output as a discriminated union**
+- [x] **Step 2: Model output as a discriminated union**
 
 Use `splitApiOutput` as discriminator. Keep `transformResponse` and `reviewStatus` in both variants.
 
-- [ ] **Step 3: Implement deterministic file generation**
+- [x] **Step 3: Implement deterministic file generation**
 
 Return an in-memory `Map<projectRelativePath, contents>` or equivalent. Do not write files in the generator. Safe writes belong to Task 7.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 pnpm --filter api-code-gen test -- tests/artifact/schema.test.ts tests/generators/output-files.test.ts
 pnpm --filter api-code-gen typecheck
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/api-code-gen-cli/src/artifact packages/api-code-gen-cli/src/generators/output-files.ts packages/api-code-gen-cli/tests

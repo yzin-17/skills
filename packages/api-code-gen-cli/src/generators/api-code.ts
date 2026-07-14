@@ -6,6 +6,7 @@ interface DtoFieldNode {
 }
 
 const RESPONSE_BODY_PREFIX = "response.body";
+export const REQUEST_DECLARATION = "declare function request<T>(path: string, options?: { method?: string; body?: unknown }): Promise<T>;";
 const TYPESCRIPT_RESERVED_WORDS = new Set([
   "abstract",
   "any",
@@ -85,7 +86,7 @@ const TYPESCRIPT_RESERVED_WORDS = new Set([
 
 export function generateApiCode(artifact: ApiCodeArtifact): string {
   const body = [
-    "declare function request<T>(path: string, options?: { method?: string; body?: unknown }): Promise<T>;",
+    REQUEST_DECLARATION,
     "",
     ...artifact.endpoints.flatMap((endpoint) => generateEndpoint(endpoint, artifact.output.transformResponse))
   ].join("\n");
@@ -352,4 +353,3 @@ function findBracketLiteralEnd(path: string, bracketStart: number): number {
 function isIdentifier(value: string): boolean {
   return /^[$A-Z_][0-9A-Z_$]*$/i.test(value);
 }
-
