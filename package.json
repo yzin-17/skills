@@ -5,6 +5,6 @@
     "build": "pnpm -r --if-present build",
     "bundle": "pnpm build && pnpm -r --if-present bundle",
     "test": "pnpm -r --if-present test",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm --filter @yzin/openapi-reader build && pnpm -r --if-present typecheck"
   }
 }
