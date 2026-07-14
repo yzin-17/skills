@@ -1158,13 +1158,13 @@ git commit -m "build: bundle split generator CLIs"
 
 - Rewrite/rename: `.github/workflows/bundle-mockoon-gen-cli.yml`
 
-- [ ] **Step 1: Change workflow purpose from mutation to verification**
+- [x] **Step 1: Change workflow purpose from mutation to verification**
 
 Trigger on pull requests and main pushes when either package, skill bundle, root lockfile, or workflow changes.
 
 Use read-only contents permission. Remove `peter-evans/create-pull-request` and all write permissions.
 
-- [ ] **Step 2: Use the root workspace**
+- [x] **Step 2: Use the root workspace**
 
 Workflow steps:
 
@@ -1180,11 +1180,11 @@ Workflow steps:
 10. run both bundle `--version` and `--help`
 11. run both skill quick validators
 
-- [ ] **Step 3: Validate workflow syntax locally where available**
+- [x] **Step 3: Validate workflow syntax locally where available**
 
 At minimum inspect YAML parsing and path filters. If `actionlint` is installed, run it; do not add it as a dependency solely for this task.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .github/workflows package.json pnpm-lock.yaml
