@@ -471,7 +471,7 @@ git commit -m "feat: define api-code artifact"
 - Reference source: `packages/mockoon-gen-cli/src/generators/api-code.ts`
 - Reference tests: `packages/mockoon-gen-cli/tests/generators/api-code.test.ts`
 
-- [ ] **Step 1: Copy behavior tests before implementation**
+- [x] **Step 1: Copy behavior tests before implementation**
 
 Adapt the current tests to the new API artifact type. Preserve coverage for:
 
@@ -491,24 +491,24 @@ pnpm --filter api-code-gen test -- tests/generators/api-code.test.ts
 
 Expected: fail because the generator does not exist.
 
-- [ ] **Step 2: Move, do not redesign, the generator**
+- [x] **Step 2: Move, do not redesign, the generator**
 
 Extract internal `generateEndpoint` behavior so a later split-output task can group endpoints without duplicating generation logic.
 
 Each generated module starts with exactly one request declaration, regardless of how many endpoints it contains.
 
-- [ ] **Step 3: Remove reverse-sync concepts**
+- [x] **Step 3: Remove reverse-sync concepts**
 
 Do not emit generated hashes into artifact. Do not add code headers that imply reverse synchronization. Do not copy `api-code-sync.ts`.
 
-- [ ] **Step 4: Verify focused and package tests**
+- [x] **Step 4: Verify focused and package tests**
 
 ```bash
 pnpm --filter api-code-gen test -- tests/generators/api-code.test.ts
 pnpm --filter api-code-gen typecheck
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/api-code-gen-cli/src/generators packages/api-code-gen-cli/tests/generators
