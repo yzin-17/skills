@@ -206,7 +206,7 @@ pnpm install
 
 Expected: one root lockfile; workspace dependency graph contains the existing mock package.
 
-- [ ] **Step 5: Verify no behavior changed**
+- [x] **Step 5: Verify no behavior changed**
 
 ```bash
 pnpm --filter mockoon-gen test
@@ -290,7 +290,7 @@ Update imports. Do not change current artifact behavior in this task.
 
 Keep `generators/hash.ts` temporarily if old API sync/generation still imports it. It is deleted only after API extraction.
 
-- [ ] **Step 5: Verify both packages**
+- [x] **Step 5: Verify both packages**
 
 ```bash
 pnpm install
@@ -714,7 +714,7 @@ Requirements:
 - route stores only endpointId/apiHost.
 - no Whistle format is required.
 
-- [ ] **Step 5: Verify parallel modules**
+- [x] **Step 5: Verify parallel modules**
 
 ```bash
 pnpm --filter mockoon-gen test -- tests/mock-artifact tests/config-v2
@@ -762,7 +762,7 @@ Use the lowest numeric 2xx response with supported inline `application/json` sch
 
 Read only `MockArtifact`. The generator returns JSON data and does not write files.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 pnpm --filter mockoon-gen test -- tests/mock-artifact/from-openapi.test.ts tests/generators/mockoon-v3.test.ts
