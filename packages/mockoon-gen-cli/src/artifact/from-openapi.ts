@@ -1,5 +1,5 @@
 import type { ApiArtifact, ArtifactEndpoint, MapperStep, MockScenario, WhistleRoute } from "./types.js";
-import type { LoadedOpenApi, OpenApiOperation, OpenApiSchema } from "../openapi/types.js";
+import type { LoadedOpenApi, OpenApiOperation, OpenApiSchema } from "@yzin/openapi-reader";
 
 interface FromOpenApiOptions {
   artifactDir: string;

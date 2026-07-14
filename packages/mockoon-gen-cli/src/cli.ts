@@ -20,7 +20,7 @@ import { sha256 } from "./generators/hash.js";
 import { generateMockoonEnvironment } from "./generators/mockoon.js";
 import { generateWhistleCliModule, generateWhistleRules } from "./generators/whistle.js";
 import { MOCKGEN_VERSION } from "./index.js";
-import { loadOpenApi } from "./openapi/load-openapi.js";
+import { loadOpenApi } from "@yzin/openapi-reader";
 import { prettyJson, writeTextFile } from "./utils/fs.js";
 
 const execFile = promisify(execFileCallback);

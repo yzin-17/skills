@@ -2,7 +2,7 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { loadOpenApi } from "../../src/openapi/load-openapi.js";
+import { loadOpenApi } from "@yzin/openapi-reader";
 import { artifactFromOpenApi } from "../../src/artifact/from-openapi.js";
 
 describe("artifactFromOpenApi", () => {

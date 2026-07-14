@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { artifactFromOpenApi } from "../../src/artifact/from-openapi.js";
 import { createProgram, shouldRunCli } from "../../src/cli.js";
-import { loadOpenApi } from "../../src/openapi/load-openapi.js";
+import { loadOpenApi } from "@yzin/openapi-reader";
 
 const execFile = promisify(execFileCallback);
 

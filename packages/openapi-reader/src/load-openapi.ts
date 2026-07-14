@@ -1,28 +1,30 @@
 import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import YAML from "yaml";
-import { sha256 } from "../generators/hash.js";
+import { sha256 } from "./hash.js";
 import type { LoadedOpenApi, OpenApiDocument } from "./types.js";
 
 export async function loadOpenApi(file: string): Promise<LoadedOpenApi> {
-  const raw = await readFile(file, "utf8");
-  const document = YAML.parse(raw) as OpenApiDocument;
+  const normalizedFile = resolve(file);
+  const raw = await readFile(normalizedFile);
+  const document = YAML.parse(raw.toString("utf8")) as OpenApiDocument;
 
   if (
     !isPlainObject(document) ||
     typeof document.openapi !== "string" ||
     !isPlainObject(document.paths)
   ) {
-    throw new Error(`Invalid OpenAPI document: ${file}`);
+    throw new Error(`Invalid OpenAPI document: ${normalizedFile}`);
   }
 
   for (const pathItem of Object.values(document.paths)) {
     if (!isPlainObject(pathItem)) {
-      throw new Error(`Invalid OpenAPI document: ${file}`);
+      throw new Error(`Invalid OpenAPI document: ${normalizedFile}`);
     }
   }
 
   return {
-    file,
+    file: normalizedFile,
     sha256: sha256(raw),
     document
   };
