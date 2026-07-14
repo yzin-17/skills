@@ -12,6 +12,10 @@ export interface OpenApiDocument {
     [key: string]: unknown;
   };
   paths: Record<string, OpenApiPathItem>;
+  components?: {
+    schemas?: Record<string, OpenApiSchema>;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
@@ -63,5 +67,6 @@ export interface OpenApiSchema {
   anyOf?: OpenApiSchema[];
   oneOf?: OpenApiSchema[];
   not?: OpenApiSchema;
+  nullable?: boolean;
   [key: string]: unknown;
 }

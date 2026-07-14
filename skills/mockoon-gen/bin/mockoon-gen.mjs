@@ -10355,7 +10355,7 @@ var require_dist = __commonJS({
 
 // src/cli.ts
 import { existsSync, realpathSync } from "node:fs";
-import { dirname as dirname3, isAbsolute as isAbsolute2, join as join2, relative as relative2, resolve as resolve3 } from "node:path";
+import { dirname as dirname3, isAbsolute as isAbsolute2, join as join2, relative as relative2, resolve as resolve4 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ../../node_modules/.pnpm/commander@12.1.0/node_modules/commander/esm.mjs
@@ -14328,7 +14328,7 @@ var z = /* @__PURE__ */ Object.freeze({
 var defaultMockConfig = { mockoonPort: null, whistleGroupName: null, mockPolicy: { listScenario: { enabled: true, itemCount: 20 } } };
 
 // src/config/load-config.ts
-var schema = z.object({ mockoonPort: z.number().int().min(1).max(65535).nullable().default(null), whistleGroupName: z.string().min(1).nullable().default(null), mockPolicy: z.object({ listScenario: z.object({ enabled: z.boolean().default(true), itemCount: z.number().int().min(1).max(1e3).default(20) }).strict().default({ enabled: true, itemCount: 20 }) }).strict().default({ listScenario: { enabled: true, itemCount: 20 } }) }).strict();
+var schema = z.object({ mockoonPort: z.number().int().min(1).max(65535).nullable().default(null), whistleGroupName: z.string().min(1).nullable().default(null), mockPolicy: z.object({ listScenario: z.object({ enabled: z.boolean().default(true), itemCount: z.number().int().min(2).max(1e3).default(20) }).strict().default({ enabled: true, itemCount: 20 }) }).strict().default({ listScenario: { enabled: true, itemCount: 20 } }) }).strict();
 async function loadMockConfig(file) {
   try {
     return schema.parse(JSON.parse(await readFile2(file, "utf8")));
@@ -14376,37 +14376,40 @@ function escapeTemplate(value) {
   return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
 }
 
-// src/openapi/mock-support.ts
-function listScenarioShape(schema2) {
-  if (schema2?.type === "array") return { kind: "root" };
-  const arrays = Object.entries(schema2?.properties ?? {}).filter(([, property]) => property.type === "array");
-  if (arrays.length === 1) return { kind: "property", property: arrays[0][0] };
-  return arrays.length > 1 ? { kind: "ambiguous" } : { kind: "none" };
-}
-function mockTemplate(schema2) {
-  if (schema2?.enum?.length) return JSON.stringify(schema2.enum[0]);
-  if (schema2?.type === "integer" || schema2?.type === "number") return "{{faker 'number.int'}}";
-  if (schema2?.type === "boolean") return "{{faker 'datatype.boolean'}}";
-  return "{{faker 'string.sample'}}";
-}
-
 // src/artifact/from-openapi.ts
 var HTTP_METHODS = ["get", "post", "put", "patch", "delete"];
 function mockArtifactFromOpenApi(openapi, options) {
   const endpoints = [];
+  const reviewItems = [];
   for (const [path, pathItem] of Object.entries(openapi.document.paths)) for (const method of HTTP_METHODS) {
     const operation = pathItem[method];
-    if (operation) endpoints.push(endpoint(method.toUpperCase(), path, operation, options.config));
+    if (!operation) continue;
+    const built = endpoint(method.toUpperCase(), path, operation, options.config, openapi.document);
+    endpoints.push(built.endpoint);
+    reviewItems.push(...built.issues.map((message, index) => ({ id: `review-${built.endpoint.id}-schema-${index + 1}`, severity: "needsReview", scope: "endpoint", path: `paths.${path}.${method}.responses`, message, resolutionStatus: "open" })));
   }
-  return { schemaVersion: "0.3.0", openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" }, reviewItems: [], policies: structuredClone(options.config.mockPolicy), endpoints, outputs: { whistle: { groupName: options.config.whistleGroupName, routes: endpoints.map((value) => ({ endpointId: value.id, apiHost: null })) }, mockoon: { port: options.config.mockoonPort, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } } };
+  return { schemaVersion: "0.3.0", openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" }, reviewItems, policies: structuredClone(options.config.mockPolicy), endpoints, outputs: { whistle: { groupName: options.config.whistleGroupName, routes: endpoints.map((value) => ({ endpointId: value.id, apiHost: null })) }, mockoon: { port: options.config.mockoonPort, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } } };
 }
-function endpoint(method, path, operation, config) {
+function endpoint(method, path, operation, config, document) {
   const operationId = operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`;
   const schema2 = successSchema(operation);
-  const scenarios = [{ name: "success-default", statusCode: 200, headers: { "Content-Type": "application/json; charset=utf-8" }, bodyTemplate: bodyTemplate(schema2), origin: "generated", enabled: true }, { name: "success-empty", statusCode: 200, headers: { "Content-Type": "application/json; charset=utf-8" }, bodyTemplate: emptyTemplate(schema2), origin: "generated", enabled: true }, { name: "error-default", statusCode: 500, headers: { "Content-Type": "application/json; charset=utf-8" }, bodyTemplate: '{\n  "code": "MOCK_ERROR"\n}', origin: "generated", enabled: true }];
-  const list = listScenarioShape(schema2);
-  if (config.mockPolicy.listScenario.enabled && list.kind !== "none" && list.kind !== "ambiguous") scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: { "Content-Type": "application/json; charset=utf-8" }, bodyTemplate: listTemplate(schema2, list.kind === "property" ? list.property : void 0, config.mockPolicy.listScenario.itemCount), origin: "generated", enabled: true });
-  return { id: `ep-${kebab(operationId)}`, operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, scenarios } };
+  const success = render(schema2, document);
+  const empty = render(schema2, document, true);
+  const list = findList(schema2, document);
+  const issues = unique([...success.issues, ...empty.issues, ...list.issues]);
+  const scenarios = [
+    { name: "success-default", statusCode: 200, headers: jsonHeaders(), bodyTemplate: success.body, origin: "generated", enabled: true },
+    { name: "success-empty", statusCode: 200, headers: jsonHeaders(), bodyTemplate: empty.body, origin: "generated", enabled: true },
+    { name: "error-default", statusCode: 500, headers: jsonHeaders(), bodyTemplate: '{\n  "code": "MOCK_ERROR"\n}', origin: "generated", enabled: true }
+  ];
+  if (config.mockPolicy.listScenario.enabled && list.location) {
+    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema2, document, list.location, config.mockPolicy.listScenario.itemCount), origin: "generated", enabled: true });
+    else issues.push("\u5217\u8868\u591A\u6761\u6210\u529F\u573A\u666F\u7684 itemCount \u5FC5\u987B\u5927\u4E8E 1\u3002");
+  }
+  return { endpoint: { id: `ep-${kebab(operationId)}`, operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, scenarios } }, issues: unique(issues) };
+}
+function jsonHeaders() {
+  return { "Content-Type": "application/json; charset=utf-8" };
 }
 function kebab(value) {
   return value.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
@@ -14415,26 +14418,68 @@ function successSchema(operation) {
   const response = Object.entries(operation.responses ?? {}).filter(([code]) => /^2\d\d$/.test(code)).sort(([left], [right]) => Number(left) - Number(right))[0]?.[1];
   return response?.content?.["application/json"]?.schema;
 }
-function bodyTemplate(schema2) {
-  if (schema2?.type === "array") return `[${bodyTemplate(schema2.items)}]`;
-  if (!schema2?.properties) return "{}";
+function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new Set()) {
+  const resolved = resolve2(input, document, seen);
+  if (!resolved.schema) return { body: "null", issues: resolved.issues };
+  const schema2 = resolved.schema;
+  if (schema2.allOf || schema2.anyOf || schema2.oneOf) return { body: "null", issues: [...resolved.issues, "\u7EC4\u5408 schema\uFF08allOf\u3001anyOf\u3001oneOf\uFF09\u65E0\u6CD5\u53EF\u9760\u63A8\u65AD\u3002"] };
+  if (schema2.enum?.length) return { body: JSON.stringify(schema2.enum[0]), issues: resolved.issues };
+  if (schema2.type === "array") {
+    if (emptyArray) return { body: "[]", issues: resolved.issues };
+    const item = render(schema2.items, document, false, seen);
+    return { body: `[${item.body}]`, issues: [...resolved.issues, ...item.issues] };
+  }
+  if (schema2.type === "object" || schema2.properties) {
+    const properties = Object.entries(schema2.properties ?? {});
+    if (properties.length === 0) return { body: "{}", issues: resolved.issues };
+    const values = properties.map(([name, value]) => {
+      const rendered = render(value, document, emptyArray, seen);
+      return { name, ...rendered };
+    });
+    return { body: `{
+  ${values.map((value) => `${JSON.stringify(value.name)}: ${value.body}`).join(",\n  ")}
+}`, issues: [...resolved.issues, ...values.flatMap((value) => value.issues)] };
+  }
+  if (schema2.type === "integer" || schema2.type === "number") return { body: "{{faker 'number.int'}}", issues: resolved.issues };
+  if (schema2.type === "boolean") return { body: "{{faker 'datatype.boolean'}}", issues: resolved.issues };
+  if (schema2.type === "string") return { body: JSON.stringify("{{faker 'string.sample'}}"), issues: resolved.issues };
+  return { body: "null", issues: [...resolved.issues, "\u6210\u529F\u54CD\u5E94\u7F3A\u5C11\u53EF\u63A8\u65AD\u7684 schema \u7C7B\u578B\u3002"] };
+}
+function resolve2(input, document, seen) {
+  if (!input) return { issues: ["\u6210\u529F\u54CD\u5E94\u7F3A\u5C11 application/json schema\u3002"] };
+  if (!input.$ref) return { schema: input, issues: [] };
+  const match = input.$ref.match(/^#\/components\/schemas\/([^/]+)$/);
+  if (!match) return { issues: [`\u65E0\u6CD5\u89E3\u6790\u975E\u672C\u5730 schema \u5F15\u7528\uFF1A${input.$ref}`] };
+  const name = match[1];
+  if (seen.has(name)) return { issues: [`\u68C0\u6D4B\u5230\u5FAA\u73AF schema \u5F15\u7528\uFF1A${name}`] };
+  const schema2 = document.components?.schemas?.[name];
+  if (!schema2) return { issues: [`\u627E\u4E0D\u5230\u672C\u5730 schema \u5F15\u7528\uFF1A${name}`] };
+  const next = new Set(seen);
+  next.add(name);
+  return resolve2(schema2, document, next);
+}
+function findList(input, document) {
+  const resolved = resolve2(input, document, /* @__PURE__ */ new Set());
+  if (!resolved.schema) return { issues: resolved.issues };
+  if (resolved.schema.type === "array") return { location: "root", issues: resolved.issues };
+  const arrays = Object.entries(resolved.schema.properties ?? {}).flatMap(([name, value]) => resolve2(value, document, /* @__PURE__ */ new Set()).schema?.type === "array" ? [name] : []);
+  return arrays.length === 1 ? { location: arrays[0], issues: resolved.issues } : arrays.length > 1 ? { issues: [...resolved.issues, "\u6210\u529F\u54CD\u5E94\u5305\u542B\u591A\u4E2A\u5217\u8868\u5C5E\u6027\uFF0C\u65E0\u6CD5\u786E\u5B9A\u591A\u6761\u6570\u636E\u573A\u666F\u3002"] } : { issues: resolved.issues };
+}
+function renderList(input, document, location, count) {
+  const resolved = resolve2(input, document, /* @__PURE__ */ new Set()).schema;
+  if (!resolved) return "null";
+  const listSchema = location === "root" ? resolved : resolve2(resolved.properties?.[location], document, /* @__PURE__ */ new Set()).schema;
+  const item = listSchema?.items;
+  const rendered = render(item, document);
+  const repeated = `[{{#repeat ${count}}}${rendered.body}{{/repeat}}]`;
+  if (location === "root") return repeated;
+  const values = Object.entries(resolved.properties ?? {}).map(([name, value]) => `${JSON.stringify(name)}: ${name === location ? repeated : render(value, document).body}`);
   return `{
-  ${Object.entries(schema2.properties).map(([name, value]) => `${JSON.stringify(name)}: ${value.type === "array" ? `[${bodyTemplate(value.items)}]` : mockTemplate(value)}`).join(",\n  ")}
+  ${values.join(",\n  ")}
 }`;
 }
-function emptyTemplate(schema2) {
-  if (schema2?.type === "array") return "[]";
-  if (!schema2?.properties) return "{}";
-  return `{
-  ${Object.entries(schema2.properties).map(([name, value]) => `${JSON.stringify(name)}: ${value.type === "array" ? "[]" : mockTemplate(value)}`).join(",\n  ")}
-}`;
-}
-function listTemplate(schema2, property, count) {
-  const item = property ? schema2?.properties?.[property]?.items : schema2?.items;
-  const array = `[{{#repeat ${count}}}${bodyTemplate(item)}{{/repeat}}]`;
-  return property ? `{
-  ${JSON.stringify(property)}: ${array}
-}` : array;
+function unique(values) {
+  return [...new Set(values)];
 }
 
 // src/artifact/read-artifact.ts
@@ -14451,7 +14496,7 @@ var mockArtifactSchema = z.object({
   schemaVersion: z.literal("0.3.0"),
   openapi: z.object({ file: z.string().min(1), sha256: z.string().min(1), origin: z.enum(["generated", "imported", "manual"]), reviewStatus: z.enum(["unreviewed", "needs-change", "confirmed"]) }).strict(),
   reviewItems: z.array(reviewItem),
-  policies: z.object({ listScenario: z.object({ enabled: z.boolean(), itemCount: z.number().int().min(1).max(1e3) }).strict() }).strict(),
+  policies: z.object({ listScenario: z.object({ enabled: z.boolean(), itemCount: z.number().int().min(2).max(1e3) }).strict() }).strict(),
   endpoints: z.array(z.object({ id: z.string().min(1), operationId: z.string().min(1), method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]), path: z.string().min(1), summary: z.string().optional(), mock: z.object({ selection: z.object({ mode: z.enum(["random", "query", "header", "manual"]), key: z.string().optional(), defaultScenario: z.string().min(1) }).strict(), scenarios: z.array(scenario) }).strict() }).strict()),
   outputs: z.object({ whistle: z.object({ groupName: z.string().min(1).nullable(), routes: z.array(z.object({ endpointId: z.string().min(1), apiHost: z.string().min(1).nullable() }).strict()) }).strict(), mockoon: z.object({ port: z.number().int().min(1).max(65535).nullable(), defaultHeaders: z.record(z.string()) }).strict() }).strict()
 }).strict();
@@ -14519,14 +14564,14 @@ function applies(item, target) {
 
 // src/utils/paths.ts
 import { realpath } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve as resolve2 } from "node:path";
+import { dirname, isAbsolute, relative, resolve as resolve3 } from "node:path";
 function assertMockoonGenPath(file) {
   const parts = file.replace(/\\/g, "/").split("/").filter(Boolean);
   if (parts.at(-2) !== "mockoon-gen") throw new Error(`Mock output must be written directly under visible mockoon-gen: ${file}`);
 }
 async function resolveMockProjectPath(cwd, file) {
   const root = await realpath(cwd);
-  const target = isAbsolute(file) ? resolve2(file) : resolve2(root, file);
+  const target = isAbsolute(file) ? resolve3(file) : resolve3(root, file);
   assertContained(root, target);
   let ancestor = target;
   while (true) {
@@ -14624,8 +14669,8 @@ function ready(artifact, sha2562, target) {
   if (!result.ready) throw new Error(pretty(result));
 }
 function mockDir(cwd, pageDir) {
-  const root = resolve3(cwd);
-  const page = isAbsolute2(pageDir) ? resolve3(pageDir) : resolve3(root, pageDir);
+  const root = resolve4(cwd);
+  const page = isAbsolute2(pageDir) ? resolve4(pageDir) : resolve4(root, pageDir);
   const path = relative2(root, page);
   if (path.startsWith("..") || isAbsolute2(path)) throw new Error("OUTPUT_PATH_OUTSIDE_PROJECT: page-dir");
   return join2(page, "mockoon-gen");
@@ -14637,7 +14682,7 @@ function artifactPath(cwd, pageDir) {
   return join2(mockDir(cwd, pageDir), "mock-artifact.json");
 }
 function inputPath(cwd, file) {
-  return isAbsolute2(file) ? file : resolve3(cwd, file);
+  return isAbsolute2(file) ? file : resolve4(cwd, file);
 }
 function pretty(value) {
   return `${JSON.stringify(value, null, 2)}

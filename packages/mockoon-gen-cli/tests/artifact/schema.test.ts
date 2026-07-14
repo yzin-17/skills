@@ -23,6 +23,7 @@ describe("mockArtifactSchema", () => {
 
   it("requires review resolutions for closed items and valid list policy counts", () => {
     expect(() => mockArtifactSchema.parse({ ...artifact, reviewItems: [{ id: "review-1", severity: "fatal", scope: "global", path: "endpoints[0]", message: "Review", resolutionStatus: "resolved" }] })).toThrow();
+    expect(() => mockArtifactSchema.parse({ ...artifact, policies: { listScenario: { enabled: true, itemCount: 1 } } })).toThrow();
     expect(() => mockArtifactSchema.parse({ ...artifact, policies: { listScenario: { enabled: true, itemCount: 1001 } } })).toThrow();
   });
 });
