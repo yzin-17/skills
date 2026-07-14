@@ -404,7 +404,7 @@ git commit -m "feat: scaffold api-code-gen skill and cli"
 - Create: `packages/api-code-gen-cli/tests/config/load-config.test.ts`
 - Copy fixture then adapt: `packages/api-code-gen-cli/tests/fixtures/openapi.user.yaml`
 
-- [ ] **Step 1: Write schema tests first**
+- [x] **Step 1: Write schema tests first**
 
 Assert:
 
@@ -415,11 +415,11 @@ Assert:
 - split output uses `splitApiOutput: true`, `directory`, files, and optional indexFile.
 - split plan rejects duplicate files, empty endpoint groups, and absolute member paths at schema/preflight boundary as appropriate.
 
-- [ ] **Step 2: Define the review model locally**
+- [x] **Step 2: Define the review model locally**
 
 Do not import review types from mockoon-gen. Use one global reviewItems array. Preserve VO fields and mapper steps required by the current generator, but turn low-confidence items into global review items instead of nested reviewStatus values.
 
-- [ ] **Step 3: Implement config parsing**
+- [x] **Step 3: Implement config parsing**
 
 Config defaults:
 
@@ -433,7 +433,7 @@ Config defaults:
 
 Reject unknown fields and type mismatches rather than merging unchecked JSON.
 
-- [ ] **Step 4: Implement OpenAPI-to-API-artifact draft generation**
+- [x] **Step 4: Implement OpenAPI-to-API-artifact draft generation**
 
 Migrate the existing DTO, VO, mapper naming and source-path behavior. Do not copy mock scenarios or Whistle fields.
 
@@ -446,14 +446,14 @@ Migrate the existing DTO, VO, mapper naming and source-path behavior. Do not cop
 Artifact OpenAPI status is confirmed only because the reviewed flag is explicit.
 Initialize the output from config, but keep it unconfirmed. Copy a non-null `apiOutput` to single-file `file` or split `directory`; otherwise use `null`. A split draft starts with `files: []` and `indexFile: null`, never with a fabricated grouping. Preflight rejects an incomplete plan, and the skill must supply and confirm the concrete plan before generation.
 
-- [ ] **Step 5: Run focused tests**
+- [x] **Step 5: Run focused tests**
 
 ```bash
 pnpm --filter api-code-gen test -- tests/artifact tests/config
 pnpm --filter api-code-gen typecheck
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/api-code-gen-cli/src/artifact packages/api-code-gen-cli/src/config packages/api-code-gen-cli/tests
