@@ -15,6 +15,8 @@ import { validateArtifact } from "./artifact/validate.js";
 import { assertApiOutputOutsideMockoonGen, loadConfig } from "./config/load-config.js";
 import { defaultConfig } from "./config/types.js";
 import { generateApiCode } from "./generators/api-code.js";
+import { syncApiCodeToArtifact } from "./generators/api-code-sync.js";
+import { sha256 } from "./generators/hash.js";
 import { generateMockoonEnvironment } from "./generators/mockoon.js";
 import { generateWhistleCliModule, generateWhistleRules } from "./generators/whistle.js";
 import { MOCKGEN_VERSION } from "./index.js";
@@ -85,7 +87,49 @@ export function createProgram(): Command {
       const targetFile = artifact.outputs.apiCode.suggestedFile || config.apiOutput;
       assertApiOutputOutsideMockoonGen(targetFile);
 
-      await writeTextFile(join(options.cwd, targetFile), generateApiCode(artifact));
+      const generatedCode = generateApiCode(artifact);
+      await writeTextFile(join(options.cwd, targetFile), generatedCode);
+      const artifactFile = resolveFromCwd(options.cwd, options.from);
+      await writeTextFile(
+        artifactFile,
+        prettyJson({
+          ...artifact,
+          outputs: {
+            ...artifact.outputs,
+            apiCode: { ...artifact.outputs.apiCode, lastGeneratedSha256: sha256(generatedCode), origin: "generated" }
+          }
+        })
+      );
+    });
+
+  program
+    .command("sync-api-code")
+    .description("Sync manually edited TypeScript API code back into api-artifact.json.")
+    .requiredOption("--from <artifact>")
+    .option("--cwd <cwd>", "Working directory", process.cwd())
+    .action(async (options: { from: string; cwd: string }) => {
+      const artifactFile = resolveFromCwd(options.cwd, options.from);
+      const artifact = await readArtifact(artifactFile);
+      const targetFile = artifact.outputs.apiCode.suggestedFile;
+      const code = await readFile(join(options.cwd, targetFile), "utf8");
+      const currentHash = sha256(code);
+
+      if (artifact.outputs.apiCode.lastGeneratedSha256 === currentHash) {
+        console.log("api.generated.ts has not changed; artifact is already synchronized.");
+        return;
+      }
+
+      const syncedArtifact = syncApiCodeToArtifact(artifact, code);
+      await writeTextFile(
+        artifactFile,
+        prettyJson({
+          ...syncedArtifact,
+          outputs: {
+            ...syncedArtifact.outputs,
+            apiCode: { ...syncedArtifact.outputs.apiCode, lastGeneratedSha256: currentHash }
+          }
+        })
+      );
     });
 
   program

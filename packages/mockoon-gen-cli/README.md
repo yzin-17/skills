@@ -70,6 +70,14 @@ That command writes `skills/mockoon-gen/bin/mockoon-gen.mjs`. The GitHub Action 
 - `<page-dir>/mockoon-gen/mockoon.json`
 - `<page-dir>/api.generated.ts` when `generateApiCode` is enabled
 
+`api.generated.ts` is emitted without file-level lint suppression or generated-file headers, so it can be linted and edited normally. After editing it, sync frontend DTO/VO and mapper changes back to the artifact with:
+
+```bash
+mockoon-gen sync-api-code --from <page-dir>/mockoon-gen/api-artifact.json
+```
+
+The artifact stores the last generated code hash in `outputs.apiCode.lastGeneratedSha256`. OpenAPI is not rewritten automatically.
+
 ## Confirmation Gates
 
 Some outputs stay pending until a human confirms them:

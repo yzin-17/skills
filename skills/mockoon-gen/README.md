@@ -60,3 +60,5 @@ Restart Codex after installation.
 - `<page-dir>/mockoon-gen/whistle.cjs`
 - `<page-dir>/mockoon-gen/mockoon.json`
 - `<page-dir>/api.generated.ts` only when API code generation is enabled.
+
+`api.generated.ts` is lintable and editable. Use `sync-api-code --from <page-dir>/mockoon-gen/api-artifact.json` after editing to sync frontend DTO/VO and mapper changes back to `api-artifact.json`; OpenAPI is not rewritten automatically. The artifact stores the last generated code hash in `outputs.apiCode.lastGeneratedSha256`.
