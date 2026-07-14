@@ -671,7 +671,7 @@ This task adds the new model without switching the existing CLI yet, keeping the
 - Create: `packages/mockoon-gen-cli/tests/mock-artifact/from-openapi.test.ts`
 - Create: `packages/mockoon-gen-cli/tests/config-v2/load-config.test.ts`
 
-- [ ] **Step 1: Write failing schema tests**
+- [x] **Step 1: Write failing schema tests**
 
 Assert schema `0.3.0`:
 
@@ -681,7 +681,7 @@ Assert schema `0.3.0`:
 - validates review resolution metadata.
 - validates list itemCount 1–1000.
 
-- [ ] **Step 2: Implement the new model in parallel**
+- [x] **Step 2: Implement the new model in parallel**
 
 Do not import types from `src/artifact`. Do not modify the old CLI yet.
 
@@ -692,7 +692,7 @@ For target applicability of mock review items:
 - output items under `outputs.whistle` apply only to Whistle.
 - ambiguous output paths are treated as applying to both.
 
-- [ ] **Step 3: Implement the reduced config**
+- [x] **Step 3: Implement the reduced config**
 
 Only:
 
@@ -704,7 +704,7 @@ Only:
 Use strict runtime parsing. Missing config returns defaults; malformed config fails.
 Reject unknown legacy or misspelled fields rather than retaining unused configuration.
 
-- [ ] **Step 4: Generate a draft mock artifact**
+- [x] **Step 4: Generate a draft mock artifact**
 
 Requirements:
 
@@ -721,7 +721,7 @@ pnpm --filter mockoon-gen test -- tests/mock-artifact tests/config-v2
 pnpm --filter mockoon-gen typecheck
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/mockoon-gen-cli/src/mock-artifact packages/mockoon-gen-cli/src/config-v2 packages/mockoon-gen-cli/tests/mock-artifact packages/mockoon-gen-cli/tests/config-v2
