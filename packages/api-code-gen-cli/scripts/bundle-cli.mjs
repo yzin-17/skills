@@ -14,5 +14,7 @@ await build({
   outfile: output,
   platform: "node",
   target: "node22",
-  banner: { js: "#!/usr/bin/env node" }
+  banner: {
+    js: 'import { createRequire as __apiCodeGenCreateRequire } from "node:module";\nconst require = __apiCodeGenCreateRequire(import.meta.url);'
+  }
 });

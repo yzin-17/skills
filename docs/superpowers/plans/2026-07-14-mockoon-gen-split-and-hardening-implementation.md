@@ -1114,18 +1114,18 @@ git commit -m "docs: split mock and api code skills"
 - Generate: `skills/api-code-gen/bin/api-code-gen.mjs`
 - Modify: root `package.json`
 
-- [ ] **Step 1: Ensure workspace build order is explicit**
+- [x] **Step 1: Ensure workspace build order is explicit**
 
 Root bundle must build `@yzin/openapi-reader` before invoking esbuild for either CLI. Do not externalize the workspace reader; each final `.mjs` must be standalone.
 
-- [ ] **Step 2: Bundle both CLIs**
+- [x] **Step 2: Bundle both CLIs**
 
 ```bash
 pnpm build
 pnpm bundle
 ```
 
-- [ ] **Step 3: Verify repository bundles**
+- [x] **Step 3: Verify repository bundles**
 
 ```bash
 node skills/mockoon-gen/bin/mockoon-gen.mjs --version
@@ -1136,14 +1136,14 @@ node skills/api-code-gen/bin/api-code-gen.mjs --help
 
 Expected versions: mock `0.2.0`, API `0.1.0`.
 
-- [ ] **Step 4: Re-run bundling and assert clean reproduction**
+- [x] **Step 4: Re-run bundling and assert clean reproduction**
 
 ```bash
 pnpm bundle
 git diff --exit-code -- skills/mockoon-gen/bin/mockoon-gen.mjs skills/api-code-gen/bin/api-code-gen.mjs
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json packages/mockoon-gen-cli/scripts packages/api-code-gen-cli/scripts skills/mockoon-gen/bin skills/api-code-gen/bin

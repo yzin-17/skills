@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { createRequire as __mockoonGenCreateRequire } from "node:module";
-const require = __mockoonGenCreateRequire(import.meta.url);
+import { createRequire as __apiCodeGenCreateRequire } from "node:module";
+const require = __apiCodeGenCreateRequire(import.meta.url);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -3780,7 +3780,7 @@ var require_createNode = __commonJS({
       if (value instanceof String || value instanceof Number || value instanceof Boolean || typeof BigInt !== "undefined" && value instanceof BigInt) {
         value = value.valueOf();
       }
-      const { aliasDuplicateObjects, onAnchor, onTagObj, schema: schema2, sourceObjects } = ctx;
+      const { aliasDuplicateObjects, onAnchor, onTagObj, schema, sourceObjects } = ctx;
       let ref = void 0;
       if (aliasDuplicateObjects && value && typeof value === "object") {
         ref = sourceObjects.get(value);
@@ -3794,7 +3794,7 @@ var require_createNode = __commonJS({
       }
       if (tagName?.startsWith("!!"))
         tagName = defaultTagPrefix + tagName.slice(2);
-      let tagObj = findTagObject(value, tagName, schema2.tags);
+      let tagObj = findTagObject(value, tagName, schema.tags);
       if (!tagObj) {
         if (value && typeof value.toJSON === "function") {
           value = value.toJSON();
@@ -3805,7 +3805,7 @@ var require_createNode = __commonJS({
             ref.node = node2;
           return node2;
         }
-        tagObj = value instanceof Map ? schema2[identity.MAP] : Symbol.iterator in Object(value) ? schema2[identity.SEQ] : schema2[identity.MAP];
+        tagObj = value instanceof Map ? schema[identity.MAP] : Symbol.iterator in Object(value) ? schema[identity.SEQ] : schema[identity.MAP];
       }
       if (onTagObj) {
         onTagObj(tagObj);
@@ -3831,7 +3831,7 @@ var require_Collection = __commonJS({
     var createNode = require_createNode();
     var identity = require_identity();
     var Node = require_Node();
-    function collectionFromPath(schema2, path, value) {
+    function collectionFromPath(schema, path, value) {
       let v = value;
       for (let i = path.length - 1; i >= 0; --i) {
         const k = path[i];
@@ -3849,16 +3849,16 @@ var require_Collection = __commonJS({
         onAnchor: () => {
           throw new Error("This should not happen, please report a bug.");
         },
-        schema: schema2,
+        schema,
         sourceObjects: /* @__PURE__ */ new Map()
       });
     }
     var isEmptyPath = (path) => path == null || typeof path === "object" && !!path[Symbol.iterator]().next().done;
     var Collection = class extends Node.NodeBase {
-      constructor(type, schema2) {
+      constructor(type, schema) {
         super(type);
         Object.defineProperty(this, "schema", {
-          value: schema2,
+          value: schema,
           configurable: true,
           enumerable: false,
           writable: true
@@ -3869,11 +3869,11 @@ var require_Collection = __commonJS({
        *
        * @param schema - If defined, overwrites the original's schema
        */
-      clone(schema2) {
+      clone(schema) {
         const copy = Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
-        if (schema2)
-          copy.schema = schema2;
-        copy.items = copy.items.map((it) => identity.isNode(it) || identity.isPair(it) ? it.clone(schema2) : it);
+        if (schema)
+          copy.schema = schema;
+        copy.items = copy.items.map((it) => identity.isNode(it) || identity.isPair(it) ? it.clone(schema) : it);
         if (this.range)
           copy.range = this.range.slice();
         return copy;
@@ -4825,12 +4825,12 @@ var require_Pair = __commonJS({
         this.key = key;
         this.value = value;
       }
-      clone(schema2) {
+      clone(schema) {
         let { key, value } = this;
         if (identity.isNode(key))
-          key = key.clone(schema2);
+          key = key.clone(schema);
         if (identity.isNode(value))
-          value = value.clone(schema2);
+          value = value.clone(schema);
         return new _Pair(key, value);
       }
       toJSON(_, ctx) {
@@ -5023,17 +5023,17 @@ var require_YAMLMap = __commonJS({
       static get tagName() {
         return "tag:yaml.org,2002:map";
       }
-      constructor(schema2) {
-        super(identity.MAP, schema2);
+      constructor(schema) {
+        super(identity.MAP, schema);
         this.items = [];
       }
       /**
        * A generic collection parsing method that can be extended
        * to other node classes that inherit from YAMLMap
        */
-      static from(schema2, obj, ctx) {
+      static from(schema, obj, ctx) {
         const { keepUndefined, replacer } = ctx;
-        const map = new this(schema2);
+        const map = new this(schema);
         const add = (key, value) => {
           if (typeof replacer === "function")
             value = replacer.call(obj, key, value);
@@ -5049,8 +5049,8 @@ var require_YAMLMap = __commonJS({
           for (const key of Object.keys(obj))
             add(key, obj[key]);
         }
-        if (typeof schema2.sortMapEntries === "function") {
-          map.items.sort(schema2.sortMapEntries);
+        if (typeof schema.sortMapEntries === "function") {
+          map.items.sort(schema.sortMapEntries);
         }
         return map;
       }
@@ -5157,7 +5157,7 @@ var require_map = __commonJS({
           onError("Expected a mapping for this tag");
         return map2;
       },
-      createNode: (schema2, obj, ctx) => YAMLMap.YAMLMap.from(schema2, obj, ctx)
+      createNode: (schema, obj, ctx) => YAMLMap.YAMLMap.from(schema, obj, ctx)
     };
     exports.map = map;
   }
@@ -5177,8 +5177,8 @@ var require_YAMLSeq = __commonJS({
       static get tagName() {
         return "tag:yaml.org,2002:seq";
       }
-      constructor(schema2) {
-        super(identity.SEQ, schema2);
+      constructor(schema) {
+        super(identity.SEQ, schema);
         this.items = [];
       }
       add(value) {
@@ -5253,9 +5253,9 @@ var require_YAMLSeq = __commonJS({
           onComment
         });
       }
-      static from(schema2, obj, ctx) {
+      static from(schema, obj, ctx) {
         const { replacer } = ctx;
-        const seq = new this(schema2);
+        const seq = new this(schema);
         if (obj && Symbol.iterator in Object(obj)) {
           let i = 0;
           for (let it of obj) {
@@ -5295,7 +5295,7 @@ var require_seq = __commonJS({
           onError("Expected a sequence for this tag");
         return seq2;
       },
-      createNode: (schema2, obj, ctx) => YAMLSeq.YAMLSeq.from(schema2, obj, ctx)
+      createNode: (schema, obj, ctx) => YAMLSeq.YAMLSeq.from(schema, obj, ctx)
     };
     exports.seq = seq;
   }
@@ -5491,7 +5491,7 @@ var require_schema = __commonJS({
     var bool = require_bool();
     var float = require_float();
     var int = require_int();
-    var schema2 = [
+    var schema = [
       map.map,
       seq.seq,
       string.string,
@@ -5504,7 +5504,7 @@ var require_schema = __commonJS({
       float.floatExp,
       float.float
     ];
-    exports.schema = schema2;
+    exports.schema = schema;
   }
 });
 
@@ -5570,8 +5570,8 @@ var require_schema2 = __commonJS({
         return str;
       }
     };
-    var schema2 = [map.map, seq.seq].concat(jsonScalars, jsonError);
-    exports.schema = schema2;
+    var schema = [map.map, seq.seq].concat(jsonScalars, jsonError);
+    exports.schema = schema;
   }
 });
 
@@ -5675,9 +5675,9 @@ ${cn.comment}` : item.comment;
         onError("Expected a sequence for this tag");
       return seq;
     }
-    function createPairs(schema2, iterable, ctx) {
+    function createPairs(schema, iterable, ctx) {
       const { replacer } = ctx;
-      const pairs2 = new YAMLSeq.YAMLSeq(schema2);
+      const pairs2 = new YAMLSeq.YAMLSeq(schema);
       pairs2.tag = "tag:yaml.org,2002:pairs";
       let i = 0;
       if (iterable && Symbol.iterator in Object(iterable))
@@ -5762,8 +5762,8 @@ var require_omap = __commonJS({
         }
         return map;
       }
-      static from(schema2, iterable, ctx) {
-        const pairs$1 = pairs.createPairs(schema2, iterable, ctx);
+      static from(schema, iterable, ctx) {
+        const pairs$1 = pairs.createPairs(schema, iterable, ctx);
         const omap2 = new this();
         omap2.items = pairs$1.items;
         return omap2;
@@ -5790,7 +5790,7 @@ var require_omap = __commonJS({
         }
         return Object.assign(new YAMLOMap(), pairs$1);
       },
-      createNode: (schema2, iterable, ctx) => YAMLOMap.from(schema2, iterable, ctx)
+      createNode: (schema, iterable, ctx) => YAMLOMap.from(schema, iterable, ctx)
     };
     exports.YAMLOMap = YAMLOMap;
     exports.omap = omap;
@@ -5965,8 +5965,8 @@ var require_set = __commonJS({
     var Pair = require_Pair();
     var YAMLMap = require_YAMLMap();
     var YAMLSet = class _YAMLSet extends YAMLMap.YAMLMap {
-      constructor(schema2) {
-        super(schema2);
+      constructor(schema) {
+        super(schema);
         this.tag = _YAMLSet.tag;
       }
       add(key) {
@@ -6010,9 +6010,9 @@ var require_set = __commonJS({
         else
           throw new Error("Set items must all have null values");
       }
-      static from(schema2, iterable, ctx) {
+      static from(schema, iterable, ctx) {
         const { replacer } = ctx;
-        const set2 = new this(schema2);
+        const set2 = new this(schema);
         if (iterable && Symbol.iterator in Object(iterable))
           for (let value of iterable) {
             if (typeof replacer === "function")
@@ -6029,7 +6029,7 @@ var require_set = __commonJS({
       nodeClass: YAMLSet,
       default: false,
       tag: "tag:yaml.org,2002:set",
-      createNode: (schema2, iterable, ctx) => YAMLSet.from(schema2, iterable, ctx),
+      createNode: (schema, iterable, ctx) => YAMLSet.from(schema, iterable, ctx),
       resolve(map, onError) {
         if (identity.isMap(map)) {
           if (map.hasAllNullValues(true))
@@ -6151,7 +6151,7 @@ var require_schema3 = __commonJS({
     var pairs = require_pairs();
     var set = require_set();
     var timestamp = require_timestamp();
-    var schema2 = [
+    var schema = [
       map.map,
       seq.seq,
       string.string,
@@ -6174,7 +6174,7 @@ var require_schema3 = __commonJS({
       timestamp.floatTime,
       timestamp.timestamp
     ];
-    exports.schema = schema2;
+    exports.schema = schema;
   }
 });
 
@@ -6189,7 +6189,7 @@ var require_tags = __commonJS({
     var bool = require_bool();
     var float = require_float();
     var int = require_int();
-    var schema2 = require_schema();
+    var schema = require_schema();
     var schema$1 = require_schema2();
     var binary = require_binary();
     var merge = require_merge();
@@ -6199,7 +6199,7 @@ var require_tags = __commonJS({
     var set = require_set();
     var timestamp = require_timestamp();
     var schemas = /* @__PURE__ */ new Map([
-      ["core", schema2.schema],
+      ["core", schema.schema],
       ["failsafe", [map.map, seq.seq, string.string]],
       ["json", schema$1.schema],
       ["yaml11", schema$2.schema],
@@ -6283,9 +6283,9 @@ var require_Schema = __commonJS({
     var tags = require_tags();
     var sortMapEntriesByKey = (a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
     var Schema = class _Schema {
-      constructor({ compat, customTags, merge, resolveKnownTags, schema: schema2, sortMapEntries, toStringDefaults }) {
+      constructor({ compat, customTags, merge, resolveKnownTags, schema, sortMapEntries, toStringDefaults }) {
         this.compat = Array.isArray(compat) ? tags.getTags(compat, "compat") : compat ? tags.getTags(null, compat) : null;
-        this.name = typeof schema2 === "string" && schema2 || "core";
+        this.name = typeof schema === "string" && schema || "core";
         this.knownTags = resolveKnownTags ? tags.coreKnownTags : {};
         this.tags = tags.getTags(customTags, this.name, merge);
         this.toStringOptions = toStringDefaults ?? null;
@@ -7873,11 +7873,11 @@ var require_compose_scalar = __commonJS({
         scalar.comment = comment;
       return scalar;
     }
-    function findScalarTagByName(schema2, value, tagName, tagToken, onError) {
+    function findScalarTagByName(schema, value, tagName, tagToken, onError) {
       if (tagName === "!")
-        return schema2[identity.SCALAR];
+        return schema[identity.SCALAR];
       const matchWithTest = [];
-      for (const tag of schema2.tags) {
+      for (const tag of schema.tags) {
         if (!tag.collection && tag.tag === tagName) {
           if (tag.default && tag.test)
             matchWithTest.push(tag);
@@ -7888,18 +7888,18 @@ var require_compose_scalar = __commonJS({
       for (const tag of matchWithTest)
         if (tag.test?.test(value))
           return tag;
-      const kt = schema2.knownTags[tagName];
+      const kt = schema.knownTags[tagName];
       if (kt && !kt.collection) {
-        schema2.tags.push(Object.assign({}, kt, { default: false, test: void 0 }));
+        schema.tags.push(Object.assign({}, kt, { default: false, test: void 0 }));
         return kt;
       }
       onError(tagToken, "TAG_RESOLVE_FAILED", `Unresolved tag: ${tagName}`, tagName !== "tag:yaml.org,2002:str");
-      return schema2[identity.SCALAR];
+      return schema[identity.SCALAR];
     }
-    function findScalarTagByTest({ atKey, directives, schema: schema2 }, value, token, onError) {
-      const tag = schema2.tags.find((tag2) => (tag2.default === true || atKey && tag2.default === "key") && tag2.test?.test(value)) || schema2[identity.SCALAR];
-      if (schema2.compat) {
-        const compat = schema2.compat.find((tag2) => tag2.default && tag2.test?.test(value)) ?? schema2[identity.SCALAR];
+    function findScalarTagByTest({ atKey, directives, schema }, value, token, onError) {
+      const tag = schema.tags.find((tag2) => (tag2.default === true || atKey && tag2.default === "key") && tag2.test?.test(value)) || schema[identity.SCALAR];
+      if (schema.compat) {
+        const compat = schema.compat.find((tag2) => tag2.default && tag2.test?.test(value)) ?? schema[identity.SCALAR];
         if (tag.tag !== compat.tag) {
           const ts = directives.tagString(tag.tag);
           const cs = directives.tagString(compat.tag);
@@ -10353,9 +10353,9 @@ var require_dist = __commonJS({
   }
 });
 
-// src/cli.ts
+// dist/src/cli.js
 import { existsSync, realpathSync } from "node:fs";
-import { dirname as dirname3, isAbsolute as isAbsolute2, join as join2, relative as relative2, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute3, join as join3, relative as relative3, resolve as resolve4 } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // ../../node_modules/.pnpm/commander@12.1.0/node_modules/commander/esm.mjs
@@ -10375,40 +10375,98 @@ var {
   Help
 } = import_index.default;
 
-// ../openapi-reader/dist/src/hash.js
-import { createHash } from "node:crypto";
-function sha256(input) {
-  return createHash("sha256").update(input).digest("hex");
-}
-
-// ../openapi-reader/dist/src/load-openapi.js
-var import_yaml = __toESM(require_dist(), 1);
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
-async function loadOpenApi(file) {
-  const normalizedFile = resolve(file);
-  const raw = await readFile(normalizedFile);
-  const document = import_yaml.default.parse(raw.toString("utf8"));
-  if (!isPlainObject(document) || typeof document.openapi !== "string" || !isPlainObject(document.paths)) {
-    throw new Error(`Invalid OpenAPI document: ${normalizedFile}`);
-  }
-  for (const pathItem of Object.values(document.paths)) {
-    if (!isPlainObject(pathItem)) {
-      throw new Error(`Invalid OpenAPI document: ${normalizedFile}`);
+// dist/src/artifact/from-openapi.js
+var HTTP_METHODS = ["get", "post", "put", "patch", "delete"];
+function artifactFromOpenApi(openapi, options) {
+  const endpoints = [];
+  for (const [path, pathItem] of Object.entries(openapi.document.paths)) {
+    for (const method of HTTP_METHODS) {
+      const operation = pathItem[method];
+      if (operation)
+        endpoints.push(endpointFromOperation(method.toUpperCase(), path, operation));
     }
   }
   return {
-    file: normalizedFile,
-    sha256: sha256(raw),
-    document
+    schemaVersion: "0.1.0",
+    openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" },
+    reviewItems: [],
+    endpoints,
+    output: options.config.splitApiOutput ? { splitApiOutput: true, directory: options.config.apiOutput, files: [], indexFile: null, transformResponse: options.config.transformResponse, reviewStatus: "unreviewed" } : { splitApiOutput: false, file: options.config.apiOutput, transformResponse: options.config.transformResponse, reviewStatus: "unreviewed" }
   };
 }
-function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function endpointFromOperation(method, path, operation) {
+  const operationId = operation.operationId ?? operationIdFrom(method, path);
+  const responseSchema = operation.responses?.["200"]?.content?.["application/json"]?.schema;
+  const fieldNames = Object.keys(responseSchema?.properties ?? {});
+  const identifiers = createFieldIdentifiers(fieldNames);
+  const pascalName = pascal(operationId);
+  const steps = fieldNames.map((field, index) => {
+    const name = identifiers.get(field) ?? `field${index + 1}`;
+    return { id: `step-${String(index + 1).padStart(3, "0")}`, order: index + 1, operation: "rename", inputs: [responseBodyPath(field)], output: `vo.${name}`, params: {}, description: `Map ${field} to ${name}`, confidence: "medium" };
+  });
+  return {
+    id: `ep-${kebab(operationId)}`,
+    operationId,
+    method,
+    path,
+    summary: operation.summary,
+    dto: { response: `${pascalName}ResponseDTO` },
+    vo: { name: `${pascalName}VO`, fields: fieldNames.map((field, index) => {
+      const name = identifiers.get(field) ?? `field${index + 1}`;
+      return { name, type: tsType(responseSchema?.properties?.[field]), sources: [{ path: responseBodyPath(field), role: name }], confidence: "medium", origin: "inferred", description: operation.summary, reason: `Generated from response field ${field}` };
+    }) },
+    mapper: { name: `to${pascalName}VO`, enabled: true, steps }
+  };
+}
+function responseBodyPath(field) {
+  return /^[A-Za-z_$][0-9A-Za-z_$]*$/.test(field) ? `response.body.${field}` : `response.body[${JSON.stringify(field)}]`;
+}
+function createFieldIdentifiers(fields) {
+  const result = /* @__PURE__ */ new Map();
+  const used = /* @__PURE__ */ new Set();
+  for (const [index, field] of fields.entries()) {
+    const base = sanitizeIdentifier(field, `field${index + 1}`);
+    let candidate = base;
+    let suffix = 2;
+    while (used.has(candidate))
+      candidate = `${base}${suffix++}`;
+    used.add(candidate);
+    result.set(field, candidate);
+  }
+  return result;
+}
+function sanitizeIdentifier(value, fallback) {
+  const normalized = camel(value.replace(/[^A-Za-z0-9_$]+/g, "_"));
+  const candidate = normalized || fallback;
+  return /^[A-Za-z_$]/.test(candidate) ? candidate : `_${candidate}`;
+}
+function camel(value) {
+  return value.replace(/[_-]+(.)?/g, (_, next) => next ? next.toUpperCase() : "");
+}
+function pascal(value) {
+  const normalized = camel(value);
+  return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : "Endpoint";
+}
+function kebab(value) {
+  return value.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+}
+function operationIdFrom(method, path) {
+  return `${method.toLowerCase()}${path.split("/").filter(Boolean).map((part) => part.startsWith("{") ? "By" + pascal(part.slice(1, -1)) : pascal(part)).join("")}`;
+}
+function tsType(schema) {
+  if (schema?.enum?.length)
+    return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
+  if (schema?.type === "integer" || schema?.type === "number")
+    return "number";
+  if (schema?.type === "boolean")
+    return "boolean";
+  if (schema?.type === "array")
+    return `${tsType(schema.items)}[]`;
+  return "string";
 }
 
-// src/config-v2/load-config.ts
-import { readFile as readFile2 } from "node:fs/promises";
+// dist/src/artifact/read-artifact.js
+import { readFile } from "node:fs/promises";
 
 // ../../node_modules/.pnpm/zod@3.23.8/node_modules/zod/lib/index.mjs
 var util;
@@ -12496,9 +12554,9 @@ var ZodArray = class _ZodArray extends ZodType {
     return this.min(1, message);
   }
 };
-ZodArray.create = (schema2, params) => {
+ZodArray.create = (schema, params) => {
   return new ZodArray({
-    type: schema2,
+    type: schema,
     minLength: null,
     maxLength: null,
     exactLength: null,
@@ -12506,30 +12564,30 @@ ZodArray.create = (schema2, params) => {
     ...processCreateParams(params)
   });
 };
-function deepPartialify(schema2) {
-  if (schema2 instanceof ZodObject) {
+function deepPartialify(schema) {
+  if (schema instanceof ZodObject) {
     const newShape = {};
-    for (const key in schema2.shape) {
-      const fieldSchema = schema2.shape[key];
+    for (const key in schema.shape) {
+      const fieldSchema = schema.shape[key];
       newShape[key] = ZodOptional.create(deepPartialify(fieldSchema));
     }
     return new ZodObject({
-      ...schema2._def,
+      ...schema._def,
       shape: () => newShape
     });
-  } else if (schema2 instanceof ZodArray) {
+  } else if (schema instanceof ZodArray) {
     return new ZodArray({
-      ...schema2._def,
-      type: deepPartialify(schema2.element)
+      ...schema._def,
+      type: deepPartialify(schema.element)
     });
-  } else if (schema2 instanceof ZodOptional) {
-    return ZodOptional.create(deepPartialify(schema2.unwrap()));
-  } else if (schema2 instanceof ZodNullable) {
-    return ZodNullable.create(deepPartialify(schema2.unwrap()));
-  } else if (schema2 instanceof ZodTuple) {
-    return ZodTuple.create(schema2.items.map((item) => deepPartialify(item)));
+  } else if (schema instanceof ZodOptional) {
+    return ZodOptional.create(deepPartialify(schema.unwrap()));
+  } else if (schema instanceof ZodNullable) {
+    return ZodNullable.create(deepPartialify(schema.unwrap()));
+  } else if (schema instanceof ZodTuple) {
+    return ZodTuple.create(schema.items.map((item) => deepPartialify(item)));
   } else {
-    return schema2;
+    return schema;
   }
 }
 var ZodObject = class _ZodObject extends ZodType {
@@ -12745,8 +12803,8 @@ var ZodObject = class _ZodObject extends ZodType {
   //   }) as any;
   //   return merged;
   // }
-  setKey(key, schema2) {
-    return this.augment({ [key]: schema2 });
+  setKey(key, schema) {
+    return this.augment({ [key]: schema });
   }
   // merge<Incoming extends AnyZodObject>(
   //   merging: Incoming
@@ -13192,10 +13250,10 @@ var ZodTuple = class _ZodTuple extends ZodType {
       status.dirty();
     }
     const items = [...ctx.data].map((item, itemIndex) => {
-      const schema2 = this._def.items[itemIndex] || this._def.rest;
-      if (!schema2)
+      const schema = this._def.items[itemIndex] || this._def.rest;
+      if (!schema)
         return null;
-      return schema2._parse(new ParseInputLazyPath(ctx, item, ctx.path, itemIndex));
+      return schema._parse(new ParseInputLazyPath(ctx, item, ctx.path, itemIndex));
     }).filter((x) => !!x);
     if (ctx.common.async) {
       return Promise.all(items).then((results) => {
@@ -13729,9 +13787,9 @@ var ZodPromise = class extends ZodType {
     }));
   }
 };
-ZodPromise.create = (schema2, params) => {
+ZodPromise.create = (schema, params) => {
   return new ZodPromise({
-    type: schema2,
+    type: schema,
     typeName: ZodFirstPartyTypeKind.ZodPromise,
     ...processCreateParams(params)
   });
@@ -13856,17 +13914,17 @@ var ZodEffects = class extends ZodType {
     util.assertNever(effect);
   }
 };
-ZodEffects.create = (schema2, effect, params) => {
+ZodEffects.create = (schema, effect, params) => {
   return new ZodEffects({
-    schema: schema2,
+    schema,
     typeName: ZodFirstPartyTypeKind.ZodEffects,
     effect,
     ...processCreateParams(params)
   });
 };
-ZodEffects.createWithPreprocess = (preprocess, schema2, params) => {
+ZodEffects.createWithPreprocess = (preprocess, schema, params) => {
   return new ZodEffects({
-    schema: schema2,
+    schema,
     effect: { type: "preprocess", transform: preprocess },
     typeName: ZodFirstPartyTypeKind.ZodEffects,
     ...processCreateParams(params)
@@ -14101,13 +14159,13 @@ ZodReadonly.create = (type, params) => {
     ...processCreateParams(params)
   });
 };
-function custom(check, params = {}, fatal3) {
+function custom(check, params = {}, fatal2) {
   if (check)
     return ZodAny.create().superRefine((data, ctx) => {
       var _a, _b;
       if (!check(data)) {
         const p = typeof params === "function" ? params(data) : typeof params === "string" ? { message: params } : params;
-        const _fatal = (_b = (_a = p.fatal) !== null && _a !== void 0 ? _a : fatal3) !== null && _b !== void 0 ? _b : true;
+        const _fatal = (_b = (_a = p.fatal) !== null && _a !== void 0 ? _a : fatal2) !== null && _b !== void 0 ? _b : true;
         const p2 = typeof p === "string" ? { message: p } : p;
         ctx.addIssue({ code: "custom", ...p2, fatal: _fatal });
       }
@@ -14324,338 +14382,708 @@ var z = /* @__PURE__ */ Object.freeze({
   ZodError
 });
 
-// src/config-v2/types.ts
-var defaultMockConfig = { mockoonPort: null, whistleGroupName: null, mockPolicy: { listScenario: { enabled: true, itemCount: 20 } } };
+// dist/src/artifact/schema.js
+var reviewStatus = z.enum(["unreviewed", "needs-change", "confirmed"]);
+var confidence = z.enum(["high", "medium", "low"]);
+var memberPath = z.string().min(1).refine((value) => !isUnsafeMemberPath(value), "member path must be relative and contained");
+var reviewItem = z.object({
+  id: z.string().min(1),
+  severity: z.enum(["fatal", "needsReview", "warning"]),
+  scope: z.enum(["global", "openapi", "endpoint", "field", "mapper", "output"]),
+  path: z.string().min(1),
+  message: z.string().min(1),
+  suggestion: z.string().optional(),
+  resolutionStatus: z.enum(["open", "resolved", "ignored"]),
+  resolution: z.object({ reason: z.string().min(1), resolvedBy: z.enum(["human", "api-code-gen-skill"]), resolvedAt: z.string().min(1) }).strict().optional()
+}).strict().superRefine((item, context) => {
+  if (item.resolutionStatus === "open" && item.resolution)
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "open review items cannot have a resolution" });
+  if (item.resolutionStatus !== "open" && !item.resolution)
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "closed review items require a resolution" });
+});
+var endpoint = z.object({
+  id: z.string().min(1),
+  operationId: z.string().min(1),
+  method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]),
+  path: z.string().min(1),
+  summary: z.string().optional(),
+  dto: z.object({ request: z.string().optional(), response: z.string().min(1) }).strict(),
+  vo: z.object({ name: z.string().min(1), fields: z.array(z.object({ name: z.string().min(1), type: z.string().min(1), sources: z.array(z.object({ path: z.string().min(1), role: z.string().optional() }).strict()), confidence, origin: z.enum(["generated", "inferred", "manual"]), description: z.string().optional(), reason: z.string().optional() }).strict()) }).strict(),
+  mapper: z.object({ name: z.string().min(1), enabled: z.boolean(), steps: z.array(z.object({ id: z.string().min(1), order: z.number().int().nonnegative(), operation: z.enum(["concat", "rename", "enum-label", "date-format", "amount-unit", "default-value", "assign", "custom"]), inputs: z.array(z.string()), output: z.string().min(1), params: z.record(z.unknown()), description: z.string().optional(), confidence }).strict()) }).strict()
+}).strict();
+var singleOutput = z.object({ splitApiOutput: z.literal(false), file: z.string().min(1).nullable(), transformResponse: z.boolean(), reviewStatus }).strict();
+var splitOutput = z.object({ splitApiOutput: z.literal(true), directory: z.string().min(1).nullable(), files: z.array(z.object({ file: memberPath, endpointIds: z.array(z.string().min(1)).min(1) }).strict()), indexFile: memberPath.nullable(), transformResponse: z.boolean(), reviewStatus }).strict().superRefine((output, context) => {
+  const files = /* @__PURE__ */ new Set();
+  for (const entry of output.files) {
+    if (files.has(entry.file))
+      context.addIssue({ code: z.ZodIssueCode.custom, message: "split output files must be unique" });
+    files.add(entry.file);
+  }
+});
+var artifactSchema = z.object({
+  schemaVersion: z.literal("0.1.0"),
+  openapi: z.object({ file: z.string().min(1), sha256: z.string().min(1), origin: z.enum(["imported", "manual"]), reviewStatus }).strict(),
+  reviewItems: z.array(reviewItem),
+  endpoints: z.array(endpoint),
+  output: z.union([singleOutput, splitOutput])
+}).strict();
+function isUnsafeMemberPath(value) {
+  return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value) || value.replace(/\\/g, "/").split("/").includes("..");
+}
 
-// src/config-v2/load-config.ts
-var schema = z.object({ mockoonPort: z.number().int().min(1).max(65535).nullable().default(null), whistleGroupName: z.string().min(1).nullable().default(null), mockPolicy: z.object({ listScenario: z.object({ enabled: z.boolean().default(true), itemCount: z.number().int().min(1).max(1e3).default(20) }).strict().default({ enabled: true, itemCount: 20 }) }).strict().default({ listScenario: { enabled: true, itemCount: 20 } }) }).strict();
-async function loadMockConfig(file) {
+// dist/src/artifact/read-artifact.js
+async function readArtifact(file) {
+  return artifactSchema.parse(JSON.parse(await readFile(file, "utf8")));
+}
+
+// dist/src/config/load-config.js
+import { readFile as readFile2 } from "node:fs/promises";
+
+// dist/src/config/types.js
+var defaultConfig = { apiOutput: null, splitApiOutput: false, transformResponse: true };
+
+// dist/src/config/load-config.js
+var configSchema = z.object({ apiOutput: z.string().min(1).nullable().default(null), splitApiOutput: z.boolean().default(false), transformResponse: z.boolean().default(true) }).strict();
+async function loadConfig(file) {
   try {
-    return schema.parse(JSON.parse(await readFile2(file, "utf8")));
+    return configSchema.parse(JSON.parse(await readFile2(file, "utf8")));
   } catch (error) {
-    if (error.code === "ENOENT") return structuredClone(defaultMockConfig);
+    if (error.code === "ENOENT")
+      return { ...defaultConfig };
     throw error;
   }
 }
 
-// src/generators/mockoon-v3.ts
-function generateMockoonV3(artifact) {
-  if (artifact.outputs.mockoon.port === null) throw new Error("Mockoon port is required.");
-  return { uuid: "mockoon-gen-env", lastMigration: 32, name: "mockoon-gen", endpointPrefix: "", latency: 0, port: artifact.outputs.mockoon.port, routes: artifact.endpoints.map((endpoint2) => ({ uuid: endpoint2.id, method: endpoint2.method.toLowerCase(), endpoint: endpoint2.path.replace(/^\//, "").replace(/\{([^}]+)\}/g, ":$1"), enabled: true, responses: endpoint2.mock.scenarios.filter((scenario2) => scenario2.enabled).map((scenario2) => ({ uuid: `${endpoint2.id}-${scenario2.name}`, body: scenario2.bodyTemplate, latency: 0, statusCode: scenario2.statusCode, label: scenario2.name, headers: Object.entries({ ...artifact.outputs.mockoon.defaultHeaders, ...scenario2.headers }).map(([key, value]) => ({ key, value })) })) })) };
+// dist/src/generators/output-files.js
+import { dirname, join, normalize } from "node:path";
+
+// dist/src/generators/api-code.js
+var RESPONSE_BODY_PREFIX = "response.body";
+var REQUEST_DECLARATION = "declare function request<T>(path: string, options?: { method?: string; body?: unknown }): Promise<T>;";
+var TYPESCRIPT_RESERVED_WORDS = /* @__PURE__ */ new Set([
+  "abstract",
+  "any",
+  "as",
+  "asserts",
+  "async",
+  "await",
+  "bigint",
+  "boolean",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "declare",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "from",
+  "function",
+  "get",
+  "if",
+  "implements",
+  "import",
+  "in",
+  "infer",
+  "instanceof",
+  "interface",
+  "is",
+  "keyof",
+  "let",
+  "module",
+  "namespace",
+  "never",
+  "new",
+  "null",
+  "number",
+  "object",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "readonly",
+  "require",
+  "global",
+  "return",
+  "set",
+  "static",
+  "string",
+  "super",
+  "switch",
+  "symbol",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "type",
+  "typeof",
+  "undefined",
+  "unique",
+  "unknown",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield"
+]);
+function generateApiCode(artifact) {
+  const body = [
+    REQUEST_DECLARATION,
+    "",
+    ...artifact.endpoints.flatMap((endpoint2) => generateEndpoint(endpoint2, artifact.output.transformResponse))
+  ].join("\n");
+  return `${body}
+`;
+}
+function generateEndpoint(endpoint2, transformResponse) {
+  const dto = endpoint2.dto.response;
+  const vo = endpoint2.vo.name;
+  const mapper = endpoint2.mapper.name;
+  const responseType = transformResponse ? vo : dto;
+  const dtoShape = buildDtoShape(endpoint2);
+  const pathParams = extractPathParams(endpoint2.path);
+  const pathParamNames = generatePathParamNames(pathParams);
+  const requestPath = generateRequestPath(endpoint2.path, pathParamNames);
+  return [
+    `export interface ${dto} {`,
+    ...generateDtoShapeLines(dtoShape, 1),
+    "}",
+    "",
+    `export interface ${vo} {`,
+    ...endpoint2.vo.fields.map((field) => `  ${field.name}: ${field.type};`),
+    "}",
+    "",
+    `export function ${mapper}(dto: ${dto}): ${vo} {`,
+    `  const vo = {} as ${vo};`,
+    ...endpoint2.mapper.steps.slice().sort((left, right) => left.order - right.order).map((step) => generateMapperStep(step, mapper)),
+    "  return vo;",
+    "}",
+    "",
+    `export async function ${endpoint2.operationId}(${generatePathParamSignature(pathParamNames)}): Promise<${responseType}> {`,
+    requestPath ? `  const path = ${requestPath};` : "",
+    transformResponse ? `  const dto = await request<${dto}>(${requestPath ? "path" : `"${endpoint2.path}"`}, { method: "${endpoint2.method}" });` : `  return request<${dto}>(${requestPath ? "path" : `"${endpoint2.path}"`}, { method: "${endpoint2.method}" });`,
+    transformResponse ? `  return ${mapper}(dto);` : "",
+    "}",
+    ""
+  ].filter((line) => line !== "");
+}
+function generateMapperStep(step, mapperName) {
+  if (step.operation === "rename" || step.operation === "assign") {
+    return `  ${step.output} = ${sourcePathToAccessor(step.inputs[0]) ?? "undefined"};`;
+  }
+  return `  throw new Error("api-code-gen needsReview: Unsupported mapper operation ${step.operation} in ${mapperName}");`;
+}
+function buildDtoShape(endpoint2) {
+  const root = { children: /* @__PURE__ */ new Map() };
+  for (const field of endpoint2.vo.fields) {
+    const sourcePath = field.sources[0]?.path;
+    const segments = parseResponseBodyPath(sourcePath);
+    if (!segments) {
+      continue;
+    }
+    if (segments.length === 0) {
+      continue;
+    }
+    let current = root;
+    for (const segment of segments) {
+      let child = current.children.get(segment);
+      if (!child) {
+        child = { children: /* @__PURE__ */ new Map() };
+        current.children.set(segment, child);
+      }
+      current = child;
+    }
+    current.type = field.type;
+  }
+  return root;
+}
+function generateDtoShapeLines(node, depth) {
+  const indent = "  ".repeat(depth);
+  const lines = [];
+  for (const [key, child] of node.children) {
+    if (child.children.size > 0) {
+      lines.push(`${indent}${formatPropertyKey(key)}: {`);
+      lines.push(...generateDtoShapeLines(child, depth + 1));
+      lines.push(`${indent}};`);
+      continue;
+    }
+    lines.push(`${indent}${formatPropertyKey(key)}: ${child.type ?? "unknown"};`);
+  }
+  return lines;
+}
+function formatPropertyKey(key) {
+  return isIdentifier(key) ? key : JSON.stringify(key);
+}
+function sourcePathToAccessor(path) {
+  const segments = parseResponseBodyPath(path);
+  if (!segments) {
+    return null;
+  }
+  if (segments.length === 0) {
+    return "dto";
+  }
+  return `dto${segments.map((segment) => isIdentifier(segment) ? `.${segment}` : `[${JSON.stringify(segment)}]`).join("")}`;
+}
+function extractPathParams(path) {
+  return [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1] ?? "").filter((segment) => segment.length > 0);
+}
+function generatePathParamSignature(pathParamNames) {
+  return pathParamNames.map((pathParamName) => `${pathParamName}: string | number`).join(", ");
+}
+function generateRequestPath(path, pathParamNames) {
+  if (pathParamNames.length === 0) {
+    return null;
+  }
+  let paramIndex = 0;
+  const template = path.replace(/\{([^}]+)\}/g, () => {
+    const paramName = pathParamNames[paramIndex];
+    paramIndex += 1;
+    return `\${encodeURIComponent(String(${paramName}))}`;
+  });
+  return `\`${template}\``;
+}
+function generatePathParamNames(pathParams) {
+  const usedNames = /* @__PURE__ */ new Set();
+  return pathParams.map((pathParam, index) => {
+    const baseName = sanitizePathParamName(pathParam, index);
+    let candidate = baseName;
+    let suffix = 2;
+    while (usedNames.has(candidate) || TYPESCRIPT_RESERVED_WORDS.has(candidate)) {
+      candidate = `${baseName}_${suffix}`;
+      suffix += 1;
+    }
+    usedNames.add(candidate);
+    return candidate;
+  });
+}
+function sanitizePathParamName(pathParam, index) {
+  let normalized = pathParam.replace(/[^A-Za-z0-9_$]/g, "_");
+  if (!normalized) {
+    return `pathParam${index + 1}`;
+  }
+  if (!/^[$A-Z_]/i.test(normalized)) {
+    normalized = `_${normalized}`;
+  }
+  if (TYPESCRIPT_RESERVED_WORDS.has(normalized)) {
+    normalized = `${normalized}_`;
+  }
+  return isIdentifier(normalized) ? normalized : `pathParam${index + 1}`;
+}
+function parseResponseBodyPath(path) {
+  if (!path?.startsWith(RESPONSE_BODY_PREFIX)) {
+    return null;
+  }
+  const remainder = path.slice(RESPONSE_BODY_PREFIX.length);
+  if (remainder.length === 0) {
+    return [];
+  }
+  const segments = [];
+  let index = 0;
+  while (index < remainder.length) {
+    const marker = remainder[index];
+    if (marker === ".") {
+      const segmentStart = index + 1;
+      let segmentEnd = segmentStart;
+      while (segmentEnd < remainder.length && remainder[segmentEnd] !== "." && remainder[segmentEnd] !== "[") {
+        segmentEnd += 1;
+      }
+      if (segmentEnd === segmentStart) {
+        return null;
+      }
+      segments.push(remainder.slice(segmentStart, segmentEnd));
+      index = segmentEnd;
+      continue;
+    }
+    if (marker === "[") {
+      const literalEnd = findBracketLiteralEnd(remainder, index);
+      if (literalEnd < 0) {
+        return null;
+      }
+      const literal = remainder.slice(index + 1, literalEnd);
+      try {
+        segments.push(JSON.parse(literal));
+      } catch {
+        return null;
+      }
+      index = literalEnd + 1;
+      continue;
+    }
+    return null;
+  }
+  return segments;
+}
+function findBracketLiteralEnd(path, bracketStart) {
+  let index = bracketStart + 1;
+  let inString = false;
+  let escaped = false;
+  while (index < path.length) {
+    const char = path[index];
+    if (escaped) {
+      escaped = false;
+      index += 1;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      index += 1;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      index += 1;
+      continue;
+    }
+    if (char === "]" && !inString) {
+      return index;
+    }
+    index += 1;
+  }
+  return -1;
+}
+function isIdentifier(value) {
+  return /^[$A-Z_][0-9A-Z_$]*$/i.test(value);
 }
 
-// src/generators/whistle-v3.ts
-function deriveWhistleRules(artifact) {
-  if (artifact.outputs.mockoon.port === null) throw new Error("MOCKOON_PORT_REQUIRED");
+// dist/src/generators/output-files.js
+function generateOutputFiles(artifact) {
+  if (!artifact.output.splitApiOutput) {
+    if (!artifact.output.file)
+      throw new Error("single-file output plan is incomplete");
+    return /* @__PURE__ */ new Map([[artifact.output.file, generateApiCode(artifact)]]);
+  }
+  const { directory, files, indexFile, transformResponse } = artifact.output;
+  if (!directory)
+    throw new Error("split output plan is incomplete");
   const endpoints = new Map(artifact.endpoints.map((endpoint2) => [endpoint2.id, endpoint2]));
-  const rules = /* @__PURE__ */ new Set();
-  for (const route of artifact.outputs.whistle.routes) {
-    const endpoint2 = endpoints.get(route.endpointId);
-    if (!endpoint2) throw new Error(`WHISTLE_ENDPOINT_UNKNOWN: ${route.endpointId}`);
-    if (!route.apiHost) throw new Error(`WHISTLE_HOST_REQUIRED: ${route.endpointId}`);
-    const dynamic = /\{[^}]+\}/.test(endpoint2.path);
-    const sourcePath = endpoint2.path.replace(/\{[^}]+\}/g, "*");
-    let capture = 1;
-    const targetPath = endpoint2.path.replace(/\{[^}]+\}/g, () => `$${capture++}`);
-    rules.add(`${dynamic ? "^" : ""}${route.apiHost}${sourcePath} http://127.0.0.1:${artifact.outputs.mockoon.port}${targetPath}`);
+  const assigned = /* @__PURE__ */ new Set();
+  const output = /* @__PURE__ */ new Map();
+  for (const group of files) {
+    const groupEndpoints = [];
+    for (const endpointId of group.endpointIds) {
+      const endpoint2 = endpoints.get(endpointId);
+      if (!endpoint2)
+        throw new Error(`unknown endpoint: ${endpointId}`);
+      if (assigned.has(endpointId))
+        throw new Error(`endpoint must be assigned exactly once: ${endpointId}`);
+      assigned.add(endpointId);
+      groupEndpoints.push(endpoint2);
+    }
+    output.set(join(directory, group.file), moduleContents(groupEndpoints, transformResponse));
   }
-  return [...rules];
+  if (assigned.size !== endpoints.size)
+    throw new Error("every endpoint must be assigned exactly once");
+  if (indexFile)
+    output.set(join(directory, indexFile), indexContents(files.map((file) => file.file), indexFile));
+  return output;
 }
-function serializeWhistle(format, groupName, rules) {
-  if (!groupName?.trim()) throw new Error("WHISTLE_GROUP_REQUIRED");
-  const text = rules.length ? `${rules.join("\n")}
-` : "";
-  if (format === "json") return `${JSON.stringify({ [groupName]: text, "": [groupName] }, null, 2)}
-`;
-  return `exports.groupName = ${JSON.stringify(groupName)};
-exports.name = ${JSON.stringify(groupName)};
-exports.rules = \`${escapeTemplate(text)}\`;
-`;
+function moduleContents(endpoints, transformResponse) {
+  return [REQUEST_DECLARATION, "", ...endpoints.flatMap((endpoint2) => generateEndpoint(endpoint2, transformResponse))].join("\n") + "\n";
 }
-function escapeTemplate(value) {
-  return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+function indexContents(files, indexFile) {
+  return files.map((file) => `export * from ${JSON.stringify(relativeModulePath(indexFile, file))};`).join("\n") + "\n";
 }
-
-// src/openapi/mock-support.ts
-function listScenarioShape(schema2) {
-  if (schema2?.type === "array") return { kind: "root" };
-  const arrays = Object.entries(schema2?.properties ?? {}).filter(([, property]) => property.type === "array");
-  if (arrays.length === 1) return { kind: "property", property: arrays[0][0] };
-  return arrays.length > 1 ? { kind: "ambiguous" } : { kind: "none" };
-}
-function mockTemplate(schema2) {
-  if (schema2?.enum?.length) return JSON.stringify(schema2.enum[0]);
-  if (schema2?.type === "integer" || schema2?.type === "number") return "{{faker 'number.int'}}";
-  if (schema2?.type === "boolean") return "{{faker 'datatype.boolean'}}";
-  return "{{faker 'string.sample'}}";
-}
-
-// src/mock-artifact/from-openapi.ts
-var HTTP_METHODS = ["get", "post", "put", "patch", "delete"];
-function mockArtifactFromOpenApi(openapi, options) {
-  const endpoints = [];
-  for (const [path, pathItem] of Object.entries(openapi.document.paths)) for (const method of HTTP_METHODS) {
-    const operation = pathItem[method];
-    if (operation) endpoints.push(endpoint(method.toUpperCase(), path, operation, options.config));
+function relativeModulePath(from, to) {
+  const normalizedFrom = normalize(from).replace(/\\/g, "/");
+  const normalizedTo = normalize(to).replace(/\\/g, "/");
+  const fromParts = dirname(normalizedFrom).split("/").filter((part) => part && part !== ".");
+  const toParts = normalizedTo.split("/").filter(Boolean);
+  while (fromParts[0] && fromParts[0] === toParts[0]) {
+    fromParts.shift();
+    toParts.shift();
   }
-  return { schemaVersion: "0.3.0", openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" }, reviewItems: [], policies: structuredClone(options.config.mockPolicy), endpoints, outputs: { whistle: { groupName: options.config.whistleGroupName, routes: endpoints.map((value) => ({ endpointId: value.id, apiHost: null })) }, mockoon: { port: options.config.mockoonPort, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } } };
-}
-function endpoint(method, path, operation, config) {
-  const operationId = operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`;
-  const schema2 = successSchema(operation);
-  const scenarios = [{ name: "success-default", statusCode: 200, headers: { "Content-Type": "application/json; charset=utf-8" }, bodyTemplate: bodyTemplate(schema2), origin: "generated", enabled: true }, { name: "success-empty", statusCode: 200, headers: { "Content-Type": "application/json; charset=utf-8" }, bodyTemplate: emptyTemplate(schema2), origin: "generated", enabled: true }, { name: "error-default", statusCode: 500, headers: { "Content-Type": "application/json; charset=utf-8" }, bodyTemplate: '{\n  "code": "MOCK_ERROR"\n}', origin: "generated", enabled: true }];
-  const list = listScenarioShape(schema2);
-  if (config.mockPolicy.listScenario.enabled && list.kind !== "none" && list.kind !== "ambiguous") scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: { "Content-Type": "application/json; charset=utf-8" }, bodyTemplate: listTemplate(schema2, list.kind === "property" ? list.property : void 0, config.mockPolicy.listScenario.itemCount), origin: "generated", enabled: true });
-  return { id: `ep-${kebab(operationId)}`, operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, scenarios } };
-}
-function kebab(value) {
-  return value.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
-}
-function successSchema(operation) {
-  const response = Object.entries(operation.responses ?? {}).filter(([code]) => /^2\d\d$/.test(code)).sort(([left], [right]) => Number(left) - Number(right))[0]?.[1];
-  return response?.content?.["application/json"]?.schema;
-}
-function bodyTemplate(schema2) {
-  if (schema2?.type === "array") return `[${bodyTemplate(schema2.items)}]`;
-  if (!schema2?.properties) return "{}";
-  return `{
-  ${Object.entries(schema2.properties).map(([name, value]) => `${JSON.stringify(name)}: ${value.type === "array" ? `[${bodyTemplate(value.items)}]` : mockTemplate(value)}`).join(",\n  ")}
-}`;
-}
-function emptyTemplate(schema2) {
-  if (schema2?.type === "array") return "[]";
-  if (!schema2?.properties) return "{}";
-  return `{
-  ${Object.entries(schema2.properties).map(([name, value]) => `${JSON.stringify(name)}: ${value.type === "array" ? "[]" : mockTemplate(value)}`).join(",\n  ")}
-}`;
-}
-function listTemplate(schema2, property, count) {
-  const item = property ? schema2?.properties?.[property]?.items : schema2?.items;
-  const array = `[{{#repeat ${count}}}${bodyTemplate(item)}{{/repeat}}]`;
-  return property ? `{
-  ${JSON.stringify(property)}: ${array}
-}` : array;
+  const prefix = fromParts.map(() => "..");
+  const target = toParts.join("/").replace(/\.ts$/, ".js");
+  return `./${[...prefix, target].filter(Boolean).join("/")}`.replace("./../", "../");
 }
 
-// src/mock-artifact/read-artifact.ts
+// dist/src/index.js
+var API_CODE_GEN_VERSION = "0.1.0";
+
+// ../openapi-reader/dist/src/hash.js
+import { createHash } from "node:crypto";
+function sha256(input) {
+  return createHash("sha256").update(input).digest("hex");
+}
+
+// ../openapi-reader/dist/src/load-openapi.js
+var import_yaml = __toESM(require_dist(), 1);
 import { readFile as readFile3 } from "node:fs/promises";
-
-// src/mock-artifact/schema.ts
-var resolution = z.object({ reason: z.string().min(1), resolvedBy: z.enum(["human", "mockoon-gen-skill"]), resolvedAt: z.string().min(1) }).strict();
-var reviewItem = z.object({ id: z.string().min(1), severity: z.enum(["fatal", "needsReview", "warning"]), scope: z.enum(["global", "openapi", "endpoint", "mock", "output"]), path: z.string().min(1), message: z.string().min(1), suggestion: z.string().optional(), resolutionStatus: z.enum(["open", "resolved", "ignored"]), resolution: resolution.optional() }).strict().superRefine((item, context) => {
-  if (item.resolutionStatus === "open" && item.resolution) context.addIssue({ code: z.ZodIssueCode.custom, message: "open item cannot have resolution" });
-  if (item.resolutionStatus !== "open" && !item.resolution) context.addIssue({ code: z.ZodIssueCode.custom, message: "closed item requires resolution" });
-});
-var scenario = z.object({ name: z.string().min(1), statusCode: z.number().int().min(100).max(599), headers: z.record(z.string()), bodyTemplate: z.string(), origin: z.enum(["generated", "inferred", "manual"]), enabled: z.boolean() }).strict();
-var mockArtifactSchema = z.object({
-  schemaVersion: z.literal("0.3.0"),
-  openapi: z.object({ file: z.string().min(1), sha256: z.string().min(1), origin: z.enum(["generated", "imported", "manual"]), reviewStatus: z.enum(["unreviewed", "needs-change", "confirmed"]) }).strict(),
-  reviewItems: z.array(reviewItem),
-  policies: z.object({ listScenario: z.object({ enabled: z.boolean(), itemCount: z.number().int().min(1).max(1e3) }).strict() }).strict(),
-  endpoints: z.array(z.object({ id: z.string().min(1), operationId: z.string().min(1), method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]), path: z.string().min(1), summary: z.string().optional(), mock: z.object({ selection: z.object({ mode: z.enum(["random", "query", "header", "manual"]), key: z.string().optional(), defaultScenario: z.string().min(1) }).strict(), scenarios: z.array(scenario) }).strict() }).strict()),
-  outputs: z.object({ whistle: z.object({ groupName: z.string().min(1).nullable(), routes: z.array(z.object({ endpointId: z.string().min(1), apiHost: z.string().min(1).nullable() }).strict()) }).strict(), mockoon: z.object({ port: z.number().int().min(1).max(65535).nullable(), defaultHeaders: z.record(z.string()) }).strict() }).strict()
-}).strict();
-
-// src/mock-artifact/read-artifact.ts
-async function readMockArtifact(file) {
-  return mockArtifactSchema.parse(JSON.parse(await readFile3(file, "utf8")));
+import { resolve } from "node:path";
+async function loadOpenApi(file) {
+  const normalizedFile = resolve(file);
+  const raw = await readFile3(normalizedFile);
+  const document = import_yaml.default.parse(raw.toString("utf8"));
+  if (!isPlainObject(document) || typeof document.openapi !== "string" || !isPlainObject(document.paths)) {
+    throw new Error(`Invalid OpenAPI document: ${normalizedFile}`);
+  }
+  for (const pathItem of Object.values(document.paths)) {
+    if (!isPlainObject(pathItem)) {
+      throw new Error(`Invalid OpenAPI document: ${normalizedFile}`);
+    }
+  }
+  return {
+    file: normalizedFile,
+    sha256: sha256(raw),
+    document
+  };
+}
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// src/index.ts
-var MOCKGEN_VERSION = "0.2.0";
+// dist/src/preflight/run-preflight.js
+import { isAbsolute, relative, resolve as resolve2 } from "node:path";
 
-// src/preflight-v2/mockoon.ts
-function mockoonDiagnostics(artifact) {
+// dist/src/openapi/support.js
+function unsupportedOpenApiDiagnostics(document) {
   const diagnostics = [];
-  if (artifact.outputs.mockoon.port === null) diagnostics.push(fatal("MOCKOON_PORT_REQUIRED", "outputs.mockoon.port", "Mockoon port is required."));
+  for (const [path, pathItem] of Object.entries(document.paths)) {
+    for (const method of ["get", "post", "put", "patch", "delete"]) {
+      const operation = pathItem[method];
+      if (!operation)
+        continue;
+      const location = `paths.${path}.${method}`;
+      checkOperation(operation, location, diagnostics);
+    }
+  }
+  return diagnostics;
+}
+function checkOperation(operation, path, diagnostics) {
+  if (operation.requestBody)
+    diagnostics.push(fatal(path, "request bodies are not supported"));
+  if (operation.parameters?.some((parameter) => parameter.in === "query" || parameter.in === "header"))
+    diagnostics.push(fatal(path, "query and header parameters are not supported"));
+  for (const response of Object.values(operation.responses ?? {})) {
+    const schema = response.content?.["application/json"]?.schema;
+    if (schema && isUnsupportedSchema(schema))
+      diagnostics.push(fatal(path, "OpenAPI refs and composition are not supported"));
+  }
+}
+function isUnsupportedSchema(schema) {
+  return Boolean(schema.$ref || schema.allOf || schema.anyOf || schema.oneOf);
+}
+function fatal(path, message) {
+  return { severity: "fatal", code: "OPENAPI_FEATURE_UNSUPPORTED", path, message };
+}
+
+// dist/src/preflight/run-preflight.js
+function runPreflight(artifact, options) {
+  const diagnostics = [];
+  const add = (severity, code, path, message) => diagnostics.push({ severity, code, path, message });
+  if (artifact.schemaVersion !== "0.1.0")
+    add("fatal", "ARTIFACT_SCHEMA_UNSUPPORTED", "schemaVersion", "Unsupported API code artifact schema.");
+  if (artifact.openapi.reviewStatus !== "confirmed")
+    add("fatal", "OPENAPI_UNREVIEWED", "openapi.reviewStatus", "OpenAPI has not been reviewed.");
+  if (artifact.openapi.sha256 !== options.currentOpenApiSha256)
+    add("fatal", "OPENAPI_HASH_MISMATCH", "openapi.sha256", "OpenAPI content hash changed; artifact is stale.");
+  for (const item of artifact.reviewItems)
+    if (item.resolutionStatus === "open")
+      add(item.severity, "REVIEW_ITEM_OPEN", item.path, item.message);
+  if (artifact.output.reviewStatus !== "confirmed")
+    add("needsReview", "OUTPUT_PLAN_UNCONFIRMED", "output.reviewStatus", "API output plan is not confirmed.");
+  if (artifact.output.splitApiOutput) {
+    if (!artifact.output.directory || artifact.output.files.length === 0)
+      add("needsReview", "OUTPUT_PLAN_INCOMPLETE", "output", "Split API output plan is incomplete.");
+    if (artifact.output.directory)
+      checkPath(artifact.output.directory, "output.directory", options.projectDir, add);
+  } else {
+    if (!artifact.output.file)
+      add("needsReview", "OUTPUT_PLAN_INCOMPLETE", "output.file", "Single API output file is missing.");
+    if (artifact.output.file)
+      checkPath(artifact.output.file, "output.file", options.projectDir, add);
+  }
   for (const endpoint2 of artifact.endpoints) {
-    const names = new Set(endpoint2.mock.scenarios.filter((scenario2) => scenario2.enabled).map((scenario2) => scenario2.name));
-    for (const name of ["success-default", "success-empty", "error-default"]) if (!names.has(name)) diagnostics.push(fatal("MOCK_SCENARIO_REQUIRED", `endpoints.${endpoint2.id}.mock.scenarios`, `Required mock scenario is missing: ${name}.`));
-    if (artifact.policies.listScenario.enabled && endpoint2.operationId.toLowerCase().startsWith("list") && !names.has(`success-list-${artifact.policies.listScenario.itemCount}`)) diagnostics.push(fatal("LIST_SCENARIO_REQUIRED", `endpoints.${endpoint2.id}.mock.scenarios`, "List mock scenario is required."));
+    for (const step of endpoint2.mapper.steps)
+      if (step.operation !== "rename" && step.operation !== "assign")
+        add("fatal", "MAPPER_OPERATION_UNSUPPORTED", `endpoints.${endpoint2.id}.mapper.steps.${step.id}`, `Unsupported mapper operation: ${step.operation}.`);
+    for (const field of endpoint2.vo.fields)
+      if (!/^[$A-Z_][0-9A-Z_$]*$/i.test(field.name))
+        add("fatal", "TYPESCRIPT_IDENTIFIER_INVALID", `endpoints.${endpoint2.id}.vo.fields.${field.name}`, "VO field is not a valid TypeScript identifier.");
   }
-  return diagnostics;
-}
-function fatal(code, path, message) {
-  return { severity: "fatal", code, path, message };
-}
-
-// src/preflight-v2/whistle.ts
-function whistleDiagnostics(artifact) {
-  const diagnostics = [];
-  if (artifact.outputs.mockoon.port === null) diagnostics.push(fatal2("MOCKOON_PORT_REQUIRED", "outputs.mockoon.port", "Mockoon port is required."));
-  if (!artifact.outputs.whistle.groupName) diagnostics.push(fatal2("WHISTLE_GROUP_REQUIRED", "outputs.whistle.groupName", "Whistle group name is required."));
-  const ids = new Set(artifact.endpoints.map((endpoint2) => endpoint2.id));
-  for (const route of artifact.outputs.whistle.routes) {
-    if (!route.apiHost) diagnostics.push(fatal2("WHISTLE_HOST_REQUIRED", `outputs.whistle.routes.${route.endpointId}.apiHost`, "Whistle API host is required."));
-    else if (!isHost(route.apiHost)) diagnostics.push(fatal2("WHISTLE_HOST_INVALID", `outputs.whistle.routes.${route.endpointId}.apiHost`, "Whistle API host must contain only host and optional port."));
-    if (!ids.has(route.endpointId)) diagnostics.push(fatal2("WHISTLE_ENDPOINT_UNKNOWN", `outputs.whistle.routes.${route.endpointId}`, "Whistle route references an unknown endpoint."));
-  }
-  return diagnostics;
-}
-function isHost(value) {
-  return !value.includes("://") && !value.includes("/") && !value.includes("^") && !value.includes("$");
-}
-function fatal2(code, path, message) {
-  return { severity: "fatal", code, path, message };
-}
-
-// src/preflight-v2/run-preflight.ts
-function runMockPreflight(artifact, options) {
-  const diagnostics = [];
-  if (artifact.openapi.reviewStatus !== "confirmed") diagnostics.push({ severity: "fatal", code: "OPENAPI_UNREVIEWED", path: "openapi.reviewStatus", message: "OpenAPI has not been reviewed." });
-  if (artifact.openapi.sha256 !== options.currentOpenApiSha256) diagnostics.push({ severity: "fatal", code: "OPENAPI_HASH_MISMATCH", path: "openapi.sha256", message: "OpenAPI content hash changed; artifact is stale." });
-  for (const item of artifact.reviewItems) if (item.resolutionStatus === "open" && applies(item, options.target)) diagnostics.push({ severity: item.severity, code: "REVIEW_ITEM_OPEN", path: item.path, message: item.message });
-  if (options.target === "all" || options.target === "mockoon") diagnostics.push(...mockoonDiagnostics(artifact));
-  if (options.target === "all" || options.target === "whistle") diagnostics.push(...whistleDiagnostics(artifact));
+  if (options.openapiDocument)
+    diagnostics.push(...unsupportedOpenApiDiagnostics(options.openapiDocument));
   return { diagnostics, ready: !diagnostics.some((item) => item.severity === "fatal" || item.severity === "needsReview") };
 }
-function applies(item, target) {
-  if (target === "all") return true;
-  if (item.scope !== "output") return true;
-  if (item.path.startsWith("outputs.mockoon")) return target === "mockoon";
-  if (item.path.startsWith("outputs.whistle")) return target === "whistle";
-  return true;
-}
-
-// src/utils/paths-v2.ts
-import { realpath } from "node:fs/promises";
-import { dirname, isAbsolute, relative, resolve as resolve2 } from "node:path";
-function assertMockoonGenPath(file) {
-  const parts = file.replace(/\\/g, "/").split("/").filter(Boolean);
-  if (parts.at(-2) !== "mockoon-gen") throw new Error(`Mock output must be written directly under visible mockoon-gen: ${file}`);
-}
-async function resolveMockProjectPath(cwd, file) {
-  const root = await realpath(cwd);
+function checkPath(file, path, projectDir, add) {
+  const root = resolve2(projectDir);
   const target = isAbsolute(file) ? resolve2(file) : resolve2(root, file);
-  assertContained(root, target);
-  let ancestor = target;
-  while (true) {
-    try {
-      assertContained(root, await realpath(ancestor));
-      break;
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-      const parent = dirname(ancestor);
-      if (parent === ancestor) throw new Error(`OUTPUT_PATH_OUTSIDE_PROJECT: ${file}`);
-      ancestor = parent;
-    }
-  }
-  return target;
-}
-function assertContained(root, target) {
-  const path = relative(root, target);
-  if (path === "" || !path.startsWith("..") && !isAbsolute(path)) return;
-  throw new Error(`OUTPUT_PATH_OUTSIDE_PROJECT: ${target}`);
+  const value = relative(root, target);
+  if (value.startsWith("..") || isAbsolute(value))
+    add("fatal", "OUTPUT_PATH_OUTSIDE_PROJECT", path, "Output path is outside the project.");
 }
 
-// src/utils/safe-write-v2.ts
-import { mkdir, readFile as readFile4, rename, rm, writeFile } from "node:fs/promises";
-import { dirname as dirname2, join } from "node:path";
-async function writeMockOutput(file, content, options = {}) {
-  try {
-    const existing = await readFile4(file, "utf8");
-    if (existing === content) return;
-    if (!options.force) throw new Error(`OUTPUT_EXISTS_DIFFERENT: ${file}`);
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
-  await mkdir(dirname2(file), { recursive: true });
-  const temporary = join(dirname2(file), `.${Date.now()}-${Math.random().toString(16).slice(2)}.mockoon-gen.tmp`);
-  try {
-    await writeFile(temporary, content, "utf8");
-    await rename(temporary, file);
-  } finally {
-    await rm(temporary, { force: true });
-  }
-}
-
-// src/cli.ts
-function createProgram() {
-  const program2 = new Command().name("mockoon-gen").description("Generate Mockoon and Whistle files from reviewed mock artifacts.").version(MOCKGEN_VERSION);
-  program2.command("init").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => writeMockOutput(configPath(options.cwd, options.pageDir), pretty(defaultMockConfig), { force: options.force }));
-  program2.command("from-openapi").argument("<file>").requiredOption("--origin <origin>").option("--reviewed").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file, options) => {
-    if (!["generated", "imported", "manual"].includes(options.origin)) throw new Error("--origin must be generated, imported, or manual");
-    const artifactFile = artifactPath(options.cwd, options.pageDir);
-    const openapi = await loadOpenApi(inputPath(options.cwd, file));
-    if (existsSync(artifactFile)) {
-      const existing = await readMockArtifact(artifactFile);
-      if (existing.openapi.sha256 === openapi.sha256) return;
-      if (!options.force) throw new Error("ARTIFACT_EXISTS_DIFFERENT: OpenAPI hash changed; use --force.");
-    }
-    const config = await loadMockConfig(configPath(options.cwd, options.pageDir));
-    await writeMockOutput(artifactFile, pretty(mockArtifactFromOpenApi(openapi, { origin: options.origin, reviewed: Boolean(options.reviewed), config })), { force: options.force });
-  });
-  program2.command("validate").requiredOption("--from <artifact>").option("--target <target>", "all, mockoon, or whistle", "all").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
-    if (!["all", "mockoon", "whistle"].includes(options.target)) throw new Error("--target must be all, mockoon, or whistle");
-    const artifact = await readMockArtifact(inputPath(options.cwd, options.from));
-    const openapi = await loadOpenApi(inputPath(options.cwd, artifact.openapi.file));
-    const result = runMockPreflight(artifact, { currentOpenApiSha256: openapi.sha256, target: options.target });
-    console.log(pretty(result));
-    if (!result.ready) throw new Error("Mock artifact is not ready.");
-  });
-  const exportCommand = program2.command("export").argument("<target>").requiredOption("--from <artifact>").option("--format <format>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (target, options) => {
-    const artifactFile = inputPath(options.cwd, options.from);
-    const artifact = await readMockArtifact(artifactFile);
-    const openapi = await loadOpenApi(inputPath(options.cwd, artifact.openapi.file));
-    if (target === "mockoon") {
-      ready(artifact, openapi.sha256, "mockoon");
-      const file = join2(dirname3(artifactFile), "mockoon.json");
-      assertMockoonGenPath(file);
-      await writeMockOutput(await resolveMockProjectPath(options.cwd, file), pretty(generateMockoonV3(artifact)), { force: options.force });
-      return;
-    }
-    if (target === "whistle") {
-      if (options.format !== "json" && options.format !== "cjs") throw new Error("Whistle export requires --format json or cjs.");
-      ready(artifact, openapi.sha256, "whistle");
-      const file = join2(dirname3(artifactFile), options.format === "json" ? "whistle.json" : "whistle.cjs");
-      assertMockoonGenPath(file);
-      await writeMockOutput(await resolveMockProjectPath(options.cwd, file), serializeWhistle(options.format, artifact.outputs.whistle.groupName, deriveWhistleRules(artifact)), { force: options.force });
-      return;
-    }
-    throw new Error(`Unknown export target: ${target}`);
-  });
-  void exportCommand;
-  const parseAsync = program2.parseAsync.bind(program2);
-  program2.parseAsync = (argv, options) => parseAsync(normalizeArgv(argv, options), options);
-  return program2;
-}
-function ready(artifact, sha2562, target) {
-  const result = runMockPreflight(artifact, { currentOpenApiSha256: sha2562, target });
-  if (!result.ready) throw new Error(pretty(result));
-}
-function mockDir(cwd, pageDir) {
-  const root = resolve3(cwd);
-  const page = isAbsolute2(pageDir) ? resolve3(pageDir) : resolve3(root, pageDir);
-  const path = relative2(root, page);
-  if (path.startsWith("..") || isAbsolute2(path)) throw new Error("OUTPUT_PATH_OUTSIDE_PROJECT: page-dir");
-  return join2(page, "mockoon-gen");
-}
-function configPath(cwd, pageDir) {
-  return join2(mockDir(cwd, pageDir), "mockoon-gen.config.json");
-}
-function artifactPath(cwd, pageDir) {
-  return join2(mockDir(cwd, pageDir), "mock-artifact.json");
-}
-function inputPath(cwd, file) {
-  return isAbsolute2(file) ? file : resolve3(cwd, file);
-}
-function pretty(value) {
+// dist/src/utils/fs.js
+function prettyJson(value) {
   return `${JSON.stringify(value, null, 2)}
 `;
 }
-function normalizeArgv(argv, options) {
-  return options?.from === "user" && argv?.[0] === "node" && argv[1] === "mockoon-gen" ? argv.slice(2) : argv;
+
+// dist/src/utils/paths.js
+import { realpath } from "node:fs/promises";
+import { dirname as dirname2, isAbsolute as isAbsolute2, relative as relative2, resolve as resolve3 } from "node:path";
+async function resolveProjectPath(cwd, file) {
+  const root = await realpath(cwd);
+  const resolved = isAbsolute2(file) ? resolve3(file) : resolve3(root, file);
+  assertContained(root, resolved);
+  let ancestor = resolved;
+  while (true) {
+    try {
+      const realAncestor = await realpath(ancestor);
+      assertContained(root, realAncestor);
+      break;
+    } catch (error) {
+      if (error.code !== "ENOENT")
+        throw error;
+      const parent = dirname2(ancestor);
+      if (parent === ancestor)
+        throw new Error(`OUTPUT_PATH_OUTSIDE_PROJECT: ${file}`);
+      ancestor = parent;
+    }
+  }
+  return resolved;
+}
+function assertContained(root, target) {
+  const path = relative2(root, target);
+  if (path === "" || !path.startsWith("..") && !isAbsolute2(path))
+    return;
+  throw new Error(`OUTPUT_PATH_OUTSIDE_PROJECT: ${target}`);
+}
+
+// dist/src/utils/safe-write.js
+import { mkdir, readFile as readFile4, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { dirname as dirname3, join as join2 } from "node:path";
+async function writeGeneratedFiles(files, options = {}) {
+  const previous = /* @__PURE__ */ new Map();
+  for (const [file, content] of files) {
+    try {
+      const existing = await readFile4(file, "utf8");
+      previous.set(file, existing);
+      if (existing !== content && !options.force)
+        throw new Error(`OUTPUT_EXISTS_DIFFERENT: ${file}`);
+    } catch (error) {
+      if (error.code !== "ENOENT")
+        throw error;
+      previous.set(file, null);
+    }
+  }
+  const pending = [];
+  try {
+    for (const [file, content] of files) {
+      await mkdir(dirname3(file), { recursive: true });
+      const temporary = join2(dirname3(file), `.${Date.now()}-${Math.random().toString(16).slice(2)}.api-code-gen.tmp`);
+      await writeFile(temporary, content, "utf8");
+      pending.push({ file, temporary });
+    }
+    for (const { file, temporary } of pending)
+      await rename(temporary, file);
+  } catch (error) {
+    await Promise.all([...previous].map(async ([file, content]) => {
+      if (content === null)
+        await unlink(file).catch(() => void 0);
+      else
+        await writeFile(file, content, "utf8");
+    }));
+    throw error;
+  } finally {
+    await Promise.all(pending.map(({ temporary }) => rm(temporary, { force: true })));
+  }
+}
+
+// dist/src/cli.js
+function createProgram() {
+  const program2 = new Command().name("api-code-gen").description("Generate reviewed TypeScript API code from OpenAPI.").version(API_CODE_GEN_VERSION);
+  program2.command("init").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
+    const file = configPath(options.cwd, options.pageDir);
+    await safeSingleWrite(file, prettyJson(defaultConfig), options.force);
+  });
+  program2.command("from-openapi").argument("<file>").requiredOption("--origin <origin>").requiredOption("--reviewed").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file, options) => {
+    if (options.origin !== "imported" && options.origin !== "manual")
+      throw new Error("--origin must be imported or manual");
+    if (!options.reviewed)
+      throw new Error("--reviewed is required for api-code-gen");
+    const openapi = await loadOpenApi(resolveInput(options.cwd, file));
+    const artifactFile = artifactPath(options.cwd, options.pageDir);
+    if (existsSync(artifactFile)) {
+      const existing = await readArtifact(artifactFile);
+      if (existing.openapi.sha256 === openapi.sha256)
+        return;
+      if (!options.force)
+        throw new Error("ARTIFACT_EXISTS_DIFFERENT: OpenAPI hash changed; use --force to replace the artifact.");
+    }
+    const config = await loadConfig(configPath(options.cwd, options.pageDir));
+    await safeSingleWrite(artifactFile, prettyJson(artifactFromOpenApi(openapi, { origin: options.origin, reviewed: true, config })), options.force);
+  });
+  program2.command("validate").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
+    const artifact = await readArtifact(resolveInput(options.cwd, options.from));
+    const openapi = await loadOpenApi(resolveInput(options.cwd, artifact.openapi.file));
+    const result = runPreflight(artifact, { currentOpenApiSha256: openapi.sha256, projectDir: options.cwd, openapiDocument: openapi.document });
+    console.log(prettyJson(result));
+    if (!result.ready)
+      throw new Error("API code artifact is not ready.");
+  });
+  program2.command("generate").requiredOption("--from <artifact>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
+    const artifact = await readArtifact(resolveInput(options.cwd, options.from));
+    const openapi = await loadOpenApi(resolveInput(options.cwd, artifact.openapi.file));
+    const result = runPreflight(artifact, { currentOpenApiSha256: openapi.sha256, projectDir: options.cwd, openapiDocument: openapi.document });
+    if (!result.ready) {
+      console.log(prettyJson(result));
+      throw new Error("API code artifact is not ready.");
+    }
+    const files = generateOutputFiles(artifact);
+    const absoluteFiles = /* @__PURE__ */ new Map();
+    for (const [file, contents] of files)
+      absoluteFiles.set(await resolveProjectPath(options.cwd, file), contents);
+    await writeGeneratedFiles(absoluteFiles, { force: options.force });
+  });
+  const parseAsync = program2.parseAsync.bind(program2);
+  program2.parseAsync = (argv, parseOptions) => parseAsync(normalizeArgv(argv, parseOptions), parseOptions);
+  return program2;
 }
 function shouldRunCli(importMetaUrl, argv = process.argv) {
-  const entry = argv?.[1];
-  if (!entry) return false;
+  const entryFile = argv?.[1];
+  if (!entryFile)
+    return false;
   try {
-    return realpathSync(fileURLToPath(importMetaUrl)) === realpathSync(entry);
+    return realpathSync(fileURLToPath(importMetaUrl)) === realpathSync(entryFile);
   } catch {
     return false;
   }
 }
-if (shouldRunCli(import.meta.url)) void createProgram().parseAsync();
+function configPath(cwd, pageDir) {
+  return apiDirectory(cwd, pageDir, "api-code-gen.config.json");
+}
+function artifactPath(cwd, pageDir) {
+  return apiDirectory(cwd, pageDir, "api-code-artifact.json");
+}
+function apiDirectory(cwd, pageDir, file) {
+  const base = resolve4(cwd);
+  const page = isAbsolute3(pageDir) ? resolve4(pageDir) : resolve4(base, pageDir);
+  const path = relative3(base, page);
+  if (path.startsWith("..") || isAbsolute3(path))
+    throw new Error("OUTPUT_PATH_OUTSIDE_PROJECT: page-dir");
+  return join3(page, "api-code-gen", file);
+}
+function resolveInput(cwd, file) {
+  return isAbsolute3(file) ? file : resolve4(cwd, file);
+}
+async function safeSingleWrite(file, content, force) {
+  await writeGeneratedFiles(/* @__PURE__ */ new Map([[file, content]]), { force });
+}
+function normalizeArgv(argv, parseOptions) {
+  return parseOptions?.from === "user" && argv?.[0] === "node" && argv[1] === "api-code-gen" ? argv.slice(2) : argv;
+}
+if (shouldRunCli(import.meta.url))
+  void createProgram().parseAsync();
 export {
   createProgram,
   shouldRunCli
