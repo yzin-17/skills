@@ -584,7 +584,7 @@ git commit -m "feat: support reviewed api output plans"
 - Expand: `packages/api-code-gen-cli/tests/cli/cli.test.ts`
 - Create: `packages/api-code-gen-cli/tests/cli/e2e.test.ts`
 
-- [ ] **Step 1: Write failing preflight tests**
+- [x] **Step 1: Write failing preflight tests**
 
 Stable diagnostic codes must include at least:
 
@@ -601,11 +601,11 @@ Stable diagnostic codes must include at least:
 
 Open fatal/needsReview blocks; warning does not.
 
-- [ ] **Step 2: Detect unsupported API input**
+- [x] **Step 2: Detect unsupported API input**
 
 For the current generator, return fatal diagnostics for unhandled `$ref`/composition, request body, and query/header inputs that generated code would otherwise ignore. Select the first supported JSON 2xx response by numeric status order and warn if multiple different success schemas exist.
 
-- [ ] **Step 3: Implement canonical path checks**
+- [x] **Step 3: Implement canonical path checks**
 
 Test:
 
@@ -616,7 +616,7 @@ Test:
 - split directory and member containment.
 - artifact/config fixed under `<page-dir>/api-code-gen`.
 
-- [ ] **Step 4: Implement no-clobber and atomic multi-file writes**
+- [x] **Step 4: Implement no-clobber and atomic multi-file writes**
 
 Behavior:
 
@@ -628,7 +628,7 @@ Behavior:
 - write via temporary sibling files and rename after every target is ready.
 - if a commit-stage rename fails, restore prior files and remove all temporary files before returning non-zero.
 
-- [ ] **Step 5: Wire all four CLI commands**
+- [x] **Step 5: Wire all four CLI commands**
 
 Implement:
 
@@ -637,7 +637,7 @@ Implement:
 - `validate --from <api-code-artifact> --cwd <project-dir>`: JSON diagnostics.
 - `generate --from <api-code-artifact> [--force] --cwd <project-dir>`: preflighted single or split writes.
 
-- [ ] **Step 6: Verify the complete API package**
+- [x] **Step 6: Verify the complete API package**
 
 ```bash
 pnpm --filter api-code-gen test
@@ -646,7 +646,7 @@ pnpm --filter api-code-gen build
 node packages/api-code-gen-cli/dist/src/cli.js --help
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/api-code-gen-cli
