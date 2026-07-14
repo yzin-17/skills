@@ -23,7 +23,13 @@ node <skill-dir>/bin/mockoon-gen.mjs from-openapi <openapi-file> --origin <gener
 node <skill-dir>/bin/mockoon-gen.mjs validate --from <page-dir>/mockoon-gen/mock-artifact.json --target <all|mockoon|whistle> --cwd <project-dir>
 ```
 
-6. Export only after readiness succeeds. Choose Whistle format at export time, not in config or artifact:
+## HARD-GATE: Whistle format confirmation
+
+Before exporting Whistle, ask the user to choose exactly one format: `json` or `cjs`. Do not infer the format from filenames, examples, prior docs, or defaults.
+
+If the user has not explicitly selected `json` or `cjs` in the current task, stop before Whistle export. This gate does not prevent Mockoon export.
+
+6. Export only after readiness succeeds and the Whistle format gate is satisfied. Choose Whistle format at export time, not in config or artifact:
 
 ```bash
 node <skill-dir>/bin/mockoon-gen.mjs export mockoon --from <artifact> --cwd <project-dir>
