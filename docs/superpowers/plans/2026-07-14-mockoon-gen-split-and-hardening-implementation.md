@@ -1283,24 +1283,24 @@ If automated or forward tests expose production defects, fix them in separate na
 
 ## Final Verification Checklist
 
-- [ ] Root workspace has one lockfile.
-- [ ] `@yzin/openapi-reader` contains no target-specific artifact or generator logic.
-- [ ] `mockoon-gen` version is 0.2.0 and artifact schema is 0.3.0.
-- [ ] `api-code-gen` version and artifact schema are 0.1.0.
-- [ ] Mock CLI help excludes generate, sync, guard, and whistle-cli.
-- [ ] API CLI help excludes sync and all mock exports.
-- [ ] Whistle format is absent from config/artifact and required only for export.
-- [ ] Mock artifact does not store sourcePattern or targetPath.
-- [ ] list item count defaults to 20 but is policy-driven.
-- [ ] splitApiOutput produces an explicit reviewed file plan.
-- [ ] all output commands call shared package-local preflight.
-- [ ] open fatal/needsReview blocks real output.
-- [ ] OpenAPI hash drift blocks output.
-- [ ] path traversal and symlink escapes fail.
-- [ ] init/from-openapi/output no-clobber behavior is covered by tests.
-- [ ] old artifact is rejected without deletion or migration.
-- [ ] numeric and boolean mock template types are correct.
-- [ ] both SKILL.md files validate and contain no placeholders.
-- [ ] both bundles reproduce with no diff.
+- [x] Root workspace has one lockfile.
+- [x] `@yzin/openapi-reader` contains no target-specific artifact or generator logic.
+- [x] `mockoon-gen` version is 0.2.0 and artifact schema is 0.3.0.
+- [x] `api-code-gen` version and artifact schema are 0.1.0.
+- [x] Mock CLI help excludes generate, sync, guard, and whistle-cli.
+- [x] API CLI help excludes sync and all mock exports.
+- [x] Whistle format is absent from config/artifact and required only for export.
+- [x] Mock artifact does not store sourcePattern or targetPath.
+- [x] list item count defaults to 20 but is policy-driven.
+- [x] splitApiOutput produces an explicit reviewed file plan.
+- [x] all output commands call shared package-local preflight.
+- [x] open fatal/needsReview blocks real output.
+- [x] OpenAPI hash drift blocks output.
+- [x] path traversal and symlink escapes fail.
+- [x] init/from-openapi/output no-clobber behavior is covered by tests.
+- [x] old artifact is rejected without deletion or migration.
+- [x] numeric and boolean mock template types are correct.
+- [x] both SKILL.md files validate and contain no placeholders.
+- [x] both bundles reproduce with no diff.
 - [ ] full tests, typecheck, build, bundle, e2e, and forward-tests pass.
-- [ ] `git status --short` is clean after final commits.
+- [x] `git status --short` is clean after final commits.
