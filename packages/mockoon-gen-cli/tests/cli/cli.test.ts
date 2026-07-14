@@ -115,6 +115,27 @@ describe("createProgram", () => {
     expect(artifact.outputs.mockoon.port).toBe(4100);
   });
 
+  it("from-openapi rejects API output inside mockoon-gen", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "openapi.yaml");
+
+    await writeFile(
+      join(dir, "mockoon-gen.config.json"),
+      JSON.stringify({ apiOutput: "src/pages/user-detail/mockoon-gen/api.generated.ts", whistleFile: "mockoon-gen/whistle.cjs" }),
+      "utf8"
+    );
+    await writeFile(
+      openapiFile,
+      await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"),
+      "utf8"
+    );
+
+    await expect(
+      program.parseAsync(["node", "mockoon-gen", "from-openapi", "openapi.yaml", "--cwd", dir], { from: "user" })
+    ).rejects.toThrow('apiOutput must not be written inside a "mockoon-gen" directory');
+  });
+
   it("from-openapi refuses to run until Whistle import mode is confirmed", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
     const openapiFile = join(dir, "openapi.yaml");
@@ -205,6 +226,33 @@ describe("createProgram", () => {
     const generated = await readFile(join(dir, "src/api/generated/from-artifact.ts"), "utf8");
     expect(generated).toContain("mockoon-gen-sha256");
     await expect(stat(join(dir, "src/api/generated/from-config.ts"))).rejects.toThrow();
+  });
+
+  it("generate rejects artifact API output inside mockoon-gen", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mockoon-gen-"));
+    const program = createProgram();
+    const openapiFile = join(dir, "openapi.yaml");
+
+    await writeFile(
+      openapiFile,
+      await readFile(join(process.cwd(), "tests/fixtures/openapi.user.yaml"), "utf8"),
+      "utf8"
+    );
+
+    const artifact = artifactFromOpenApi(await loadOpenApi(openapiFile), {
+      artifactDir: "mockoon-gen",
+      apiOutput: "src/api/generated/from-config.ts",
+      mockoonPort: 3100,
+      whistleFile: "mockoon-gen/whistle.cjs"
+    });
+    artifact.outputs.apiCode.suggestedFile = "src/pages/user-detail/mockoon-gen/api.generated.ts";
+
+    await writeFile(join(dir, "artifact.json"), JSON.stringify(artifact, null, 2), "utf8");
+
+    await expect(
+      program.parseAsync(["node", "mockoon-gen", "generate", "--from", "artifact.json", "--cwd", dir], { from: "user" })
+    ).rejects.toThrow('apiOutput must not be written inside a "mockoon-gen" directory');
+    await expect(stat(join(dir, "src/pages/user-detail/mockoon-gen/api.generated.ts"))).rejects.toThrow();
   });
 
   it("generate skips API code when artifact disables it", async () => {

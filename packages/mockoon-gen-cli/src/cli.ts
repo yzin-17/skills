@@ -12,7 +12,7 @@ import { artifactFromOpenApi } from "./artifact/from-openapi.js";
 import { artifactSchema } from "./artifact/schema.js";
 import type { ApiArtifact } from "./artifact/types.js";
 import { validateArtifact } from "./artifact/validate.js";
-import { loadConfig } from "./config/load-config.js";
+import { assertApiOutputOutsideMockoonGen, loadConfig } from "./config/load-config.js";
 import { defaultConfig } from "./config/types.js";
 import { generateApiCode } from "./generators/api-code.js";
 import { generateMockoonEnvironment } from "./generators/mockoon.js";
@@ -83,6 +83,7 @@ export function createProgram(): Command {
         return;
       }
       const targetFile = artifact.outputs.apiCode.suggestedFile || config.apiOutput;
+      assertApiOutputOutsideMockoonGen(targetFile);
 
       await writeTextFile(join(options.cwd, targetFile), generateApiCode(artifact));
     });

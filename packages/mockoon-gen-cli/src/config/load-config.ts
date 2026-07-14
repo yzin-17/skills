@@ -11,6 +11,7 @@ export async function loadConfig(file: string): Promise<MockoonGenConfig> {
     if (config.whistleFile) {
       assertVisibleMockArtifactFile(config.whistleFile, "whistleFile");
     }
+    assertApiOutputOutsideMockoonGen(config.apiOutput);
     return config;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
@@ -18,6 +19,14 @@ export async function loadConfig(file: string): Promise<MockoonGenConfig> {
     }
 
     throw error;
+  }
+}
+
+export function assertApiOutputOutsideMockoonGen(file: string): void {
+  const directories = file.replace(/\\/g, "/").replace(/\/+$/, "").split("/").slice(0, -1);
+
+  if (directories.includes("mockoon-gen")) {
+    throw new Error(`apiOutput must not be written inside a "mockoon-gen" directory; received: ${file}`);
   }
 }
 
