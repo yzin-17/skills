@@ -891,7 +891,7 @@ git commit -m "feat: add target-aware mock preflight"
 - Create: `packages/mockoon-gen-cli/tests/utils/paths-v2.test.ts`
 - Create: `packages/mockoon-gen-cli/tests/utils/safe-write-v2.test.ts`
 
-- [ ] **Step 1: Write failing path tests**
+- [x] **Step 1: Write failing path tests**
 
 Cover:
 
@@ -903,7 +903,7 @@ Cover:
 - symlink escape rejected.
 - Windows separators normalized in pure helper tests.
 
-- [ ] **Step 2: Write failing no-clobber tests**
+- [x] **Step 2: Write failing no-clobber tests**
 
 Cover init, artifact, JSON output, and CJS output:
 
@@ -913,18 +913,18 @@ Cover init, artifact, JSON output, and CJS output:
 - force replacement.
 - force cannot bypass path or preflight.
 
-- [ ] **Step 3: Implement package-local safety helpers**
+- [x] **Step 3: Implement package-local safety helpers**
 
 Do not move them into `openapi-reader`. The two CLIs remain independently owned even if their safety behavior is intentionally parallel.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 pnpm --filter mockoon-gen test -- tests/utils/paths-v2.test.ts tests/utils/safe-write-v2.test.ts
 pnpm --filter mockoon-gen typecheck
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/mockoon-gen-cli/src/utils packages/mockoon-gen-cli/tests/utils
