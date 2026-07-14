@@ -785,7 +785,7 @@ git commit -m "feat: generate policy-driven Mockoon scenarios"
 - Create: `packages/mockoon-gen-cli/src/generators/whistle-v3.ts`
 - Create: `packages/mockoon-gen-cli/tests/generators/whistle-v3.test.ts`
 
-- [ ] **Step 1: Write failing derivation tests**
+- [x] **Step 1: Write failing derivation tests**
 
 Cover:
 
@@ -800,22 +800,22 @@ Cover:
 - CJS exports groupName, name, and rules.
 - JSON/CJS are chosen by a function argument, not artifact fields.
 
-- [ ] **Step 2: Implement semantic lookup**
+- [x] **Step 2: Implement semantic lookup**
 
 Resolve route endpointId to endpoint; use Mockoon port as target port. Do not accept matcher or target overrides.
 
-- [ ] **Step 3: Keep generator and serializer separate**
+- [x] **Step 3: Keep generator and serializer separate**
 
 Use one derived rules text function, then JSON and CJS serializers. This prevents behavior drift between formats.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 pnpm --filter mockoon-gen test -- tests/generators/whistle-v3.test.ts
 pnpm --filter mockoon-gen typecheck
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/mockoon-gen-cli/src/generators/whistle-v3.ts packages/mockoon-gen-cli/tests/generators/whistle-v3.test.ts
