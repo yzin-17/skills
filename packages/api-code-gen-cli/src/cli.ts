@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { API_CODE_GEN_VERSION } from "./index.js";
 
 export function createProgram(): Command {
@@ -18,6 +20,19 @@ export function createProgram(): Command {
   return program;
 }
 
-if (import.meta.url === new URL(process.argv[1] ?? "", "file:").href) {
+export function shouldRunCli(importMetaUrl: string, argv: readonly string[] | undefined = process.argv): boolean {
+  const entryFile = argv?.[1];
+  if (!entryFile) {
+    return false;
+  }
+
+  try {
+    return realpathSync(fileURLToPath(importMetaUrl)) === realpathSync(entryFile);
+  } catch {
+    return false;
+  }
+}
+
+if (shouldRunCli(import.meta.url)) {
   void createProgram().parseAsync();
 }

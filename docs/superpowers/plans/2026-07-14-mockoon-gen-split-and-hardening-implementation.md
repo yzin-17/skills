@@ -163,11 +163,11 @@ skills/
 - Delete: `packages/mockoon-gen-cli/pnpm-workspace.yaml`
 - Delete: `packages/mockoon-gen-cli/pnpm-lock.yaml`
 
-- [ ] **Step 1: Record the baseline before changing package management**
+- [x] **Step 1: Record the baseline before changing package management**
 
 Run the commands in the Baseline section and retain the terminal output for comparison.
 
-- [ ] **Step 2: Add the root workspace manifest**
+- [x] **Step 2: Add the root workspace manifest**
 
 Create a private root `package.json` with `packageManager: pnpm@11.7.0` and scripts:
 
@@ -194,11 +194,11 @@ allowBuilds:
   esbuild: true
 ```
 
-- [ ] **Step 3: Remove package-local workspace ownership**
+- [x] **Step 3: Remove package-local workspace ownership**
 
 Delete the package-local workspace file and lockfile, and remove the package-local `packageManager` field now owned by the root. Keep the package name `mockoon-gen` so existing filter commands remain stable.
 
-- [ ] **Step 4: Generate the root lockfile**
+- [x] **Step 4: Generate the root lockfile**
 
 ```bash
 pnpm install
@@ -216,7 +216,7 @@ pnpm --filter mockoon-gen build
 
 Expected: all existing tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add package.json pnpm-workspace.yaml pnpm-lock.yaml packages/mockoon-gen-cli/package.json packages/mockoon-gen-cli/pnpm-workspace.yaml packages/mockoon-gen-cli/pnpm-lock.yaml
@@ -245,7 +245,7 @@ git commit -m "build: establish generator workspace"
 - Delete: `packages/mockoon-gen-cli/src/openapi/types.ts`
 - Modify: `pnpm-lock.yaml`
 
-- [ ] **Step 1: Create the test harness and write reader tests first**
+- [x] **Step 1: Create the test harness and write reader tests first**
 
 Create the package manifest, TypeScript/Vitest configuration, fixture, and tests, but leave `src` unimplemented.
 
@@ -265,7 +265,7 @@ pnpm --filter @yzin/openapi-reader test
 
 Expected: the workspace discovers the package and the test fails because the reader exports do not exist yet.
 
-- [ ] **Step 2: Implement only shared reader responsibilities**
+- [x] **Step 2: Implement only shared reader responsibilities**
 
 Package name: `@yzin/openapi-reader`, version `0.1.0`, private, compiled to `dist`.
 
@@ -278,7 +278,7 @@ Export:
 
 Do not export review, artifact, mock, Whistle, or API code types.
 
-- [ ] **Step 3: Add the workspace dependency to mockoon-gen**
+- [x] **Step 3: Add the workspace dependency to mockoon-gen**
 
 ```json
 "@yzin/openapi-reader": "workspace:*"
@@ -286,7 +286,7 @@ Do not export review, artifact, mock, Whistle, or API code types.
 
 Update imports. Do not change current artifact behavior in this task.
 
-- [ ] **Step 4: Remove only the duplicated OpenAPI reader files**
+- [x] **Step 4: Remove only the duplicated OpenAPI reader files**
 
 Keep `generators/hash.ts` temporarily if old API sync/generation still imports it. It is deleted only after API extraction.
 
@@ -301,7 +301,7 @@ pnpm --filter mockoon-gen test
 pnpm --filter mockoon-gen typecheck
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/openapi-reader packages/mockoon-gen-cli pnpm-lock.yaml
@@ -325,7 +325,7 @@ git commit -m "refactor: extract shared OpenAPI reader"
 - Create through initializer: `skills/api-code-gen/agents/openai.yaml`
 - Modify: `pnpm-lock.yaml`
 
-- [ ] **Step 1: Initialize the skill with the official initializer**
+- [x] **Step 1: Initialize the skill with the official initializer**
 
 Run from the repository root:
 
@@ -340,11 +340,11 @@ python3 /Users/yzin/.codex/skills/.system/skill-creator/scripts/init_skill.py ap
 
 Do not create assets or skill-owned scripts.
 
-- [ ] **Step 2: Replace initializer placeholders immediately**
+- [x] **Step 2: Replace initializer placeholders immediately**
 
 Write a minimal, valid, placeholder-free `SKILL.md` that says this first-stage skill accepts reviewed OpenAPI, owns an independent artifact, and does not provide mock exports or reverse sync. Task 14 will replace this scaffold with the complete workflow. Run `quick_validate.py` before committing Task 3.
 
-- [ ] **Step 3: Create the package test harness and write CLI registration tests**
+- [x] **Step 3: Create the package test harness and write CLI registration tests**
 
 Create the package manifest and test configuration before running the test, but leave command registration unimplemented so the first run fails for the intended reason.
 
@@ -360,17 +360,17 @@ Assert absent:
 - `sync-api-code`
 - mock or Whistle export commands
 
-- [ ] **Step 4: Create the package skeleton**
+- [x] **Step 4: Create the package skeleton**
 
 Package name `api-code-gen`, version `0.1.0`, dependency on `@yzin/openapi-reader`, Commander, Zod, YAML only if package-local serialization still requires it, and matching build/test/typecheck/bundle scripts.
 
 The bundle script writes `skills/api-code-gen/bin/api-code-gen.mjs`.
 
-- [ ] **Step 5: Implement command registration without business behavior**
+- [x] **Step 5: Implement command registration without business behavior**
 
 Each command may throw an explicit `Not implemented` error after parsing. Keep the CLI executable and symlink-safe using the existing `shouldRunCli` pattern.
 
-- [ ] **Step 6: Verify scaffold**
+- [x] **Step 6: Verify scaffold**
 
 ```bash
 pnpm install
@@ -380,7 +380,7 @@ pnpm --filter api-code-gen build
 python3 /Users/yzin/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/api-code-gen
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/api-code-gen-cli skills/api-code-gen pnpm-lock.yaml
