@@ -1,6 +1,6 @@
 ---
 name: mockoon-gen
-description: "Use when turning loose API docs or reviewed OpenAPI into page-local Mockoon and Whistle mock artifacts. Use for mock-artifact review, Mockoon export, Whistle forwarding rules, list mock policies, and delayed Whistle JSON/CJS export selection; do not use for TypeScript DTO, VO, mapper, or API request-code generation."
+description: "Use when turning loose API docs or reviewed OpenAPI into page-local Mockoon and Whistle mock artifacts. Use for mock-artifact review, Mockoon export, Whistle forwarding rules, list mock policies, and delayed Whistle JSON/CJS export selection; API client generation belongs to api-code-gen."
 ---
 
 # Mockoon Gen

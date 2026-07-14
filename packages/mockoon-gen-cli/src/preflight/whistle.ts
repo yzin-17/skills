@@ -1,4 +1,4 @@
-import type { MockArtifact } from "../mock-artifact/types.js";
+import type { MockArtifact } from "../artifact/types.js";
 import type { MockDiagnostic } from "./diagnostics.js";
 export function whistleDiagnostics(artifact: MockArtifact): MockDiagnostic[] {
   const diagnostics: MockDiagnostic[] = [];

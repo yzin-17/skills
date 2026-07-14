@@ -4,16 +4,16 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { loadOpenApi } from "@yzin/openapi-reader";
-import { loadMockConfig } from "./config-v2/load-config.js";
-import { defaultMockConfig } from "./config-v2/types.js";
-import { generateMockoonV3 } from "./generators/mockoon-v3.js";
-import { deriveWhistleRules, serializeWhistle } from "./generators/whistle-v3.js";
-import { mockArtifactFromOpenApi } from "./mock-artifact/from-openapi.js";
-import { readMockArtifact } from "./mock-artifact/read-artifact.js";
+import { loadMockConfig } from "./config/load-config.js";
+import { defaultMockConfig } from "./config/types.js";
+import { generateMockoon } from "./generators/mockoon.js";
+import { deriveWhistleRules, serializeWhistle } from "./generators/whistle.js";
+import { mockArtifactFromOpenApi } from "./artifact/from-openapi.js";
+import { readMockArtifact } from "./artifact/read-artifact.js";
 import { MOCKGEN_VERSION } from "./index.js";
-import { runMockPreflight } from "./preflight-v2/run-preflight.js";
-import { assertMockoonGenPath, resolveMockProjectPath } from "./utils/paths-v2.js";
-import { writeMockOutput } from "./utils/safe-write-v2.js";
+import { runMockPreflight } from "./preflight/run-preflight.js";
+import { assertMockoonGenPath, resolveMockProjectPath } from "./utils/paths.js";
+import { writeMockOutput } from "./utils/safe-write.js";
 
 export function createProgram(): Command {
   const program = new Command().name("mockoon-gen").description("Generate Mockoon and Whistle files from reviewed mock artifacts.").version(MOCKGEN_VERSION);
@@ -31,7 +31,7 @@ export function createProgram(): Command {
   });
   const exportCommand = program.command("export").argument("<target>").requiredOption("--from <artifact>").option("--format <format>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (target: string, options: { from: string; format?: "json" | "cjs"; force?: boolean; cwd: string }) => {
     const artifactFile = inputPath(options.cwd, options.from); const artifact = await readMockArtifact(artifactFile); const openapi = await loadOpenApi(inputPath(options.cwd, artifact.openapi.file));
-    if (target === "mockoon") { ready(artifact, openapi.sha256, "mockoon"); const file = join(dirname(artifactFile), "mockoon.json"); assertMockoonGenPath(file); await writeMockOutput(await resolveMockProjectPath(options.cwd, file), pretty(generateMockoonV3(artifact)), { force: options.force }); return; }
+    if (target === "mockoon") { ready(artifact, openapi.sha256, "mockoon"); const file = join(dirname(artifactFile), "mockoon.json"); assertMockoonGenPath(file); await writeMockOutput(await resolveMockProjectPath(options.cwd, file), pretty(generateMockoon(artifact)), { force: options.force }); return; }
     if (target === "whistle") { if (options.format !== "json" && options.format !== "cjs") throw new Error("Whistle export requires --format json or cjs."); ready(artifact, openapi.sha256, "whistle"); const file = join(dirname(artifactFile), options.format === "json" ? "whistle.json" : "whistle.cjs"); assertMockoonGenPath(file); await writeMockOutput(await resolveMockProjectPath(options.cwd, file), serializeWhistle(options.format, artifact.outputs.whistle.groupName, deriveWhistleRules(artifact)), { force: options.force }); return; }
     throw new Error(`Unknown export target: ${target}`);
   });

@@ -956,7 +956,7 @@ git commit -m "fix: enforce mock output write boundaries"
 - Rewrite: `packages/mockoon-gen-cli/tests/cli/e2e.test.ts`
 - Remove/move legacy tests under `tests/artifact`, `tests/config`, and `tests/generators/api-code.test.ts`
 
-- [ ] **Step 1: Write the final CLI tests first**
+- [x] **Step 1: Write the final CLI tests first**
 
 Expected commands:
 
@@ -973,7 +973,7 @@ Expected absent:
 - `guard`
 - `export whistle-cli`
 
-- [ ] **Step 2: Wire idempotent init/from-openapi**
+- [x] **Step 2: Wire idempotent init/from-openapi**
 
 Implement:
 
@@ -983,23 +983,23 @@ Implement:
 - same hash no-op, changed hash refusal, force replacement.
 - old schema explicit error; no migration or deletion.
 
-- [ ] **Step 3: Wire validate and exports through shared preflight**
+- [x] **Step 3: Wire validate and exports through shared preflight**
 
 `validate --target` defaults all. Export commands call preflight internally before safe write.
 
-- [ ] **Step 4: Delete mock-owned API and guard code**
+- [x] **Step 4: Delete mock-owned API and guard code**
 
 Remove child-process Git snapshot logic, tmp guard snapshots, code hashes, sync parser, API generator imports, and API config fields.
 
-- [ ] **Step 5: Promote parallel v3/v2 modules to canonical paths**
+- [x] **Step 5: Promote parallel v3/v2 modules to canonical paths**
 
 Update imports and test paths. Do not leave `-v2`, `-v3`, `config-v2`, or `preflight-v2` names in the final tree.
 
-- [ ] **Step 6: Set mock CLI version 0.2.0**
+- [x] **Step 6: Set mock CLI version 0.2.0**
 
 Update package and exported version consistently.
 
-- [ ] **Step 7: Run package verification**
+- [x] **Step 7: Run package verification**
 
 ```bash
 pnpm --filter mockoon-gen test
@@ -1016,7 +1016,7 @@ rg -n "sync-api-code|guard begin|sourcePattern|targetPath|generateApiCode|apiOut
 
 Expected: no obsolete runtime/schema references; fixture descriptions may mention old fields only in explicit rejection tests.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/mockoon-gen-cli
@@ -1229,7 +1229,7 @@ Cover:
 - project-outside and symlink paths block.
 - manually changed output refuses overwrite.
 
-- [ ] **Step 3: Run all automated verification**
+- [x] **Step 3: Run all automated verification**
 
 ```bash
 pnpm install --frozen-lockfile
@@ -1256,7 +1256,7 @@ Use fresh subagents with raw temporary projects and no leaked diagnosis. Use pro
 
 Verify actual actions, CLI calls, file diffs, and stop points. Do not tell the subagents the expected answer. Use temporary directories and remove their artifacts after evaluation.
 
-- [ ] **Step 5: Final architecture audit**
+- [x] **Step 5: Final architecture audit**
 
 ```bash
 rg -n "mock-artifact" packages/api-code-gen-cli skills/api-code-gen
@@ -1302,5 +1302,5 @@ If automated or forward tests expose production defects, fix them in separate na
 - [x] numeric and boolean mock template types are correct.
 - [x] both SKILL.md files validate and contain no placeholders.
 - [x] both bundles reproduce with no diff.
-- [ ] full tests, typecheck, build, bundle, e2e, and forward-tests pass.
+- [x] full tests, typecheck, build, bundle, e2e, and forward-tests pass.
 - [x] `git status --short` is clean after final commits.

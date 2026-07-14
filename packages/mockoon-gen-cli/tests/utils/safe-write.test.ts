@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { writeMockOutput } from "../../src/utils/safe-write-v2.js";
+import { writeMockOutput } from "../../src/utils/safe-write.js";
 
 describe("writeMockOutput", () => {
   it("writes absent content, skips identical content, and requires force to replace", async () => {

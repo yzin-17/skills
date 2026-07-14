@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { assertMockoonGenPath, resolveMockProjectPath } from "../../src/utils/paths-v2.js";
+import { assertMockoonGenPath, resolveMockProjectPath } from "../../src/utils/paths.js";
 
 describe("mock path boundaries", () => {
   it("requires files directly under a visible mockoon-gen directory", () => {

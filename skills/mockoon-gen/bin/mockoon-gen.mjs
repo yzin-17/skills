@@ -10407,7 +10407,7 @@ function isPlainObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// src/config-v2/load-config.ts
+// src/config/load-config.ts
 import { readFile as readFile2 } from "node:fs/promises";
 
 // ../../node_modules/.pnpm/zod@3.23.8/node_modules/zod/lib/index.mjs
@@ -14324,10 +14324,10 @@ var z = /* @__PURE__ */ Object.freeze({
   ZodError
 });
 
-// src/config-v2/types.ts
+// src/config/types.ts
 var defaultMockConfig = { mockoonPort: null, whistleGroupName: null, mockPolicy: { listScenario: { enabled: true, itemCount: 20 } } };
 
-// src/config-v2/load-config.ts
+// src/config/load-config.ts
 var schema = z.object({ mockoonPort: z.number().int().min(1).max(65535).nullable().default(null), whistleGroupName: z.string().min(1).nullable().default(null), mockPolicy: z.object({ listScenario: z.object({ enabled: z.boolean().default(true), itemCount: z.number().int().min(1).max(1e3).default(20) }).strict().default({ enabled: true, itemCount: 20 }) }).strict().default({ listScenario: { enabled: true, itemCount: 20 } }) }).strict();
 async function loadMockConfig(file) {
   try {
@@ -14338,13 +14338,13 @@ async function loadMockConfig(file) {
   }
 }
 
-// src/generators/mockoon-v3.ts
-function generateMockoonV3(artifact) {
+// src/generators/mockoon.ts
+function generateMockoon(artifact) {
   if (artifact.outputs.mockoon.port === null) throw new Error("Mockoon port is required.");
   return { uuid: "mockoon-gen-env", lastMigration: 32, name: "mockoon-gen", endpointPrefix: "", latency: 0, port: artifact.outputs.mockoon.port, routes: artifact.endpoints.map((endpoint2) => ({ uuid: endpoint2.id, method: endpoint2.method.toLowerCase(), endpoint: endpoint2.path.replace(/^\//, "").replace(/\{([^}]+)\}/g, ":$1"), enabled: true, responses: endpoint2.mock.scenarios.filter((scenario2) => scenario2.enabled).map((scenario2) => ({ uuid: `${endpoint2.id}-${scenario2.name}`, body: scenario2.bodyTemplate, latency: 0, statusCode: scenario2.statusCode, label: scenario2.name, headers: Object.entries({ ...artifact.outputs.mockoon.defaultHeaders, ...scenario2.headers }).map(([key, value]) => ({ key, value })) })) })) };
 }
 
-// src/generators/whistle-v3.ts
+// src/generators/whistle.ts
 function deriveWhistleRules(artifact) {
   if (artifact.outputs.mockoon.port === null) throw new Error("MOCKOON_PORT_REQUIRED");
   const endpoints = new Map(artifact.endpoints.map((endpoint2) => [endpoint2.id, endpoint2]));
@@ -14356,8 +14356,8 @@ function deriveWhistleRules(artifact) {
     const dynamic = /\{[^}]+\}/.test(endpoint2.path);
     const sourcePath = endpoint2.path.replace(/\{[^}]+\}/g, "*");
     let capture = 1;
-    const targetPath = endpoint2.path.replace(/\{[^}]+\}/g, () => `$${capture++}`);
-    rules.add(`${dynamic ? "^" : ""}${route.apiHost}${sourcePath} http://127.0.0.1:${artifact.outputs.mockoon.port}${targetPath}`);
+    const forwardedPath = endpoint2.path.replace(/\{[^}]+\}/g, () => `$${capture++}`);
+    rules.add(`${dynamic ? "^" : ""}${route.apiHost}${sourcePath} http://127.0.0.1:${artifact.outputs.mockoon.port}${forwardedPath}`);
   }
   return [...rules];
 }
@@ -14390,7 +14390,7 @@ function mockTemplate(schema2) {
   return "{{faker 'string.sample'}}";
 }
 
-// src/mock-artifact/from-openapi.ts
+// src/artifact/from-openapi.ts
 var HTTP_METHODS = ["get", "post", "put", "patch", "delete"];
 function mockArtifactFromOpenApi(openapi, options) {
   const endpoints = [];
@@ -14437,10 +14437,10 @@ function listTemplate(schema2, property, count) {
 }` : array;
 }
 
-// src/mock-artifact/read-artifact.ts
+// src/artifact/read-artifact.ts
 import { readFile as readFile3 } from "node:fs/promises";
 
-// src/mock-artifact/schema.ts
+// src/artifact/schema.ts
 var resolution = z.object({ reason: z.string().min(1), resolvedBy: z.enum(["human", "mockoon-gen-skill"]), resolvedAt: z.string().min(1) }).strict();
 var reviewItem = z.object({ id: z.string().min(1), severity: z.enum(["fatal", "needsReview", "warning"]), scope: z.enum(["global", "openapi", "endpoint", "mock", "output"]), path: z.string().min(1), message: z.string().min(1), suggestion: z.string().optional(), resolutionStatus: z.enum(["open", "resolved", "ignored"]), resolution: resolution.optional() }).strict().superRefine((item, context) => {
   if (item.resolutionStatus === "open" && item.resolution) context.addIssue({ code: z.ZodIssueCode.custom, message: "open item cannot have resolution" });
@@ -14456,7 +14456,7 @@ var mockArtifactSchema = z.object({
   outputs: z.object({ whistle: z.object({ groupName: z.string().min(1).nullable(), routes: z.array(z.object({ endpointId: z.string().min(1), apiHost: z.string().min(1).nullable() }).strict()) }).strict(), mockoon: z.object({ port: z.number().int().min(1).max(65535).nullable(), defaultHeaders: z.record(z.string()) }).strict() }).strict()
 }).strict();
 
-// src/mock-artifact/read-artifact.ts
+// src/artifact/read-artifact.ts
 async function readMockArtifact(file) {
   return mockArtifactSchema.parse(JSON.parse(await readFile3(file, "utf8")));
 }
@@ -14464,7 +14464,7 @@ async function readMockArtifact(file) {
 // src/index.ts
 var MOCKGEN_VERSION = "0.2.0";
 
-// src/preflight-v2/mockoon.ts
+// src/preflight/mockoon.ts
 function mockoonDiagnostics(artifact) {
   const diagnostics = [];
   if (artifact.outputs.mockoon.port === null) diagnostics.push(fatal("MOCKOON_PORT_REQUIRED", "outputs.mockoon.port", "Mockoon port is required."));
@@ -14479,7 +14479,7 @@ function fatal(code, path, message) {
   return { severity: "fatal", code, path, message };
 }
 
-// src/preflight-v2/whistle.ts
+// src/preflight/whistle.ts
 function whistleDiagnostics(artifact) {
   const diagnostics = [];
   if (artifact.outputs.mockoon.port === null) diagnostics.push(fatal2("MOCKOON_PORT_REQUIRED", "outputs.mockoon.port", "Mockoon port is required."));
@@ -14499,7 +14499,7 @@ function fatal2(code, path, message) {
   return { severity: "fatal", code, path, message };
 }
 
-// src/preflight-v2/run-preflight.ts
+// src/preflight/run-preflight.ts
 function runMockPreflight(artifact, options) {
   const diagnostics = [];
   if (artifact.openapi.reviewStatus !== "confirmed") diagnostics.push({ severity: "fatal", code: "OPENAPI_UNREVIEWED", path: "openapi.reviewStatus", message: "OpenAPI has not been reviewed." });
@@ -14517,7 +14517,7 @@ function applies(item, target) {
   return true;
 }
 
-// src/utils/paths-v2.ts
+// src/utils/paths.ts
 import { realpath } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve as resolve2 } from "node:path";
 function assertMockoonGenPath(file) {
@@ -14548,7 +14548,7 @@ function assertContained(root, target) {
   throw new Error(`OUTPUT_PATH_OUTSIDE_PROJECT: ${target}`);
 }
 
-// src/utils/safe-write-v2.ts
+// src/utils/safe-write.ts
 import { mkdir, readFile as readFile4, rename, rm, writeFile } from "node:fs/promises";
 import { dirname as dirname2, join } from "node:path";
 async function writeMockOutput(file, content, options = {}) {
@@ -14601,7 +14601,7 @@ function createProgram() {
       ready(artifact, openapi.sha256, "mockoon");
       const file = join2(dirname3(artifactFile), "mockoon.json");
       assertMockoonGenPath(file);
-      await writeMockOutput(await resolveMockProjectPath(options.cwd, file), pretty(generateMockoonV3(artifact)), { force: options.force });
+      await writeMockOutput(await resolveMockProjectPath(options.cwd, file), pretty(generateMockoon(artifact)), { force: options.force });
       return;
     }
     if (target === "whistle") {

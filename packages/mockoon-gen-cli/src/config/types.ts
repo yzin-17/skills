@@ -1,27 +1,2 @@
-export interface MockoonGenConfig {
-  artifactDir: string;
-  openapiFile: string;
-  mockoonFile: string;
-  whistleFile: string | null;
-  apiOutput: string;
-  generateApiCode: boolean;
-  splitApiOutput: boolean;
-  transformResponse: boolean;
-  mockoonPort: number | null;
-  whistleGroupName: string | null;
-  confirmPlacement: boolean;
-}
-
-export const defaultConfig: MockoonGenConfig = {
-  artifactDir: "mockoon-gen",
-  openapiFile: "mockoon-gen/openapi.yaml",
-  mockoonFile: "mockoon-gen/mockoon.json",
-  whistleFile: null,
-  apiOutput: "src/api/generated/api.generated.ts",
-  generateApiCode: true,
-  splitApiOutput: false,
-  transformResponse: true,
-  mockoonPort: null,
-  whistleGroupName: null,
-  confirmPlacement: true
-};
+export interface MockGenConfig { mockoonPort: number | null; whistleGroupName: string | null; mockPolicy: { listScenario: { enabled: boolean; itemCount: number } }; }
+export const defaultMockConfig: MockGenConfig = { mockoonPort: null, whistleGroupName: null, mockPolicy: { listScenario: { enabled: true, itemCount: 20 } } };

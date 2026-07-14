@@ -1,4 +1,4 @@
-import type { MockArtifact, MockReviewItem } from "../mock-artifact/types.js";
+import type { MockArtifact, MockReviewItem } from "../artifact/types.js";
 import { mockoonDiagnostics } from "./mockoon.js";
 import type { MockDiagnostic, MockPreflightResult } from "./diagnostics.js";
 import { whistleDiagnostics } from "./whistle.js";
