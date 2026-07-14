@@ -1038,7 +1038,7 @@ git commit -m "refactor: cut over mockoon-gen to mock artifacts"
 - Create: `skills/api-code-gen/references/api-output-layout.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: Rewrite Mockoon Gen SKILL.md**
+- [x] **Step 1: Rewrite Mockoon Gen SKILL.md**
 
 Target 80–100 lines. Keep only:
 
@@ -1052,7 +1052,7 @@ Target 80–100 lines. Keep only:
 
 Move matcher theory and troubleshooting to `references/whistle-patterns.md`. Do not duplicate the same rules in both files.
 
-- [ ] **Step 2: Write API Code Gen SKILL.md**
+- [x] **Step 2: Write API Code Gen SKILL.md**
 
 Use imperative instructions. Include:
 
@@ -1067,7 +1067,7 @@ Use imperative instructions. Include:
 
 Put layout heuristics and examples in `references/api-output-layout.md`.
 
-- [ ] **Step 3: Regenerate agents metadata**
+- [x] **Step 3: Regenerate agents metadata**
 
 ```bash
 python3 /Users/yzin/.codex/skills/.system/skill-creator/scripts/generate_openai_yaml.py skills/mockoon-gen \
@@ -1081,11 +1081,11 @@ python3 /Users/yzin/.codex/skills/.system/skill-creator/scripts/generate_openai_
   --interface default_prompt='Use $api-code-gen to create reviewed DTO, VO, mapper, and TypeScript API code from OpenAPI.'
 ```
 
-- [ ] **Step 4: Consolidate user-facing docs at repository root**
+- [x] **Step 4: Consolidate user-facing docs at repository root**
 
 Update root `README.md` to list both skills, installation, invocation examples, generated files, and the fact that they share OpenAPI but not artifacts. Remove the per-skill README to avoid duplicated instructions.
 
-- [ ] **Step 5: Validate both skills**
+- [x] **Step 5: Validate both skills**
 
 ```bash
 python3 /Users/yzin/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/mockoon-gen
@@ -1095,7 +1095,7 @@ rg -n "TBD|TODO|FIXME|api-artifact|sync-api-code|guard begin|export whistle-cli"
 
 Expected: validators pass; no placeholders or obsolete workflow instructions.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add README.md skills/mockoon-gen skills/api-code-gen

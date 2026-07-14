@@ -6,11 +6,12 @@ The repository is optimized for personal workflows rather than as a public produ
 
 ## Skills
 
-- `mockoon-gen`: Generate frontend API and mock artifacts from API docs or OpenAPI. It can create/review OpenAPI, produce `mockoon-gen/api-artifact.json`, generate TypeScript API code, and export Whistle/Mockoon config files.
+- `mockoon-gen`: Turn reviewed OpenAPI into independent page-local Mockoon and Whistle artifacts.
+- `api-code-gen`: Turn reviewed OpenAPI into independent TypeScript DTO, VO, mapper, and request-code artifacts.
 
 ## Install
 
-Install the `mockoon-gen` skill from GitHub with:
+Install the skills from GitHub with:
 
 ```bash
 npx skills@latest add yzin-17/skills
@@ -21,14 +22,10 @@ Restart Codex after installing or updating skills so the new skill metadata is l
 Use it with:
 
 ```text
-$mockoon-gen 根据这个接口文档生成接口和 mock 配置
+$mockoon-gen 根据已 review 的 OpenAPI 生成 Mockoon 和 Whistle 配置
+$api-code-gen 根据已 review 的 OpenAPI 生成 TypeScript API 代码
 ```
 
 ## Automation
 
-The bundled `mockoon-gen` CLI is updated by `.github/workflows/bundle-mockoon-gen-cli.yml`.
-
-For the workflow to open pull requests, use one of these options:
-
-- Enable GitHub Actions pull request creation in the repository settings.
-- Or add a repository secret named `SKILLS_BOT_TOKEN` with permission to push branches and create pull requests.
+The skills share only OpenAPI input. `mock-artifact.json` and `api-code-artifact.json` are independent and generated outputs never become reverse inputs.
