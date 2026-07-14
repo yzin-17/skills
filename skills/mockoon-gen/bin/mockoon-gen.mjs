@@ -14917,12 +14917,19 @@ async function loadConfig(file) {
     if (config.whistleFile) {
       assertVisibleMockArtifactFile(config.whistleFile, "whistleFile");
     }
+    assertApiOutputOutsideMockoonGen(config.apiOutput);
     return config;
   } catch (error) {
     if (error.code === "ENOENT") {
       return { ...defaultConfig };
     }
     throw error;
+  }
+}
+function assertApiOutputOutsideMockoonGen(file) {
+  const directories = file.replace(/\\/g, "/").replace(/\/+$/, "").split("/").slice(0, -1);
+  if (directories.includes("mockoon-gen")) {
+    throw new Error(`apiOutput must not be written inside a "mockoon-gen" directory; received: ${file}`);
   }
 }
 function assertVisibleMockArtifactFile(file, fieldName) {
@@ -15415,6 +15422,7 @@ function createProgram() {
       return;
     }
     const targetFile = artifact.outputs.apiCode.suggestedFile || config.apiOutput;
+    assertApiOutputOutsideMockoonGen(targetFile);
     await writeTextFile(join(options.cwd, targetFile), generateApiCode(artifact));
   });
   program2.command("export").description("Export whistle.json, whistle.cjs, or mockoon.json.").argument("<target>", "whistle, whistle-cli, or mockoon").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (target, options) => {
