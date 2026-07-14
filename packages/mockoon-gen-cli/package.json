@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@11.7.0",
   "bin": {
     "mockoon-gen": "./dist/src/cli.js"
   },
