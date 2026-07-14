@@ -1202,7 +1202,7 @@ git commit -m "ci: verify generator bundles in pull requests"
 - Create only if useful for reusable fixtures: `packages/*/tests/fixtures/projects/*`
 - No production code changes unless a failing test exposes a spec violation.
 
-- [ ] **Step 1: Add cross-command Mockoon e2e cases**
+- [x] **Step 1: Add cross-command Mockoon e2e cases**
 
 Cover:
 
@@ -1216,7 +1216,7 @@ Cover:
 - manually changed output refuses overwrite.
 - `--force` replaces output only after readiness/path checks.
 
-- [ ] **Step 2: Add cross-command API e2e cases**
+- [x] **Step 2: Add cross-command API e2e cases**
 
 Cover:
 
@@ -1243,7 +1243,7 @@ git diff --check
 git diff --exit-code -- skills/mockoon-gen/bin/mockoon-gen.mjs skills/api-code-gen/bin/api-code-gen.mjs
 ```
 
-- [ ] **Step 4: Run isolated skill forward-tests**
+- [x] **Step 4: Run isolated skill forward-tests**
 
 Use fresh subagents with raw temporary projects and no leaked diagnosis. Use prompts shaped like real requests, including:
 
@@ -1270,7 +1270,7 @@ Expected:
 - Mock skill/package does not contain API code state.
 - Both consume only the shared reader package.
 
-- [ ] **Step 6: Commit any test-only additions**
+- [x] **Step 6: Commit any test-only additions**
 
 ```bash
 git add packages/mockoon-gen-cli/tests packages/api-code-gen-cli/tests
