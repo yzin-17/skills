@@ -836,7 +836,7 @@ git commit -m "feat: derive Whistle rules from endpoints"
 - Create: `packages/mockoon-gen-cli/tests/preflight-v2/mockoon.test.ts`
 - Create: `packages/mockoon-gen-cli/tests/preflight-v2/whistle.test.ts`
 
-- [ ] **Step 1: Write failing shared-gate tests**
+- [x] **Step 1: Write failing shared-gate tests**
 
 Stable diagnostic codes must include:
 
@@ -854,26 +854,26 @@ Stable diagnostic codes must include:
 - `WHISTLE_ENDPOINT_UNKNOWN`
 - `WHISTLE_CAPTURE_INVALID`
 
-- [ ] **Step 2: Implement target-aware review item filtering**
+- [x] **Step 2: Implement target-aware review item filtering**
 
 Implement the scope/path rules documented in Task 8. `target=all` returns the stable union without duplicate diagnostics.
 
-- [ ] **Step 3: Implement Mockoon readiness**
+- [x] **Step 3: Implement Mockoon readiness**
 
 Check schema, hash, review, port, IDs, scenario selection, required scenarios, policy, body types, and UUID uniqueness.
 
-- [ ] **Step 4: Implement Whistle readiness**
+- [x] **Step 4: Implement Whistle readiness**
 
 Check shared OpenAPI readiness, port, group, host-only values, endpoint references, and derived capture integrity. Format is not required for `validate --target whistle`; export validates the format argument separately.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 ```bash
 pnpm --filter mockoon-gen test -- tests/preflight-v2
 pnpm --filter mockoon-gen typecheck
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/mockoon-gen-cli/src/preflight-v2 packages/mockoon-gen-cli/tests/preflight-v2
