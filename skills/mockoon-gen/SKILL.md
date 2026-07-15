@@ -16,7 +16,30 @@ node <skill-dir>/bin/mockoon-gen.mjs init --page-dir <page-dir> --cwd <project-d
 node <skill-dir>/bin/mockoon-gen.mjs from-openapi <openapi-file> --origin <generated|imported|manual> --page-dir <page-dir> --cwd <project-dir>
 ```
 
-4. Review the artifact: OpenAPI status/hash, mock scenarios, Mockoon port, Whistle group, and each semantic `apiHost`. Keep unresolved semantic questions as open review items.
+4. Before rendering or exporting, the model must inspect every string field in each successful JSON response schema and make a semantic Faker decision. Use this order:
+
+   - Treat an explicit OpenAPI `format` as the contract constraint.
+   - Otherwise infer from the field name, full field path, `title`, `description`, parent object, neighboring fields, and request/response context.
+   - When the meaning is clear, add an entry to that endpoint's `mock.semanticMappings` in `mock-artifact.json`. Use a Faker.js `module.method` path without Mockoon braces, for example:
+
+```json
+{
+  "path": "items[].productName",
+  "faker": "commerce.productName"
+}
+```
+
+   - Do not invent a mapping when the meaning is ambiguous. Leaving the field unmapped is valid and causes the renderer to use `string.sample`.
+   - Keep the mapping decision separate from `bodyTemplate`; never hand-edit generated templates to encode the decision.
+
+   After adding or changing mappings, materialize them into generated success scenarios:
+
+```bash
+node <skill-dir>/bin/mockoon-gen.mjs render-templates --from <page-dir>/mockoon-gen/mock-artifact.json --cwd <project-dir>
+```
+
+The renderer applies the precedence `semanticMappings > OpenAPI format > string.sample` and keeps default, list, empty, and nested templates consistent. Review the artifact afterward: OpenAPI status/hash, mock scenarios, each `semanticMappings` entry, Mockoon port, Whistle group, and each semantic `apiHost`. Keep unresolved semantic questions as open review items.
+
 5. Validate the target before output:
 
 ```bash
