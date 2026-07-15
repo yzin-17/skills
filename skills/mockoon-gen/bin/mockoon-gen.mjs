@@ -14436,7 +14436,7 @@ function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new 
     if (emptyArray) return { body: "[]", issues: resolved.issues };
     const item = render(schema2.items, document, false, seen, `${path}[]`, mappings, stringPaths, randomEmptyData);
     const body = `[${item.body}]`;
-    return { body: randomEmptyData ? emptyOr(body, "[]") : body, issues: [...resolved.issues, ...item.issues] };
+    return { body: randomEmptyData ? nullableOrEmpty(body, "[]") : body, issues: [...resolved.issues, ...item.issues] };
   }
   if (schema2.type === "object" || schema2.properties) {
     const properties = Object.entries(schema2.properties ?? {});
@@ -14445,7 +14445,7 @@ function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new 
     const body = `{
   ${values.map((value) => `${JSON.stringify(value.name)}: ${value.body}`).join(",\n  ")}
 }`;
-    return { body: randomEmptyData ? emptyOr(body, "{}") : body, issues: [...resolved.issues, ...values.flatMap((value) => value.issues)] };
+    return { body: randomEmptyData ? nullableOrEmpty(body, "{}") : body, issues: [...resolved.issues, ...values.flatMap((value) => value.issues)] };
   }
   if (schema2.type === "integer" || schema2.type === "number") return { body: randomEmptyData ? nullable(integerTemplate(schema2)) : integerTemplate(schema2), issues: resolved.issues };
   if (schema2.type === "boolean") return { body: randomEmptyData ? nullable("{{faker 'datatype.boolean'}}") : "{{faker 'datatype.boolean'}}", issues: resolved.issues };
@@ -14518,8 +14518,8 @@ function nullable(value) {
 function nullableOrEmptyString(value) {
   return `{{#if (boolean)}}null{{else}}{{#if (boolean)}}""{{else}}${value}{{/if}}{{/if}}`;
 }
-function emptyOr(value, empty) {
-  return `{{#if (boolean)}}${empty}{{else}}${value}{{/if}}`;
+function nullableOrEmpty(value, empty) {
+  return `{{#if (boolean)}}null{{else}}{{#if (boolean)}}${empty}{{else}}${value}{{/if}}{{/if}}`;
 }
 function formatFaker(format) {
   switch (format?.toLowerCase()) {
