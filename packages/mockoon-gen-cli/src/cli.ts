@@ -25,7 +25,7 @@ export function createProgram(): Command {
     const config = await loadMockConfig(configPath(options.cwd, options.pageDir));
     await writeMockOutput(artifactFile, pretty(mockArtifactFromOpenApi(openapi, { origin: options.origin, reviewed: Boolean(options.reviewed), config })), { force: options.force });
   });
-  program.command("refresh-templates").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options: { from: string; cwd: string }) => {
+  program.command("render-templates").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options: { from: string; cwd: string }) => {
     const artifactFile = inputPath(options.cwd, options.from);
     const artifact = await readMockArtifact(artifactFile);
     const openapi = await loadOpenApi(inputPath(options.cwd, artifact.openapi.file));

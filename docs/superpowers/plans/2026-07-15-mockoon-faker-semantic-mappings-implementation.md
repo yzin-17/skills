@@ -25,7 +25,7 @@
 ## 任务 3：生成与刷新 artifact
 
 - [x] `from-openapi` 新建 artifact 时为每个 endpoint 写入空 `semanticMappings`，使模型有稳定的编辑位置。
-- [x] 新增 `refresh-templates --from <artifact> --cwd <cwd>` CLI 命令：读取 artifact 指向的 OpenAPI，验证其 SHA-256 与 artifact 一致，并仅重建各 endpoint 的成功场景 body template。
+- [x] 将 `refresh-templates` 更名为 `render-templates --from <artifact> --cwd <cwd>`：读取 artifact 指向的 OpenAPI，验证其 SHA-256 与 artifact 一致，并仅重渲染各 endpoint 的成功场景 body template。
 - [x] 刷新时保留 endpoint 的 `semanticMappings`、场景选择配置、端口、Whistle 配置及已有审阅项；只替换自动生成的成功场景内容。
 - [x] 若 OpenAPI 中 endpoint/路径已不再匹配 artifact，产生明确错误，要求用户重新执行 `from-openapi`，避免静默丢失模型决策。
 - [x] 更新 CLI 命令列表和端到端测试。
@@ -42,5 +42,5 @@
 
 - [x] 运行 `pnpm --filter mockoon-gen test`、`pnpm --filter mockoon-gen typecheck`、`pnpm --filter mockoon-gen build` 和 `pnpm --filter mockoon-gen bundle`。
 - [x] 运行根目录 `pnpm test`、`pnpm typecheck` 与 `pnpm bundle`。
-- [x] 使用刷新后的 artifact 导出 `mockoon.json`，断言 bundle 中已包含语义映射逻辑，且产物中存在预期 Faker 模板。
+- [x] 使用渲染后的 artifact 导出 `mockoon.json`，断言 bundle 中已包含语义映射逻辑，且产物中存在预期 Faker 模板。
 - [x] 复查工作区只包含本任务文件，提交源代码、测试、bundle 和中文文档。

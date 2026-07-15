@@ -77,7 +77,7 @@ describe("mockArtifactFromOpenApi", () => {
     expect(body).toContain('"商品名称": "{{faker \'commerce.productName\'}}"');
   });
 
-  it("刷新模板时保留非自动成功场景，并同步嵌套列表映射", () => {
+  it("渲染模板时保留非自动成功场景，并同步嵌套列表映射", () => {
     const source = openapi({
       type: "object",
       properties: { items: { type: "array", items: { type: "object", properties: { 商品名称: { type: "string" } } } } }

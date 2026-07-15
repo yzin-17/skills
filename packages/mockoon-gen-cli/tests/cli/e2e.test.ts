@@ -78,7 +78,7 @@ describe("mockoon-gen CLI e2e", () => {
     artifact.endpoints[0].mock.scenarios.push({ name: "success-custom", statusCode: 200, headers: {}, bodyTemplate: '{"manual":true}', origin: "manual", enabled: true });
     await writeArtifact(project, artifact);
 
-    await run(project, "refresh-templates", "--from", artifactPath());
+    await run(project, "render-templates", "--from", artifactPath());
     await run(project, "export", "mockoon", "--from", artifactPath());
 
     const refreshed = await readArtifact(project);

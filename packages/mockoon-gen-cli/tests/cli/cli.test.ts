@@ -5,7 +5,7 @@ describe("mockoon-gen CLI contract", () => {
   it("exposes only the split mock workflow commands", () => {
     const names = createProgram().commands.map((command) => command.name());
 
-    expect(names).toEqual(["init", "from-openapi", "refresh-templates", "validate", "export"]);
+    expect(names).toEqual(["init", "from-openapi", "render-templates", "validate", "export"]);
     expect(names).not.toContain("generate");
     expect(names).not.toContain("sync-api-code");
     expect(names).not.toContain("guard");
