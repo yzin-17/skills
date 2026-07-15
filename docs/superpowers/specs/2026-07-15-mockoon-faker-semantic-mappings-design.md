@@ -50,7 +50,7 @@
 
 1. 调用方从 artifact 的 `openapi.file` 读取原始 OpenAPI，并将字段路径、字段名、`title`、`description`、`format`、父对象名称和相邻字段提供给模型；这些上下文不复制进 artifact。
 2. 外部大模型只修改同一份 artifact 的 `semanticMappings`，填写已验证的 Faker.js API。
-3. 新增 `refresh-templates` CLI 动作，从 artifact 记录的 OpenAPI 文件和语义映射重新生成所有成功场景模板。
+3. 新增 `render-templates` CLI 动作，从 artifact 记录的 OpenAPI 文件和语义映射重新渲染所有成功场景模板。该名称明确表示它更新的是 artifact 内已物化的 `bodyTemplate`，而非刷新最终 `mockoon.json`。
 4. 导出 Mockoon 前继续运行既有校验；未映射字段不阻塞导出，无效 `faker` 值则报出定位到 mapping 的诊断。
 
 模型输出不直接修改 `bodyTemplate`。这确保默认场景、列表场景与嵌套数组中的同一字段始终采用相同的表达式。
