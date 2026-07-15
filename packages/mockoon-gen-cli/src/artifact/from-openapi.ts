@@ -26,8 +26,9 @@ function endpoint(method: MockEndpoint["method"], path: string, operation: OpenA
   const schema = successSchema(operation);
   const mappings = new Map(semanticMappings.map((mapping) => [mapping.path, mapping.faker]));
   const stringPaths = new Set<string>();
-  const success = render(schema, document, false, new Set(), "", mappings, stringPaths, randomEmptyData);
+  const success = render(schema, document, false, new Set(), "", mappings, stringPaths, false);
   const empty = render(schema, document, true, new Set(), "", mappings, stringPaths, false);
+  const randomEmpty = randomEmptyData ? render(schema, document, false, new Set(), "", mappings, stringPaths, true) : undefined;
   const list = findList(schema, document);
   const issues = unique([...success.issues, ...empty.issues, ...list.issues]);
   const invalidMappings = semanticMappings.filter((mapping) => !stringPaths.has(mapping.path));
@@ -37,8 +38,9 @@ function endpoint(method: MockEndpoint["method"], path: string, operation: OpenA
     { name: "success-empty", statusCode: 200, headers: jsonHeaders(), bodyTemplate: empty.body, origin: "generated", enabled: true },
     { name: "error-default", statusCode: 500, headers: jsonHeaders(), bodyTemplate: '{\n  "code": "MOCK_ERROR"\n}', origin: "generated", enabled: true }
   ];
+  if (randomEmpty) scenarios.splice(1, 0, { name: "success-random-empty", statusCode: 200, headers: jsonHeaders(), bodyTemplate: randomEmpty.body, origin: "generated", enabled: true });
   if (config.mockPolicy.listScenario.enabled && list.location) {
-    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema, document, list.location, config.mockPolicy.listScenario.itemCount, mappings, stringPaths, randomEmptyData), origin: "generated", enabled: true });
+    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema, document, list.location, config.mockPolicy.listScenario.itemCount, mappings, stringPaths, false), origin: "generated", enabled: true });
     else issues.push("列表多条成功场景的 itemCount 必须大于 1。");
   }
   return { endpoint: { id: endpointId(method, path, operation), operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, semanticMappings: [...semanticMappings], scenarios } }, issues: unique(issues) };
@@ -176,5 +178,5 @@ function mergeRefreshedEndpoint(existing: MockEndpoint, regenerated: MockEndpoin
   return { ...existing, mock: { ...existing.mock, semanticMappings: regenerated.mock.semanticMappings, scenarios } };
 }
 
-function isGeneratedSuccess(scenario: { name: string; statusCode: number }): boolean { return scenario.statusCode >= 200 && scenario.statusCode < 300 && (scenario.name === "success-default" || scenario.name === "success-empty" || /^success-list-\d+$/.test(scenario.name)); }
+function isGeneratedSuccess(scenario: { name: string; statusCode: number }): boolean { return scenario.statusCode >= 200 && scenario.statusCode < 300 && (scenario.name === "success-default" || scenario.name === "success-empty" || scenario.name === "success-random-empty" || /^success-list-\d+$/.test(scenario.name)); }
 function unique(values: string[]): string[] { return [...new Set(values)]; }

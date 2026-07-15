@@ -77,7 +77,7 @@ describe("mockArtifactFromOpenApi", () => {
     expect(body).toContain(`number.int' min=${Number.MAX_SAFE_INTEGER} max=${Number.MAX_SAFE_INTEGER}`);
   });
 
-  it("在随机空数据模式中为所有类型加入空态分支", () => {
+  it("在独立随机空数据场景中为所有类型加入空态分支，并保持默认场景正常", () => {
     const artifact = mockArtifactFromOpenApi(openapi({
       type: "object",
       properties: {
@@ -88,14 +88,23 @@ describe("mockArtifactFromOpenApi", () => {
         detail: { type: "object", properties: { id: { type: "string" } } }
       }
     }), { ...options(), randomEmptyData: true });
-    const body = artifact.endpoints[0]!.mock.scenarios[0]!.bodyTemplate;
+    const scenarios = artifact.endpoints[0]!.mock.scenarios;
+    const normalBody = scenarios.find((scenario) => scenario.name === "success-default")!.bodyTemplate;
+    const body = scenarios.find((scenario) => scenario.name === "success-random-empty")!.bodyTemplate;
 
     expect(artifact.policies.randomEmptyData).toBe(true);
+    expect(normalBody).not.toContain("null");
+    expect(normalBody).not.toContain("{{#if (boolean)}}");
     expect(body).toContain("null");
     expect(body).toContain('""');
     expect(body).toContain("[]");
     expect(body).toContain("{}");
     expect(body).toContain("{{#if (boolean)}}");
+  });
+
+  it("关闭随机空数据模式时不生成专用场景", () => {
+    const artifact = mockArtifactFromOpenApi(openapi({ type: "string" }), options());
+    expect(artifact.endpoints[0]!.mock.scenarios.map((scenario) => scenario.name)).not.toContain("success-random-empty");
   });
 
   it("优先使用 format，并应用模型填写的中英文语义映射", () => {

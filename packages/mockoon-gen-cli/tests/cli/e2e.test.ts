@@ -41,6 +41,7 @@ describe("mockoon-gen CLI e2e", () => {
     expect(artifact.schemaVersion).toBe("0.3.0");
     expect(artifact.openapi.reviewStatus).toBe("unreviewed");
     expect(artifact.policies.randomEmptyData).toBe(false);
+    expect(artifact.endpoints[0].mock.scenarios.map((scenario: { name: string }) => scenario.name)).not.toContain("success-random-empty");
     expect(artifact.outputs.whistle).not.toHaveProperty("file");
     await expect(run(project, "export", "whistle", "--format", "json", "--from", artifactPath())).rejects.toThrow("OPENAPI_UNREVIEWED");
   });
@@ -52,12 +53,14 @@ describe("mockoon-gen CLI e2e", () => {
     await run(project, "from-openapi", openapiPath(), "--origin", "imported", "--random-empty-data", "--page-dir", PAGE_DIR);
     const created = await readArtifact(project);
     expect(created.policies.randomEmptyData).toBe(true);
-    expect(created.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-default").bodyTemplate).toContain("null");
+    expect(created.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-default").bodyTemplate).not.toContain("null");
+    expect(created.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-random-empty").bodyTemplate).toContain("null");
 
     await run(project, "render-templates", "--from", artifactPath());
     const refreshed = await readArtifact(project);
     expect(refreshed.policies.randomEmptyData).toBe(true);
-    expect(refreshed.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-default").bodyTemplate).toContain("null");
+    expect(refreshed.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-default").bodyTemplate).not.toContain("null");
+    expect(refreshed.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-random-empty").bodyTemplate).toContain("null");
   });
 
   it("blocks unreviewed artifacts and exports Mockoon after review", async () => {

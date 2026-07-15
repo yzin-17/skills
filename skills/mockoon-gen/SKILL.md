@@ -9,7 +9,7 @@ Treat reviewed OpenAPI as the contract source. Store `mock-artifact.json`, confi
 
 1. Identify the project and related page directory. Stop and ask if the page directory is unclear.
 2. Normalize loose docs into `<page-dir>/mockoon-gen/openapi.yaml`. Do not mark it reviewed without an explicit human or project review decision.
-3. Before creating the artifact, explicitly ask the user whether to enable random empty-data mode. This mode may emit `null`, an empty string, an empty array, or an empty object for any field, including `required` or non-`nullable` fields, to test responses that do not follow the contract. Add `--random-empty-data` to `from-openapi` only when the user explicitly enables it.
+3. Before creating the artifact, explicitly ask the user whether to enable random empty-data mode. When enabled, it adds a separate `success-random-empty` scenario that may emit `null`, an empty string, an empty array, or an empty object for any field, including `required` or non-`nullable` fields, to test responses that do not follow the contract. It does not change `success-default`. Add `--random-empty-data` to `from-openapi` only when the user explicitly enables it.
 
 4. Initialize page-local config, then create the artifact:
 
