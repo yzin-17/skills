@@ -70,6 +70,23 @@ describe("mockoon-gen CLI e2e", () => {
     expect(await readFile(join(directory, "whistle.cjs"), "utf8")).toContain('exports.groupName = "User Detail"');
   });
 
+  it("refreshes templates from artifact semantic mappings without changing manual scenarios", async () => {
+    const project = await createProject();
+    await createArtifact(project, { reviewed: true, port: 3100 });
+    const artifact = await readArtifact(project);
+    artifact.endpoints[0].mock.semanticMappings = [{ path: "id", faker: "string.uuid" }];
+    artifact.endpoints[0].mock.scenarios.push({ name: "success-custom", statusCode: 200, headers: {}, bodyTemplate: '{"manual":true}', origin: "manual", enabled: true });
+    await writeArtifact(project, artifact);
+
+    await run(project, "refresh-templates", "--from", artifactPath());
+    await run(project, "export", "mockoon", "--from", artifactPath());
+
+    const refreshed = await readArtifact(project);
+    expect(refreshed.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-default").bodyTemplate).toContain("string.uuid");
+    expect(refreshed.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-custom").bodyTemplate).toBe('{"manual":true}');
+    expect(await readFile(join(project, PAGE_DIR, "mockoon-gen/mockoon.json"), "utf8")).toContain("string.uuid");
+  });
+
   it("is a no-op for the same OpenAPI hash and refuses a changed hash", async () => {
     const project = await createProject();
     await createArtifact(project, { reviewed: true, port: 3100 });

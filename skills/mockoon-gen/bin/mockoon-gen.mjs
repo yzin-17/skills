@@ -14384,29 +14384,37 @@ function mockArtifactFromOpenApi(openapi, options) {
   for (const [path, pathItem] of Object.entries(openapi.document.paths)) for (const method of HTTP_METHODS) {
     const operation = pathItem[method];
     if (!operation) continue;
-    const built = endpoint(method.toUpperCase(), path, operation, options.config, openapi.document);
+    const id = endpointId(method.toUpperCase(), path, operation);
+    const built = endpoint(method.toUpperCase(), path, operation, options.config, openapi.document, options.semanticMappingsByEndpoint?.get(id) ?? []);
     endpoints.push(built.endpoint);
     reviewItems.push(...built.issues.map((message, index) => ({ id: `review-${built.endpoint.id}-schema-${index + 1}`, severity: "needsReview", scope: "endpoint", path: `paths.${path}.${method}.responses`, message, resolutionStatus: "open" })));
   }
   return { schemaVersion: "0.3.0", openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" }, reviewItems, policies: structuredClone(options.config.mockPolicy), endpoints, outputs: { whistle: { groupName: options.config.whistleGroupName, routes: endpoints.map((value) => ({ endpointId: value.id, apiHost: null })) }, mockoon: { port: options.config.mockoonPort, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } } };
 }
-function endpoint(method, path, operation, config, document) {
+function endpointId(method, path, operation) {
+  return `ep-${kebab(operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`)}`;
+}
+function endpoint(method, path, operation, config, document, semanticMappings) {
   const operationId = operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`;
   const schema2 = successSchema(operation);
-  const success = render(schema2, document);
-  const empty = render(schema2, document, true);
+  const mappings = new Map(semanticMappings.map((mapping) => [mapping.path, mapping.faker]));
+  const stringPaths = /* @__PURE__ */ new Set();
+  const success = render(schema2, document, false, /* @__PURE__ */ new Set(), "", mappings, stringPaths);
+  const empty = render(schema2, document, true, /* @__PURE__ */ new Set(), "", mappings, stringPaths);
   const list = findList(schema2, document);
   const issues = unique([...success.issues, ...empty.issues, ...list.issues]);
+  const invalidMappings = semanticMappings.filter((mapping) => !stringPaths.has(mapping.path));
+  if (invalidMappings.length) throw new Error(`SEMANTIC_MAPPING_INVALID_PATH: ${invalidMappings.map((mapping) => mapping.path).join(", ")}`);
   const scenarios = [
     { name: "success-default", statusCode: 200, headers: jsonHeaders(), bodyTemplate: success.body, origin: "generated", enabled: true },
     { name: "success-empty", statusCode: 200, headers: jsonHeaders(), bodyTemplate: empty.body, origin: "generated", enabled: true },
     { name: "error-default", statusCode: 500, headers: jsonHeaders(), bodyTemplate: '{\n  "code": "MOCK_ERROR"\n}', origin: "generated", enabled: true }
   ];
   if (config.mockPolicy.listScenario.enabled && list.location) {
-    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema2, document, list.location, config.mockPolicy.listScenario.itemCount), origin: "generated", enabled: true });
+    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema2, document, list.location, config.mockPolicy.listScenario.itemCount, mappings, stringPaths), origin: "generated", enabled: true });
     else issues.push("\u5217\u8868\u591A\u6761\u6210\u529F\u573A\u666F\u7684 itemCount \u5FC5\u987B\u5927\u4E8E 1\u3002");
   }
-  return { endpoint: { id: `ep-${kebab(operationId)}`, operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, scenarios } }, issues: unique(issues) };
+  return { endpoint: { id: endpointId(method, path, operation), operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, semanticMappings: [...semanticMappings], scenarios } }, issues: unique(issues) };
 }
 function jsonHeaders() {
   return { "Content-Type": "application/json; charset=utf-8" };
@@ -14418,7 +14426,7 @@ function successSchema(operation) {
   const response = Object.entries(operation.responses ?? {}).filter(([code]) => /^2\d\d$/.test(code)).sort(([left], [right]) => Number(left) - Number(right))[0]?.[1];
   return response?.content?.["application/json"]?.schema;
 }
-function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new Set()) {
+function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new Set(), path = "", mappings = /* @__PURE__ */ new Map(), stringPaths = /* @__PURE__ */ new Set()) {
   const resolved = resolve2(input, document, seen);
   if (!resolved.schema) return { body: "null", issues: resolved.issues };
   const schema2 = resolved.schema;
@@ -14426,23 +14434,23 @@ function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new 
   if (schema2.enum?.length) return { body: JSON.stringify(schema2.enum[0]), issues: resolved.issues };
   if (schema2.type === "array") {
     if (emptyArray) return { body: "[]", issues: resolved.issues };
-    const item = render(schema2.items, document, false, seen);
+    const item = render(schema2.items, document, false, seen, `${path}[]`, mappings, stringPaths);
     return { body: `[${item.body}]`, issues: [...resolved.issues, ...item.issues] };
   }
   if (schema2.type === "object" || schema2.properties) {
     const properties = Object.entries(schema2.properties ?? {});
     if (properties.length === 0) return { body: "{}", issues: resolved.issues };
-    const values = properties.map(([name, value]) => {
-      const rendered = render(value, document, emptyArray, seen);
-      return { name, ...rendered };
-    });
+    const values = properties.map(([name, value]) => ({ name, ...render(value, document, emptyArray, seen, path ? `${path}.${name}` : name, mappings, stringPaths) }));
     return { body: `{
   ${values.map((value) => `${JSON.stringify(value.name)}: ${value.body}`).join(",\n  ")}
 }`, issues: [...resolved.issues, ...values.flatMap((value) => value.issues)] };
   }
   if (schema2.type === "integer" || schema2.type === "number") return { body: "{{faker 'number.int'}}", issues: resolved.issues };
   if (schema2.type === "boolean") return { body: "{{faker 'datatype.boolean'}}", issues: resolved.issues };
-  if (schema2.type === "string") return { body: JSON.stringify("{{faker 'string.sample'}}"), issues: resolved.issues };
+  if (schema2.type === "string") {
+    if (path) stringPaths.add(path);
+    return { body: JSON.stringify(`{{faker '${formatFaker(schema2.format) ?? mappings.get(path) ?? "string.sample"}'}}`), issues: resolved.issues };
+  }
   return { body: "null", issues: [...resolved.issues, "\u6210\u529F\u54CD\u5E94\u7F3A\u5C11\u53EF\u63A8\u65AD\u7684 schema \u7C7B\u578B\u3002"] };
 }
 function resolve2(input, document, seen) {
@@ -14465,18 +14473,65 @@ function findList(input, document) {
   const arrays = Object.entries(resolved.schema.properties ?? {}).flatMap(([name, value]) => resolve2(value, document, /* @__PURE__ */ new Set()).schema?.type === "array" ? [name] : []);
   return arrays.length === 1 ? { location: arrays[0], issues: resolved.issues } : arrays.length > 1 ? { issues: [...resolved.issues, "\u6210\u529F\u54CD\u5E94\u5305\u542B\u591A\u4E2A\u5217\u8868\u5C5E\u6027\uFF0C\u65E0\u6CD5\u786E\u5B9A\u591A\u6761\u6570\u636E\u573A\u666F\u3002"] } : { issues: resolved.issues };
 }
-function renderList(input, document, location, count) {
+function renderList(input, document, location, count, mappings, stringPaths) {
   const resolved = resolve2(input, document, /* @__PURE__ */ new Set()).schema;
   if (!resolved) return "null";
   const listSchema = location === "root" ? resolved : resolve2(resolved.properties?.[location], document, /* @__PURE__ */ new Set()).schema;
-  const item = listSchema?.items;
-  const rendered = render(item, document);
+  const rendered = render(listSchema?.items, document, false, /* @__PURE__ */ new Set(), location === "root" ? "[]" : `${location}[]`, mappings, stringPaths);
   const repeated = `[{{#repeat ${count}}}${rendered.body}{{/repeat}}]`;
   if (location === "root") return repeated;
-  const values = Object.entries(resolved.properties ?? {}).map(([name, value]) => `${JSON.stringify(name)}: ${name === location ? repeated : render(value, document).body}`);
+  const values = Object.entries(resolved.properties ?? {}).map(([name, value]) => `${JSON.stringify(name)}: ${name === location ? repeated : render(value, document, false, /* @__PURE__ */ new Set(), name, mappings, stringPaths).body}`);
   return `{
   ${values.join(",\n  ")}
 }`;
+}
+function formatFaker(format) {
+  switch (format?.toLowerCase()) {
+    case "uuid":
+      return "string.uuid";
+    case "email":
+      return "internet.email";
+    case "date":
+      return "date.past";
+    case "date-time":
+      return "date.recent";
+    case "uri":
+    case "url":
+      return "internet.url";
+    case "ipv4":
+      return "internet.ipv4";
+    case "ipv6":
+      return "internet.ipv6";
+    case "hostname":
+      return "internet.domainName";
+    case "password":
+      return "internet.password";
+    case "binary":
+      return "string.binary";
+    default:
+      return void 0;
+  }
+}
+function refreshMockArtifactTemplates(artifact, openapi) {
+  const mappings = new Map(artifact.endpoints.map((endpoint2) => [endpoint2.id, endpoint2.mock.semanticMappings ?? []]));
+  const regenerated = mockArtifactFromOpenApi(openapi, { origin: artifact.openapi.origin, reviewed: artifact.openapi.reviewStatus === "confirmed", config: { mockoonPort: artifact.outputs.mockoon.port, whistleGroupName: artifact.outputs.whistle.groupName, mockPolicy: artifact.policies }, semanticMappingsByEndpoint: mappings });
+  if (regenerated.endpoints.length !== artifact.endpoints.length || regenerated.endpoints.some((endpoint2) => !mappings.has(endpoint2.id))) throw new Error("SEMANTIC_MAPPING_ENDPOINT_MISMATCH: regenerate the artifact from OpenAPI first.");
+  const existingById = new Map(artifact.endpoints.map((endpoint2) => [endpoint2.id, endpoint2]));
+  return { ...artifact, endpoints: regenerated.endpoints.map((endpoint2) => mergeRefreshedEndpoint(existingById.get(endpoint2.id), endpoint2)) };
+}
+function mergeRefreshedEndpoint(existing, regenerated) {
+  const replacements = new Map(regenerated.mock.scenarios.filter(isGeneratedSuccess).map((scenario2) => [scenario2.name, scenario2]));
+  const scenarios = existing.mock.scenarios.map((scenario2) => {
+    const replacement = replacements.get(scenario2.name);
+    if (!replacement || scenario2.origin !== "generated") return scenario2;
+    replacements.delete(scenario2.name);
+    return replacement;
+  });
+  for (const scenario2 of replacements.values()) scenarios.push(scenario2);
+  return { ...existing, mock: { ...existing.mock, semanticMappings: regenerated.mock.semanticMappings, scenarios } };
+}
+function isGeneratedSuccess(scenario2) {
+  return scenario2.statusCode >= 200 && scenario2.statusCode < 300 && (scenario2.name === "success-default" || scenario2.name === "success-empty" || /^success-list-\d+$/.test(scenario2.name));
 }
 function unique(values) {
   return [...new Set(values)];
@@ -14492,12 +14547,20 @@ var reviewItem = z.object({ id: z.string().min(1), severity: z.enum(["fatal", "n
   if (item.resolutionStatus !== "open" && !item.resolution) context.addIssue({ code: z.ZodIssueCode.custom, message: "closed item requires resolution" });
 });
 var scenario = z.object({ name: z.string().min(1), statusCode: z.number().int().min(100).max(599), headers: z.record(z.string()), bodyTemplate: z.string(), origin: z.enum(["generated", "inferred", "manual"]), enabled: z.boolean() }).strict();
+var semanticMapping = z.object({ path: z.string().min(1), faker: z.string().regex(/^[a-z][A-Za-z0-9]*(?:\.[a-z][A-Za-z0-9]*)+$/, "faker must use module.method syntax") }).strict();
+var mock = z.object({ selection: z.object({ mode: z.enum(["random", "query", "header", "manual"]), key: z.string().optional(), defaultScenario: z.string().min(1) }).strict(), semanticMappings: z.array(semanticMapping).superRefine((mappings, context) => {
+  const paths = /* @__PURE__ */ new Set();
+  for (const [index, mapping] of mappings.entries()) {
+    if (paths.has(mapping.path)) context.addIssue({ code: z.ZodIssueCode.custom, path: [index, "path"], message: "semantic mapping path must be unique" });
+    paths.add(mapping.path);
+  }
+}).default([]), scenarios: z.array(scenario) }).strict();
 var mockArtifactSchema = z.object({
   schemaVersion: z.literal("0.3.0"),
   openapi: z.object({ file: z.string().min(1), sha256: z.string().min(1), origin: z.enum(["generated", "imported", "manual"]), reviewStatus: z.enum(["unreviewed", "needs-change", "confirmed"]) }).strict(),
   reviewItems: z.array(reviewItem),
   policies: z.object({ listScenario: z.object({ enabled: z.boolean(), itemCount: z.number().int().min(2).max(1e3) }).strict() }).strict(),
-  endpoints: z.array(z.object({ id: z.string().min(1), operationId: z.string().min(1), method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]), path: z.string().min(1), summary: z.string().optional(), mock: z.object({ selection: z.object({ mode: z.enum(["random", "query", "header", "manual"]), key: z.string().optional(), defaultScenario: z.string().min(1) }).strict(), scenarios: z.array(scenario) }).strict() }).strict()),
+  endpoints: z.array(z.object({ id: z.string().min(1), operationId: z.string().min(1), method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]), path: z.string().min(1), summary: z.string().optional(), mock }).strict()),
   outputs: z.object({ whistle: z.object({ groupName: z.string().min(1).nullable(), routes: z.array(z.object({ endpointId: z.string().min(1), apiHost: z.string().min(1).nullable() }).strict()) }).strict(), mockoon: z.object({ port: z.number().int().min(1).max(65535).nullable(), defaultHeaders: z.record(z.string()) }).strict() }).strict()
 }).strict();
 
@@ -14629,6 +14692,13 @@ function createProgram() {
     }
     const config = await loadMockConfig(configPath(options.cwd, options.pageDir));
     await writeMockOutput(artifactFile, pretty(mockArtifactFromOpenApi(openapi, { origin: options.origin, reviewed: Boolean(options.reviewed), config })), { force: options.force });
+  });
+  program2.command("refresh-templates").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
+    const artifactFile = inputPath(options.cwd, options.from);
+    const artifact = await readMockArtifact(artifactFile);
+    const openapi = await loadOpenApi(inputPath(options.cwd, artifact.openapi.file));
+    if (openapi.sha256 !== artifact.openapi.sha256) throw new Error("OPENAPI_HASH_MISMATCH: regenerate the artifact from OpenAPI first.");
+    await writeMockOutput(artifactFile, pretty(refreshMockArtifactTemplates(artifact, openapi)), { force: true });
   });
   program2.command("validate").requiredOption("--from <artifact>").option("--target <target>", "all, mockoon, or whistle", "all").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
     if (!["all", "mockoon", "whistle"].includes(options.target)) throw new Error("--target must be all, mockoon, or whistle");

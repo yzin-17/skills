@@ -8,7 +8,7 @@ import { loadMockConfig } from "./config/load-config.js";
 import { defaultMockConfig } from "./config/types.js";
 import { generateMockoon } from "./generators/mockoon.js";
 import { deriveWhistleRules, serializeWhistle } from "./generators/whistle.js";
-import { mockArtifactFromOpenApi } from "./artifact/from-openapi.js";
+import { mockArtifactFromOpenApi, refreshMockArtifactTemplates } from "./artifact/from-openapi.js";
 import { readMockArtifact } from "./artifact/read-artifact.js";
 import { MOCKGEN_VERSION } from "./index.js";
 import { runMockPreflight } from "./preflight/run-preflight.js";
@@ -24,6 +24,13 @@ export function createProgram(): Command {
     if (existsSync(artifactFile)) { const existing = await readMockArtifact(artifactFile); if (existing.openapi.sha256 === openapi.sha256) return; if (!options.force) throw new Error("ARTIFACT_EXISTS_DIFFERENT: OpenAPI hash changed; use --force."); }
     const config = await loadMockConfig(configPath(options.cwd, options.pageDir));
     await writeMockOutput(artifactFile, pretty(mockArtifactFromOpenApi(openapi, { origin: options.origin, reviewed: Boolean(options.reviewed), config })), { force: options.force });
+  });
+  program.command("refresh-templates").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options: { from: string; cwd: string }) => {
+    const artifactFile = inputPath(options.cwd, options.from);
+    const artifact = await readMockArtifact(artifactFile);
+    const openapi = await loadOpenApi(inputPath(options.cwd, artifact.openapi.file));
+    if (openapi.sha256 !== artifact.openapi.sha256) throw new Error("OPENAPI_HASH_MISMATCH: regenerate the artifact from OpenAPI first.");
+    await writeMockOutput(artifactFile, pretty(refreshMockArtifactTemplates(artifact, openapi)), { force: true });
   });
   program.command("validate").requiredOption("--from <artifact>").option("--target <target>", "all, mockoon, or whistle", "all").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options: { from: string; target: "all" | "mockoon" | "whistle"; cwd: string }) => {
     if (!["all", "mockoon", "whistle"].includes(options.target)) throw new Error("--target must be all, mockoon, or whistle");

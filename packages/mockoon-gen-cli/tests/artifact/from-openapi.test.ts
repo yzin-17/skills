@@ -1,7 +1,8 @@
 import { loadOpenApi } from "@yzin/openapi-reader";
 import type { LoadedOpenApi, OpenApiSchema } from "@yzin/openapi-reader";
 import { describe, expect, it } from "vitest";
-import { mockArtifactFromOpenApi } from "../../src/artifact/from-openapi.js";
+import { mockArtifactFromOpenApi, refreshMockArtifactTemplates } from "../../src/artifact/from-openapi.js";
+import { mockArtifactSchema } from "../../src/artifact/schema.js";
 import { runMockPreflight } from "../../src/preflight/run-preflight.js";
 
 describe("mockArtifactFromOpenApi", () => {
@@ -53,6 +54,66 @@ describe("mockArtifactFromOpenApi", () => {
       expect(artifact.endpoints[0]?.mock.scenarios.find((scenario) => scenario.name === "success-default")?.bodyTemplate).toBe(expected);
       expect(artifact.reviewItems).toEqual([]);
     }
+  });
+
+  it("优先使用 format，并应用模型填写的中英文语义映射", () => {
+    const source = openapi({
+      type: "object",
+      properties: {
+        id: { type: "string", format: "email" },
+        productName: { type: "string" },
+        商品名称: { type: "string" }
+      }
+    });
+    const artifact = mockArtifactFromOpenApi(source, { ...options(), semanticMappingsByEndpoint: new Map([["ep-get-users", [
+      { path: "id", faker: "string.uuid" },
+      { path: "productName", faker: "commerce.productName" },
+      { path: "商品名称", faker: "commerce.productName" }
+    ]]]) });
+    const body = artifact.endpoints[0]!.mock.scenarios[0]!.bodyTemplate;
+
+    expect(body).toContain('"id": "{{faker \'internet.email\'}}"');
+    expect(body).toContain('"productName": "{{faker \'commerce.productName\'}}"');
+    expect(body).toContain('"商品名称": "{{faker \'commerce.productName\'}}"');
+  });
+
+  it("刷新模板时保留非自动成功场景，并同步嵌套列表映射", () => {
+    const source = openapi({
+      type: "object",
+      properties: { items: { type: "array", items: { type: "object", properties: { 商品名称: { type: "string" } } } } }
+    });
+    const artifact = mockArtifactFromOpenApi(source, options({ itemCount: 3 }));
+    const endpoint = artifact.endpoints[0]!;
+    endpoint.mock.semanticMappings = [{ path: "items[].商品名称", faker: "commerce.productName" }];
+    endpoint.mock.scenarios.push({ name: "success-custom", statusCode: 200, headers: {}, bodyTemplate: '{"manual": true}', origin: "manual", enabled: true });
+
+    const refreshed = refreshMockArtifactTemplates(artifact, source);
+    const scenarios = refreshed.endpoints[0]!.mock.scenarios;
+    expect(scenarios.find((scenario) => scenario.name === "success-default")?.bodyTemplate).toContain("commerce.productName");
+    expect(scenarios.find((scenario) => scenario.name === "success-list-3")?.bodyTemplate).toContain("commerce.productName");
+    expect(scenarios.find((scenario) => scenario.name === "success-custom")?.bodyTemplate).toBe('{"manual": true}');
+  });
+
+  it("拒绝不指向字符串字段的语义映射", () => {
+    const source = openapi({ type: "object", properties: { count: { type: "integer" } } });
+    expect(() => mockArtifactFromOpenApi(source, { ...options(), semanticMappingsByEndpoint: new Map([["ep-get-users", [{ path: "count", faker: "commerce.productName" }]]]) })).toThrow("SEMANTIC_MAPPING_INVALID_PATH: count");
+  });
+
+  it("未映射时回退，并允许显式通用字符串映射", () => {
+    const source = openapi({ type: "object", properties: { note: { type: "string" } } });
+    const fallback = mockArtifactFromOpenApi(source, options());
+    const explicit = mockArtifactFromOpenApi(source, { ...options(), semanticMappingsByEndpoint: new Map([["ep-get-users", [{ path: "note", faker: "string.sample" }]]]) });
+
+    expect(fallback.endpoints[0]!.mock.scenarios[0]!.bodyTemplate).toContain("string.sample");
+    expect(explicit.endpoints[0]!.mock.scenarios[0]!.bodyTemplate).toContain("string.sample");
+  });
+
+  it("拒绝不安全 Faker 方法和重复路径", () => {
+    const artifact = mockArtifactFromOpenApi(openapi({ type: "string" }), options());
+    artifact.endpoints[0]!.mock.semanticMappings = [{ path: "value", faker: "string.sample'; malicious" }];
+    expect(() => mockArtifactSchema.parse(artifact)).toThrow("faker must use module.method syntax");
+    artifact.endpoints[0]!.mock.semanticMappings = [{ path: "value", faker: "string.sample" }, { path: "value", faker: "commerce.productName" }];
+    expect(() => mockArtifactSchema.parse(artifact)).toThrow("semantic mapping path must be unique");
   });
 
   it("为顶层和对象包裹列表同时生成单条与多条成功场景", () => {

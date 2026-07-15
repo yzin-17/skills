@@ -57,9 +57,9 @@
 
 ## 校验与安全性
 
-- 仅允许 Mockoon 当前支持、且项目白名单包含的 Faker.js 方法路径。
+- 仅允许安全的 Faker.js 方法路径语法（`module.method`）；不维护狭窄的本地 API 白名单，以便模型可使用 Faker.js 的完整 API。
 - `format` 值使用固定映射，例如 `email`、`uuid`、`date-time`、URL/IP 等；模型不能覆盖这些约束。
-- `semanticMappings` 的路径必须指向字符串字段；不存在、重复或非字符串路径都产生可定位的校验错误。
+- `semanticMappings` 的路径必须指向字符串字段；不存在、重复或非字符串路径都产生可定位的校验错误。方法是否存在由 Mockoon 运行模板时最终解析。
 - artifact 模式保持严格校验，防止未知字段悄然写入。
 
 ## 测试
