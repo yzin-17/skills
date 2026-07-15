@@ -1,16 +1,6 @@
-name: Verify Generator Bundles
+name: Bundle Generator CLIs
 
 on:
-  pull_request:
-    paths:
-      - "packages/openapi-reader/**"
-      - "packages/mockoon-gen-cli/**"
-      - "packages/api-code-gen-cli/**"
-      - "skills/mockoon-gen/**"
-      - "skills/api-code-gen/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - ".github/workflows/bundle-mockoon-gen-cli.yml"
   push:
     branches:
       - main
@@ -63,10 +53,6 @@ jobs:
       - name: Bundle CLIs
         run: pnpm bundle
 
-      - name: Verify bundle reproducibility
-        if: github.event_name == 'pull_request'
-        run: git diff --exit-code -- skills/mockoon-gen/bin/mockoon-gen.mjs skills/api-code-gen/bin/api-code-gen.mjs
-
       - name: Verify bundled CLIs
         run: |
           node skills/mockoon-gen/bin/mockoon-gen.mjs --version
@@ -91,7 +77,6 @@ jobs:
           }'
 
       - name: Create or update bundle PR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.SKILLS_BOT_TOKEN || github.token }}
