@@ -1,102 +1,28 @@
 import { describe, expect, it } from "vitest";
-import type { WhistleRoute } from "../../src/artifact/types.js";
-import { generateWhistleCliModule, generateWhistleRules } from "../../src/generators/whistle.js";
+import type { MockArtifact } from "../../src/artifact/types.js";
+import { deriveWhistleRules, serializeWhistle } from "../../src/generators/whistle.js";
 
-const route: WhistleRoute = {
-  endpointId: "ep-get-user",
-  operationId: "getUser",
-  method: "GET",
-  apiHost: "api.example.com",
-  sourcePath: "/api/users/{id}",
-  sourcePattern: "/api/users/*",
-  targetPort: 3100,
-  targetPath: "/api/users/:id",
-  origin: "manual",
-  reviewStatus: "confirmed"
-};
+function artifact(): MockArtifact {
+  return { schemaVersion: "0.3.0", openapi: { file: "openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" }, reviewItems: [], policies: { listScenario: { enabled: true, itemCount: 20 } }, endpoints: [{ id: "ep-sku", operationId: "getSkuWarehouse", method: "GET", path: "/api/skus/{skuId}/warehouses/{warehouseId}", mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, scenarios: [] } }, { id: "ep-health", operationId: "health", method: "GET", path: "/health", mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, scenarios: [] } }], outputs: { whistle: { groupName: "SKU Mock", routes: [{ endpointId: "ep-sku", apiHost: "api.example.test" }, { endpointId: "ep-health", apiHost: "api.example.test" }] }, mockoon: { port: 3100, defaultHeaders: {} } } };
+}
 
-describe("generateWhistleRules", () => {
-  it("generates Whistle import JSON without Default rules", () => {
-    const exported = JSON.parse(generateWhistleRules([route], "User Detail Mock")) as Record<string, unknown>;
-
-    expect(exported).toEqual({
-      "User Detail Mock": "^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1\n",
-      "": ["User Detail Mock"]
-    });
-    expect(exported).not.toHaveProperty("Default");
+describe("Whistle v3", () => {
+  it("derives captures from endpoint paths", () => {
+    expect(deriveWhistleRules(artifact())).toEqual([
+      "^api.example.test/api/skus/*/warehouses/* http://127.0.0.1:3100/api/skus/$1/warehouses/$2",
+      "api.example.test/health http://127.0.0.1:3100/health"
+    ]);
   });
 
-  it("generates a Whistle CLI module for w2 add filepath", () => {
-    expect(generateWhistleCliModule([route], "User Detail Mock")).toBe(`exports.groupName = "User Detail Mock";
-exports.name = "User Detail Mock";
-exports.rules = \`^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1
-\`;
-`);
+  it("serializes JSON and CJS without a Default group", () => {
+    const rules = deriveWhistleRules(artifact());
+    expect(serializeWhistle("json", "SKU Mock", rules)).not.toContain("Default");
+    expect(serializeWhistle("cjs", "SKU Mock", rules)).toContain('exports.groupName = "SKU Mock"');
   });
 
-  it("keeps static routes as plain URL matchers", () => {
-    const staticRoute: WhistleRoute = {
-      ...route,
-      sourcePath: "/api/profile",
-      sourcePattern: "/api/profile",
-      targetPath: "/api/profile"
-    };
-
-    const exported = JSON.parse(generateWhistleRules([staticRoute], "User Detail Mock")) as Record<string, unknown>;
-
-    expect(exported["User Detail Mock"]).toBe("api.example.com/api/profile http://127.0.0.1:3100/api/profile\n");
-  });
-
-  it("uses prefix matchers without terminal anchors for path params", () => {
-    const exported = JSON.parse(
-      generateWhistleRules(
-        [
-          {
-            ...route,
-            endpointId: "ep-get-available-warehouses",
-            operationId: "getAvailableWarehouses",
-            apiHost: "localhost:3000",
-            sourcePath: "/api/skus/{skuId}/available-warehouses",
-            sourcePattern: "/api/skus/*/available-warehouses",
-            targetPort: 6000,
-            targetPath: "/api/skus/:skuId/available-warehouses"
-          }
-        ],
-        "SKU Mock"
-      )
-    ) as Record<string, unknown>;
-
-    expect(exported["SKU Mock"]).toBe(
-      "^localhost:3000/api/skus/*/available-warehouses http://127.0.0.1:6000/api/skus/$1/available-warehouses\n"
-    );
-  });
-
-  it("does not repair matcher operators stored in artifact fields", () => {
-    const exported = JSON.parse(
-      generateWhistleRules([{ ...route, apiHost: "^api.example.com" }], "User Detail Mock")
-    ) as Record<string, unknown>;
-
-    expect(exported["User Detail Mock"]).toBe("^^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1\n");
-  });
-
-  it("deduplicates repeated Whistle rules", () => {
-    const exported = JSON.parse(generateWhistleRules([route, { ...route }], "User Detail Mock")) as Record<string, unknown>;
-
-    expect(exported["User Detail Mock"]).toBe("^api.example.com/api/users/* http://127.0.0.1:3100/api/users/$1\n");
-  });
-
-  it("throws when groupName is missing", () => {
-    expect(() => generateWhistleRules([route], null)).toThrow("groupName");
-    expect(() => generateWhistleCliModule([route], null)).toThrow("groupName");
-  });
-
-  it("throws when apiHost is pending", () => {
-    expect(() => generateWhistleRules([{ ...route, apiHost: "pending-confirmation" }], "User Detail Mock")).toThrow("apiHost");
-    expect(() => generateWhistleCliModule([{ ...route, apiHost: "pending-confirmation" }], "User Detail Mock")).toThrow("apiHost");
-  });
-
-  it("throws when targetPort is missing", () => {
-    expect(() => generateWhistleRules([{ ...route, targetPort: null }], "User Detail Mock")).toThrow("targetPort");
-    expect(() => generateWhistleCliModule([{ ...route, targetPort: null }], "User Detail Mock")).toThrow("targetPort");
+  it("rejects unknown endpoint route references", () => {
+    const value = artifact();
+    value.outputs.whistle.routes = [{ endpointId: "missing", apiHost: "api.example.test" }];
+    expect(() => deriveWhistleRules(value)).toThrow("WHISTLE_ENDPOINT_UNKNOWN");
   });
 });

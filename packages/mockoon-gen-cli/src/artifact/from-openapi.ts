@@ -1,349 +1,147 @@
-import type { ApiArtifact, ArtifactEndpoint, MapperStep, MockScenario, WhistleRoute } from "./types.js";
-import type { LoadedOpenApi, OpenApiOperation, OpenApiSchema } from "../openapi/types.js";
-
-interface FromOpenApiOptions {
-  artifactDir: string;
-  apiOutput: string;
-  generateApiCode?: boolean;
-  mockoonPort: number | null;
-  whistleFile?: string;
-  whistleGroupName?: string | null;
-}
+import type { LoadedOpenApi, OpenApiDocument, OpenApiOperation, OpenApiSchema } from "@yzin/openapi-reader";
+import type { MockGenConfig } from "../config/types.js";
+import type { MockArtifact, MockEndpoint, MockReviewItem, MockSemanticMapping, MockScenario } from "./types.js";
 
 const HTTP_METHODS = ["get", "post", "put", "patch", "delete"] as const;
+type Template = { body: string; issues: string[] };
 
-export function artifactFromOpenApi(openapi: LoadedOpenApi, options: FromOpenApiOptions): ApiArtifact {
-  const endpoints: ArtifactEndpoint[] = [];
-
-  for (const [path, pathItem] of Object.entries(openapi.document.paths)) {
-    for (const method of HTTP_METHODS) {
-      const operation = pathItem[method];
-      if (!operation) continue;
-      endpoints.push(endpointFromOperation(method.toUpperCase() as ArtifactEndpoint["method"], path, operation));
-    }
+export function mockArtifactFromOpenApi(openapi: LoadedOpenApi, options: { origin: "generated" | "imported" | "manual"; reviewed: boolean; config: MockGenConfig; semanticMappingsByEndpoint?: ReadonlyMap<string, readonly MockSemanticMapping[]> }): MockArtifact {
+  const endpoints: MockEndpoint[] = [];
+  const reviewItems: MockReviewItem[] = [];
+  for (const [path, pathItem] of Object.entries(openapi.document.paths)) for (const method of HTTP_METHODS) {
+    const operation = pathItem[method];
+    if (!operation) continue;
+    const id = endpointId(method.toUpperCase() as MockEndpoint["method"], path, operation);
+    const built = endpoint(method.toUpperCase() as MockEndpoint["method"], path, operation, options.config, openapi.document, options.semanticMappingsByEndpoint?.get(id) ?? []);
+    endpoints.push(built.endpoint);
+    reviewItems.push(...built.issues.map((message, index) => ({ id: `review-${built.endpoint.id}-schema-${index + 1}`, severity: "needsReview" as const, scope: "endpoint" as const, path: `paths.${path}.${method}.responses`, message, resolutionStatus: "open" as const })));
   }
-
-  const routes: WhistleRoute[] = endpoints.map((endpoint) => ({
-    endpointId: endpoint.id,
-    operationId: endpoint.operationId,
-    method: endpoint.method,
-    apiHost: "pending-confirmation",
-    sourcePath: endpoint.path,
-    sourcePattern: endpoint.path.replace(/\{[^}]+\}/g, "*"),
-    targetPort: options.mockoonPort,
-    targetPath: targetPathWithCaptures(endpoint.path),
-    origin: "generated",
-    reviewStatus: options.mockoonPort ? "needs-change" : "unreviewed"
-  }));
-
-  return {
-    schemaVersion: "0.2.0",
-    sources: [
-      {
-        id: "src-openapi-001",
-        type: "file",
-        uri: openapi.file,
-        title: openapi.document.info?.title,
-        sha256: openapi.sha256,
-        origin: "imported",
-        reviewStatus: "confirmed"
-      }
-    ],
-    openapi: {
-      file: openapi.file,
-      sha256: openapi.sha256,
-      origin: "imported",
-      reviewStatus: "confirmed"
-    },
-    reviewItems: [],
-    endpoints,
-    outputs: {
-      apiCode: {
-        enabled: options.generateApiCode ?? true,
-        suggestedFile: options.apiOutput,
-        placement: "pending-confirmation",
-        integrationMode: "standalone",
-        transformResponse: true,
-        lastGeneratedSha256: null,
-        origin: "generated",
-        reviewStatus: "unreviewed"
-      },
-      whistle: {
-        file: options.whistleFile ?? `${options.artifactDir}/whistle.json`,
-        groupName: options.whistleGroupName ?? null,
-        routes
-      },
-      mockoon: {
-        file: `${options.artifactDir}/mockoon.json`,
-        port: options.mockoonPort,
-        defaultHeaders: {
-          "Content-Type": "application/json; charset=utf-8"
-        },
-        origin: "generated",
-        reviewStatus: options.mockoonPort ? "needs-change" : "unreviewed"
-      }
-    }
-  };
+  return { schemaVersion: "0.3.0", openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" }, reviewItems, policies: structuredClone(options.config.mockPolicy), endpoints, outputs: { whistle: { groupName: options.config.whistleGroupName, routes: endpoints.map((value) => ({ endpointId: value.id, apiHost: null })) }, mockoon: { port: options.config.mockoonPort, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } } };
 }
 
-function targetPathWithCaptures(path: string): string {
-  let captureIndex = 1;
-  return path.replace(/\{[^}]+\}/g, () => `$${captureIndex++}`);
-}
+function endpointId(method: MockEndpoint["method"], path: string, operation: OpenApiOperation): string { return `ep-${kebab(operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`)}`; }
 
-function endpointFromOperation(
-  method: ArtifactEndpoint["method"],
-  path: string,
-  operation: OpenApiOperation
-): ArtifactEndpoint {
-  const operationId = operation.operationId ?? operationIdFrom(method, path);
-  const responseSchema = operation.responses?.["200"]?.content?.["application/json"]?.schema;
-  const fieldNames = Object.keys(responseSchema?.properties ?? {});
-  const fieldIdentifiers = createFieldIdentifiers(fieldNames);
-  const dtoResponse = `${pascal(operationId)}ResponseDTO`;
-  const voName = `${pascal(operationId)}VO`;
-  const mapperName = `to${pascal(operationId)}VO`;
-
-  const steps: MapperStep[] = fieldNames.map((field, index) => {
-    const fieldIdentifier = fieldIdentifiers.get(field) ?? `field${index + 1}`;
-    return {
-      id: `step-${String(index + 1).padStart(3, "0")}`,
-      order: index + 1,
-      operation: "rename",
-      inputs: [responseBodyPath(field)],
-      output: `vo.${fieldIdentifier}`,
-      params: {},
-      description: `Map ${field} to ${fieldIdentifier}`,
-      confidence: "medium",
-      reviewStatus: "unreviewed"
-    };
-  });
-
+function endpoint(method: MockEndpoint["method"], path: string, operation: OpenApiOperation, config: MockGenConfig, document: OpenApiDocument, semanticMappings: readonly MockSemanticMapping[]): { endpoint: MockEndpoint; issues: string[] } {
+  const operationId = operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`;
+  const schema = successSchema(operation);
+  const mappings = new Map(semanticMappings.map((mapping) => [mapping.path, mapping.faker]));
+  const stringPaths = new Set<string>();
+  const success = render(schema, document, false, new Set(), "", mappings, stringPaths);
+  const empty = render(schema, document, true, new Set(), "", mappings, stringPaths);
+  const list = findList(schema, document);
+  const issues = unique([...success.issues, ...empty.issues, ...list.issues]);
+  const invalidMappings = semanticMappings.filter((mapping) => !stringPaths.has(mapping.path));
+  if (invalidMappings.length) throw new Error(`SEMANTIC_MAPPING_INVALID_PATH: ${invalidMappings.map((mapping) => mapping.path).join(", ")}`);
   const scenarios: MockScenario[] = [
-    {
-      name: "success-default",
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8"
-      },
-      bodyTemplate: mockBodyTemplate(responseSchema),
-      origin: "generated",
-      reviewStatus: "unreviewed",
-      enabled: true
-    },
-    ...listScenarios(responseSchema),
-    {
-      name: "success-empty",
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8"
-      },
-      bodyTemplate: emptyBodyTemplate(responseSchema),
-      origin: "generated",
-      reviewStatus: "unreviewed",
-      enabled: true
-    },
-    {
-      name: "error-default",
-      statusCode: 500,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8"
-      },
-      bodyTemplate: '{\n  "code": "MOCK_ERROR",\n  "message": "{{faker \'lorem.sentence\'}}"\n}',
-      origin: "generated",
-      reviewStatus: "unreviewed",
-      enabled: true
-    }
+    { name: "success-default", statusCode: 200, headers: jsonHeaders(), bodyTemplate: success.body, origin: "generated", enabled: true },
+    { name: "success-empty", statusCode: 200, headers: jsonHeaders(), bodyTemplate: empty.body, origin: "generated", enabled: true },
+    { name: "error-default", statusCode: 500, headers: jsonHeaders(), bodyTemplate: '{\n  "code": "MOCK_ERROR"\n}', origin: "generated", enabled: true }
   ];
-
-  return {
-    id: `ep-${kebab(operationId)}`,
-    operationId,
-    method,
-    path,
-    summary: operation.summary,
-    origin: "generated",
-    reviewStatus: "unreviewed",
-    dto: {
-      response: dtoResponse
-    },
-    vo: {
-      name: voName,
-      owner: "api-skill",
-      origin: "inferred",
-      reviewStatus: "unreviewed",
-      fields: fieldNames.map((field, index) => {
-        const fieldIdentifier = fieldIdentifiers.get(field) ?? `field${index + 1}`;
-        return {
-          name: fieldIdentifier,
-          type: tsType(responseSchema?.properties?.[field]),
-          sources: [{ path: responseBodyPath(field), role: fieldIdentifier }],
-          confidence: "medium",
-          origin: "inferred",
-          reviewStatus: "unreviewed",
-          description: operation.summary,
-          reason: `Generated from response field ${field}`
-        };
-      })
-    },
-    mapper: {
-      name: mapperName,
-      enabled: true,
-      origin: "inferred",
-      reviewStatus: "unreviewed",
-      steps
-    },
-    mock: {
-      origin: "generated",
-      reviewStatus: "unreviewed",
-      selection: {
-        mode: "query",
-        key: "scenario",
-        defaultScenario: "success-default"
-      },
-      scenarios
-    },
-    reviewItems: []
-  };
-}
-
-function responseBodyPath(field: string): string {
-  return /^[A-Za-z_$][0-9A-Za-z_$]*$/.test(field) ? `response.body.${field}` : `response.body[${JSON.stringify(field)}]`;
-}
-
-function createFieldIdentifiers(fieldNames: string[]): Map<string, string> {
-  const identifiers = new Map<string, string>();
-  const used = new Set<string>();
-
-  for (const [index, fieldName] of fieldNames.entries()) {
-    const base = sanitizeIdentifier(fieldName, `field${index + 1}`);
-    let candidate = base;
-    let suffix = 2;
-
-    while (used.has(candidate)) {
-      candidate = `${base}${suffix}`;
-      suffix += 1;
-    }
-
-    used.add(candidate);
-    identifiers.set(fieldName, candidate);
+  if (config.mockPolicy.listScenario.enabled && list.location) {
+    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema, document, list.location, config.mockPolicy.listScenario.itemCount, mappings, stringPaths), origin: "generated", enabled: true });
+    else issues.push("列表多条成功场景的 itemCount 必须大于 1。");
   }
-
-  return identifiers;
+  return { endpoint: { id: endpointId(method, path, operation), operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, semanticMappings: [...semanticMappings], scenarios } }, issues: unique(issues) };
 }
 
-function sanitizeIdentifier(value: string, fallback: string): string {
-  const normalized = camel(value.replace(/[^A-Za-z0-9_$]+/g, "_"));
-  const candidate = normalized.length > 0 ? normalized : fallback;
-  return /^[A-Za-z_$]/.test(candidate) ? candidate : `_${candidate}`;
+function jsonHeaders(): Record<string, string> { return { "Content-Type": "application/json; charset=utf-8" }; }
+function kebab(value: string): string { return value.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase(); }
+function successSchema(operation: OpenApiOperation): OpenApiSchema | undefined { const response = Object.entries(operation.responses ?? {}).filter(([code]) => /^2\d\d$/.test(code)).sort(([left], [right]) => Number(left) - Number(right))[0]?.[1]; return response?.content?.["application/json"]?.schema; }
+
+function render(input: OpenApiSchema | undefined, document: OpenApiDocument, emptyArray = false, seen = new Set<string>(), path = "", mappings = new Map<string, string>(), stringPaths = new Set<string>()): Template {
+  const resolved = resolve(input, document, seen);
+  if (!resolved.schema) return { body: "null", issues: resolved.issues };
+  const schema = resolved.schema;
+  if (schema.allOf || schema.anyOf || schema.oneOf) return { body: "null", issues: [...resolved.issues, "组合 schema（allOf、anyOf、oneOf）无法可靠推断。"] };
+  if (schema.enum?.length) return { body: JSON.stringify(schema.enum[0]), issues: resolved.issues };
+  if (schema.type === "array") {
+    if (emptyArray) return { body: "[]", issues: resolved.issues };
+    const item = render(schema.items, document, false, seen, `${path}[]`, mappings, stringPaths);
+    return { body: `[${item.body}]`, issues: [...resolved.issues, ...item.issues] };
+  }
+  if (schema.type === "object" || schema.properties) {
+    const properties = Object.entries(schema.properties ?? {});
+    if (properties.length === 0) return { body: "{}", issues: resolved.issues };
+    const values = properties.map(([name, value]) => ({ name, ...render(value, document, emptyArray, seen, path ? `${path}.${name}` : name, mappings, stringPaths) }));
+    return { body: `{\n  ${values.map((value) => `${JSON.stringify(value.name)}: ${value.body}`).join(",\n  ")}\n}`, issues: [...resolved.issues, ...values.flatMap((value) => value.issues)] };
+  }
+  if (schema.type === "integer" || schema.type === "number") return { body: "{{faker 'number.int'}}", issues: resolved.issues };
+  if (schema.type === "boolean") return { body: "{{faker 'datatype.boolean'}}", issues: resolved.issues };
+  if (schema.type === "string") {
+    if (path) stringPaths.add(path);
+    return { body: JSON.stringify(`{{faker '${formatFaker(schema.format) ?? mappings.get(path) ?? "string.sample"}'}}`), issues: resolved.issues };
+  }
+  return { body: "null", issues: [...resolved.issues, "成功响应缺少可推断的 schema 类型。"] };
 }
 
-function mockBodyTemplate(schema: OpenApiSchema | undefined): string {
-  if (schema?.type === "array") return arrayBodyTemplate(schema.items, 1);
-  if (!schema?.properties) return "{}";
-  const entries = Object.entries(schema.properties).map(([name, prop]) => {
-    if (prop.type === "array") return `"${name}": ${arrayBodyTemplate(prop.items, 1)}`;
-    if (prop.enum?.length) return `"${name}": ${JSON.stringify(prop.enum[0])}`;
-    if (prop.type === "integer" || prop.type === "number") return `"${name}": "{{faker 'number.int'}}"`;
-    return `"${name}": "{{faker 'string.sample'}}"`;
+function resolve(input: OpenApiSchema | undefined, document: OpenApiDocument, seen: Set<string>): { schema?: OpenApiSchema; issues: string[] } {
+  if (!input) return { issues: ["成功响应缺少 application/json schema。"] };
+  if (!input.$ref) return { schema: input, issues: [] };
+  const match = input.$ref.match(/^#\/components\/schemas\/([^/]+)$/);
+  if (!match) return { issues: [`无法解析非本地 schema 引用：${input.$ref}`] };
+  const name = match[1]!;
+  if (seen.has(name)) return { issues: [`检测到循环 schema 引用：${name}`] };
+  const schema = document.components?.schemas?.[name];
+  if (!schema) return { issues: [`找不到本地 schema 引用：${name}`] };
+  const next = new Set(seen); next.add(name);
+  return resolve(schema, document, next);
+}
+
+function findList(input: OpenApiSchema | undefined, document: OpenApiDocument): { location?: string; issues: string[] } {
+  const resolved = resolve(input, document, new Set());
+  if (!resolved.schema) return { issues: resolved.issues };
+  if (resolved.schema.type === "array") return { location: "root", issues: resolved.issues };
+  const arrays = Object.entries(resolved.schema.properties ?? {}).flatMap(([name, value]) => resolve(value, document, new Set()).schema?.type === "array" ? [name] : []);
+  return arrays.length === 1 ? { location: arrays[0], issues: resolved.issues } : arrays.length > 1 ? { issues: [...resolved.issues, "成功响应包含多个列表属性，无法确定多条数据场景。"] } : { issues: resolved.issues };
+}
+
+function renderList(input: OpenApiSchema | undefined, document: OpenApiDocument, location: string, count: number, mappings: Map<string, string>, stringPaths: Set<string>): string {
+  const resolved = resolve(input, document, new Set()).schema;
+  if (!resolved) return "null";
+  const listSchema = location === "root" ? resolved : resolve(resolved.properties?.[location], document, new Set()).schema;
+  const rendered = render(listSchema?.items, document, false, new Set(), location === "root" ? "[]" : `${location}[]`, mappings, stringPaths);
+  const repeated = `[{{#repeat ${count}}}${rendered.body}{{/repeat}}]`;
+  if (location === "root") return repeated;
+  const values = Object.entries(resolved.properties ?? {}).map(([name, value]) => `${JSON.stringify(name)}: ${name === location ? repeated : render(value, document, false, new Set(), name, mappings, stringPaths).body}`);
+  return `{\n  ${values.join(",\n  ")}\n}`;
+}
+
+function formatFaker(format: string | undefined): string | undefined {
+  switch (format?.toLowerCase()) {
+    case "uuid": return "string.uuid";
+    case "email": return "internet.email";
+    case "date": return "date.past";
+    case "date-time": return "date.recent";
+    case "uri":
+    case "url": return "internet.url";
+    case "ipv4": return "internet.ipv4";
+    case "ipv6": return "internet.ipv6";
+    case "hostname": return "internet.domainName";
+    case "password": return "internet.password";
+    case "binary": return "string.binary";
+    default: return undefined;
+  }
+}
+
+export function refreshMockArtifactTemplates(artifact: MockArtifact, openapi: LoadedOpenApi): MockArtifact {
+  const mappings = new Map(artifact.endpoints.map((endpoint) => [endpoint.id, endpoint.mock.semanticMappings ?? []]));
+  const regenerated = mockArtifactFromOpenApi(openapi, { origin: artifact.openapi.origin, reviewed: artifact.openapi.reviewStatus === "confirmed", config: { mockoonPort: artifact.outputs.mockoon.port, whistleGroupName: artifact.outputs.whistle.groupName, mockPolicy: artifact.policies }, semanticMappingsByEndpoint: mappings });
+  if (regenerated.endpoints.length !== artifact.endpoints.length || regenerated.endpoints.some((endpoint) => !mappings.has(endpoint.id))) throw new Error("SEMANTIC_MAPPING_ENDPOINT_MISMATCH: regenerate the artifact from OpenAPI first.");
+  const existingById = new Map(artifact.endpoints.map((endpoint) => [endpoint.id, endpoint]));
+  return { ...artifact, endpoints: regenerated.endpoints.map((endpoint) => mergeRefreshedEndpoint(existingById.get(endpoint.id)!, endpoint)) };
+}
+
+function mergeRefreshedEndpoint(existing: MockEndpoint, regenerated: MockEndpoint): MockEndpoint {
+  const replacements = new Map(regenerated.mock.scenarios.filter(isGeneratedSuccess).map((scenario) => [scenario.name, scenario]));
+  const scenarios = existing.mock.scenarios.map((scenario) => {
+    const replacement = replacements.get(scenario.name);
+    if (!replacement || scenario.origin !== "generated") return scenario;
+    replacements.delete(scenario.name);
+    return { ...scenario, bodyTemplate: replacement.bodyTemplate };
   });
-  return `{\n  ${entries.join(",\n  ")}\n}`;
+  for (const scenario of replacements.values()) scenarios.push(scenario);
+  return { ...existing, mock: { ...existing.mock, semanticMappings: regenerated.mock.semanticMappings, scenarios } };
 }
 
-function listScenarios(schema: OpenApiSchema | undefined): MockScenario[] {
-  const listTemplate = listBodyTemplate(schema);
-  if (!listTemplate) {
-    return [];
-  }
-
-  return [
-    {
-      name: "success-list-20",
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8"
-      },
-      bodyTemplate: listTemplate,
-      origin: "generated",
-      reviewStatus: "unreviewed",
-      enabled: true
-    }
-  ];
-}
-
-function listBodyTemplate(schema: OpenApiSchema | undefined): string | null {
-  if (schema?.type === "array") {
-    return arrayBodyTemplate(schema.items, 20);
-  }
-
-  const listProperty = Object.entries(schema?.properties ?? {}).find(([, prop]) => prop.type === "array");
-  if (!listProperty) {
-    return null;
-  }
-
-  const [name, prop] = listProperty;
-  return `{\n  "${name}": ${arrayBodyTemplate(prop.items, 20).replace(/\n/g, "\n  ")}\n}`;
-}
-
-function arrayBodyTemplate(itemSchema: OpenApiSchema | undefined, count: number): string {
-  return `[\n{{#repeat ${count}}}\n  ${mockItemTemplate(itemSchema)}{{#unless @last}},{{/unless}}\n{{/repeat}}\n]`;
-}
-
-function mockItemTemplate(schema: OpenApiSchema | undefined): string {
-  if (schema?.type === "object" && schema.properties) {
-    const entries = Object.entries(schema.properties).map(([name, prop]) => `    "${name}": ${mockScalarTemplate(prop)}`);
-    return `{\n${entries.join(",\n")}\n  }`;
-  }
-
-  return mockScalarTemplate(schema);
-}
-
-function mockScalarTemplate(schema: OpenApiSchema | undefined): string {
-  if (schema?.enum?.length) return JSON.stringify(schema.enum[0]);
-  if (schema?.type === "integer" || schema?.type === "number") return `"{{faker 'number.int'}}"`;
-  if (schema?.type === "boolean") return `"{{faker 'datatype.boolean'}}"`;
-  return `"{{faker 'string.sample'}}"`;
-}
-
-function emptyBodyTemplate(schema: OpenApiSchema | undefined): string {
-  if (schema?.type === "array") return "[]";
-  if (!schema?.properties) return "{}";
-
-  const entries = Object.entries(schema.properties).map(([name, prop]) => {
-    if (prop.type === "array") return `"${name}": []`;
-    if (prop.type === "object") return `"${name}": {}`;
-    return `"${name}": null`;
-  });
-  return `{\n  ${entries.join(",\n  ")}\n}`;
-}
-
-function tsType(schema: OpenApiSchema | undefined): string {
-  if (!schema) return "unknown";
-  if (schema.type === "integer" || schema.type === "number") return "number";
-  if (schema.type === "boolean") return "boolean";
-  if (schema.type === "array") return `${tsType(schema.items)}[]`;
-  if (schema.type === "object") return "Record<string, unknown>";
-  return "string";
-}
-
-function operationIdFrom(method: string, path: string): string {
-  return camel(`${method.toLowerCase()}_${path.replace(/[^a-zA-Z0-9]+/g, "_")}`);
-}
-
-function pascal(value: string): string {
-  const c = camel(value);
-  return c.charAt(0).toUpperCase() + c.slice(1);
-}
-
-function camel(value: string): string {
-  return value
-    .replace(/[_-\s]+(.)?/g, (_, char: string | undefined) => (char ? char.toUpperCase() : ""))
-    .replace(/^[A-Z]/, (char) => char.toLowerCase());
-}
-
-function kebab(value: string): string {
-  return value
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .replace(/[_\s]+/g, "-")
-    .toLowerCase();
-}
+function isGeneratedSuccess(scenario: { name: string; statusCode: number }): boolean { return scenario.statusCode >= 200 && scenario.statusCode < 300 && (scenario.name === "success-default" || scenario.name === "success-empty" || /^success-list-\d+$/.test(scenario.name)); }
+function unique(values: string[]): string[] { return [...new Set(values)]; }

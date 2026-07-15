@@ -1,67 +1,29 @@
-import type { WhistleRoute } from "../artifact/types.js";
+import type { MockArtifact } from "../artifact/types.js";
 
-export function generateWhistleRules(routes: WhistleRoute[], groupName: string | null): string {
-  const confirmedGroupName = requireGroupName(groupName);
-  const rulesText = generateRulesText(routes);
-  return `${JSON.stringify({ [confirmedGroupName]: rulesText, "": [confirmedGroupName] }, null, 2)}\n`;
-}
+export type WhistleFormat = "json" | "cjs";
 
-export function generateWhistleCliModule(routes: WhistleRoute[], groupName: string | null): string {
-  const confirmedGroupName = requireGroupName(groupName);
-  const rulesText = generateRulesText(routes);
-
-  return `exports.groupName = ${JSON.stringify(confirmedGroupName)};
-exports.name = ${JSON.stringify(confirmedGroupName)};
-exports.rules = \`${escapeTemplateLiteral(rulesText)}\`;
-`;
-}
-
-function requireGroupName(groupName: string | null): string {
-  const confirmedGroupName = groupName?.trim();
-  if (!confirmedGroupName) {
-    throw new Error("Cannot export whistle rules: groupName is pending confirmation.");
+export function deriveWhistleRules(artifact: MockArtifact): string[] {
+  if (artifact.outputs.mockoon.port === null) throw new Error("MOCKOON_PORT_REQUIRED");
+  const endpoints = new Map(artifact.endpoints.map((endpoint) => [endpoint.id, endpoint]));
+  const rules = new Set<string>();
+  for (const route of artifact.outputs.whistle.routes) {
+    const endpoint = endpoints.get(route.endpointId);
+    if (!endpoint) throw new Error(`WHISTLE_ENDPOINT_UNKNOWN: ${route.endpointId}`);
+    if (!route.apiHost) throw new Error(`WHISTLE_HOST_REQUIRED: ${route.endpointId}`);
+    const dynamic = /\{[^}]+\}/.test(endpoint.path);
+    const sourcePath = endpoint.path.replace(/\{[^}]+\}/g, "*");
+    let capture = 1;
+    const forwardedPath = endpoint.path.replace(/\{[^}]+\}/g, () => `$${capture++}`);
+    rules.add(`${dynamic ? "^" : ""}${route.apiHost}${sourcePath} http://127.0.0.1:${artifact.outputs.mockoon.port}${forwardedPath}`);
   }
-  return confirmedGroupName;
+  return [...rules];
 }
 
-function generateRulesText(routes: WhistleRoute[]): string {
-  const lines = [...new Set(routes.map((route) => ruleFor(route)))];
-  return lines.length > 0 ? `${lines.join("\n")}\n` : "";
+export function serializeWhistle(format: WhistleFormat, groupName: string | null, rules: string[]): string {
+  if (!groupName?.trim()) throw new Error("WHISTLE_GROUP_REQUIRED");
+  const text = rules.length ? `${rules.join("\n")}\n` : "";
+  if (format === "json") return `${JSON.stringify({ [groupName]: text, "": [groupName] }, null, 2)}\n`;
+  return `exports.groupName = ${JSON.stringify(groupName)};\nexports.name = ${JSON.stringify(groupName)};\nexports.rules = \`${escapeTemplate(text)}\`;\n`;
 }
 
-function ruleFor(route: WhistleRoute): string {
-  if (route.apiHost === "pending-confirmation") {
-    throw new Error(`Cannot export whistle rule for ${route.operationId}: apiHost is pending confirmation.`);
-  }
-
-  if (route.targetPort === null) {
-    throw new Error(`Cannot export whistle rule for ${route.operationId}: targetPort is pending confirmation.`);
-  }
-
-  const sourceMatcher = sourceMatcherFor(route);
-  const targetPath = targetPathFor(route);
-
-  return `${sourceMatcher} http://127.0.0.1:${route.targetPort}${targetPath}`;
-}
-
-function escapeTemplateLiteral(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
-}
-
-function sourceMatcherFor(route: WhistleRoute): string {
-  const matcher = `${route.apiHost}${route.sourcePattern}`;
-  return hasPathParams(route) ? `^${matcher}` : matcher;
-}
-
-function targetPathFor(route: WhistleRoute): string {
-  if (!hasPathParams(route)) {
-    return route.targetPath;
-  }
-
-  let captureIndex = 1;
-  return route.targetPath.replace(/\{[^}]+\}|:[A-Za-z_$][\w$-]*|\*/g, () => `$${captureIndex++}`);
-}
-
-function hasPathParams(route: WhistleRoute): boolean {
-  return /\{[^}]+\}/.test(route.sourcePath) || route.sourcePattern.includes("*");
-}
+function escapeTemplate(value: string): string { return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${"); }

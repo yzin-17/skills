@@ -1,10 +1,12 @@
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createProgram } from "../../src/cli.js";
 
-const OPENAPI_FIXTURE = `openapi: 3.0.3
+const projects: string[] = [];
+const PAGE_DIR = "pages/user-detail";
+const OPENAPI = `openapi: 3.0.3
 info:
   title: User API
   version: 1.0.0
@@ -24,93 +26,134 @@ paths:
                     type: string
 `;
 
-describe("mockoon-gen e2e", () => {
-  it("creates an artifact and exports generated files", async () => {
-    const cwd = await mkdtemp(join(tmpdir(), "mockoon-gen-e2e-"));
-    const program = createProgram();
+afterEach(async () => {
+  await Promise.all(projects.splice(0).map((project) => rm(project, { recursive: true, force: true })));
+});
 
-    await mkdir(join(cwd, "mockoon-gen"), { recursive: true });
-    await writeFile(join(cwd, "mockoon-gen/openapi.yaml"), OPENAPI_FIXTURE, "utf8");
+describe("mockoon-gen CLI e2e", () => {
+  it("initializes and creates an unreviewed artifact without selecting a Whistle format", async () => {
+    const project = await createProject();
 
-    await program.parseAsync(["node", "mockoon-gen", "init", "--cwd", cwd], { from: "user" });
+    await run(project, "init", "--page-dir", PAGE_DIR);
+    await run(project, "from-openapi", openapiPath(), "--origin", "imported", "--page-dir", PAGE_DIR);
 
-    const initialConfig = JSON.parse(await readFile(join(cwd, "mockoon-gen/mockoon-gen.config.json"), "utf8")) as {
-      artifactDir: string;
-      mockoonPort: number | null;
-    };
-    expect(initialConfig.artifactDir).toBe("mockoon-gen");
+    const artifact = await readArtifact(project);
+    expect(artifact.schemaVersion).toBe("0.3.0");
+    expect(artifact.openapi.reviewStatus).toBe("unreviewed");
+    expect(artifact.outputs.whistle).not.toHaveProperty("file");
+    await expect(run(project, "export", "whistle", "--format", "json", "--from", artifactPath())).rejects.toThrow("OPENAPI_UNREVIEWED");
+  });
 
-    await writeFile(
-      join(cwd, "mockoon-gen/mockoon-gen.config.json"),
-      JSON.stringify(
-        {
-          ...initialConfig,
-          apiOutput: "src/api/generated/api.generated.ts",
-          mockoonPort: 3100,
-          whistleFile: "mockoon-gen/whistle.cjs",
-          whistleGroupName: "User Detail Mock"
-        },
-        null,
-        2
-      ),
-      "utf8"
-    );
+  it("blocks unreviewed artifacts and exports Mockoon after review", async () => {
+    const project = await createProject();
+    await createArtifact(project, { reviewed: false, port: 3100 });
 
-    await program.parseAsync(["node", "mockoon-gen", "from-openapi", "mockoon-gen/openapi.yaml", "--cwd", cwd], {
-      from: "user"
-    });
+    await expect(run(project, "export", "mockoon", "--from", artifactPath())).rejects.toThrow("OPENAPI_UNREVIEWED");
+    await confirmArtifact(project);
+    await run(project, "export", "mockoon", "--from", artifactPath());
 
-    const artifactPath = join(cwd, "mockoon-gen/api-artifact.json");
-    const artifact = JSON.parse(await readFile(artifactPath, "utf8")) as {
-      schemaVersion: string;
-      outputs: {
-        apiCode: { suggestedFile: string };
-        whistle: { file: string; groupName: string | null; routes: Array<{ apiHost: string }> };
-        mockoon: { port: number | null };
-      };
-    };
-    expect(artifact.schemaVersion).toBe("0.2.0");
-    expect(artifact.outputs.apiCode.suggestedFile).toBe("src/api/generated/api.generated.ts");
-    expect(artifact.outputs.whistle.file).toBe("mockoon-gen/whistle.cjs");
-    expect(artifact.outputs.whistle.groupName).toBe("User Detail Mock");
-    expect(artifact.outputs.mockoon.port).toBe(3100);
+    const environment = JSON.parse(await readFile(join(project, PAGE_DIR, "mockoon-gen/mockoon.json"), "utf8")) as { port: number; routes: unknown[] };
+    expect(environment.port).toBe(3100);
+    expect(environment.routes).toHaveLength(1);
+  });
 
-    artifact.outputs.whistle.routes = artifact.outputs.whistle.routes.map((route) => ({
-      ...route,
-      apiHost: "api.example.test"
-    }));
-    await writeFile(artifactPath, JSON.stringify(artifact, null, 2), "utf8");
+  it("selects Whistle JSON or CJS only when exporting", async () => {
+    const project = await createProject();
+    await createArtifact(project, { reviewed: true, port: 3100, groupName: "User Detail", host: "api.example.test" });
+    const directory = join(project, PAGE_DIR, "mockoon-gen");
 
-    await program.parseAsync(["node", "mockoon-gen", "generate", "--from", "mockoon-gen/api-artifact.json", "--cwd", cwd], {
-      from: "user"
-    });
-    await program.parseAsync(
-      ["node", "mockoon-gen", "export", "whistle-cli", "--from", "mockoon-gen/api-artifact.json", "--cwd", cwd],
-      { from: "user" }
-    );
-    await program.parseAsync(
-      ["node", "mockoon-gen", "export", "mockoon", "--from", "mockoon-gen/api-artifact.json", "--cwd", cwd],
-      { from: "user" }
-    );
+    await expect(stat(join(directory, "whistle.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(join(directory, "whistle.cjs"))).rejects.toMatchObject({ code: "ENOENT" });
+    await run(project, "export", "whistle", "--format", "json", "--from", artifactPath());
+    expect(JSON.parse(await readFile(join(directory, "whistle.json"), "utf8"))).toMatchObject({ "User Detail": expect.stringContaining("api.example.test") });
+    await run(project, "export", "whistle", "--format", "cjs", "--from", artifactPath());
+    expect(await readFile(join(directory, "whistle.cjs"), "utf8")).toContain('exports.groupName = "User Detail"');
+  });
 
-    const generatedApi = await readFile(join(cwd, "src/api/generated/api.generated.ts"), "utf8");
-    const whistleCliModule = await readFile(join(cwd, "mockoon-gen/whistle.cjs"), "utf8");
-    const mockoonEnvironment = JSON.parse(await readFile(join(cwd, "mockoon-gen/mockoon.json"), "utf8")) as {
-      port: number;
-      routes: Array<{ endpoint: string; responses: Array<{ label: string; statusCode: number }> }>;
-    };
+  it("refreshes templates from artifact semantic mappings without changing manual scenarios", async () => {
+    const project = await createProject();
+    await createArtifact(project, { reviewed: true, port: 3100 });
+    const artifact = await readArtifact(project);
+    artifact.endpoints[0].mock.semanticMappings = [{ path: "id", faker: "string.uuid" }];
+    artifact.endpoints[0].mock.scenarios.push({ name: "success-custom", statusCode: 200, headers: {}, bodyTemplate: '{"manual":true}', origin: "manual", enabled: true });
+    await writeArtifact(project, artifact);
 
-    expect(generatedApi).toContain("export async function getUser");
-    expect(whistleCliModule).toBe(`exports.groupName = "User Detail Mock";
-exports.name = "User Detail Mock";
-exports.rules = \`^api.example.test/api/users/* http://127.0.0.1:3100/api/users/$1
-\`;
-`);
-    expect(mockoonEnvironment.port).toBe(3100);
-    expect(mockoonEnvironment.routes).toHaveLength(1);
-    expect(mockoonEnvironment.routes[0]?.endpoint).toBe("api/users/:id");
-    expect(mockoonEnvironment.routes[0]?.responses).toHaveLength(3);
-    expect(mockoonEnvironment.routes[0]?.responses[0]?.statusCode).toBe(200);
-    expect(mockoonEnvironment.routes[0]?.responses[2]).toMatchObject({ label: "error-default", statusCode: 500 });
+    await run(project, "render-templates", "--from", artifactPath());
+    await run(project, "export", "mockoon", "--from", artifactPath());
+
+    const refreshed = await readArtifact(project);
+    expect(refreshed.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-default").bodyTemplate).toContain("string.uuid");
+    expect(refreshed.endpoints[0].mock.scenarios.find((scenario: { name: string }) => scenario.name === "success-custom").bodyTemplate).toBe('{"manual":true}');
+    expect(await readFile(join(project, PAGE_DIR, "mockoon-gen/mockoon.json"), "utf8")).toContain("string.uuid");
+  });
+
+  it("is a no-op for the same OpenAPI hash and refuses a changed hash", async () => {
+    const project = await createProject();
+    await createArtifact(project, { reviewed: true, port: 3100 });
+    const path = join(project, artifactPath());
+    const artifact = await readArtifact(project);
+    artifact.reviewItems.push({ id: "keep-me", severity: "warning", scope: "global", path: "openapi", message: "Preserved on no-op", resolutionStatus: "open" });
+    await writeFile(path, JSON.stringify(artifact, null, 2) + "\n", "utf8");
+    const before = await readFile(path, "utf8");
+
+    await run(project, "from-openapi", openapiPath(), "--origin", "imported", "--reviewed", "--page-dir", PAGE_DIR);
+    expect(await readFile(path, "utf8")).toBe(before);
+    await writeFile(join(project, openapiPath()), OPENAPI.replace("User API", "Changed User API"), "utf8");
+    await expect(run(project, "from-openapi", openapiPath(), "--origin", "imported", "--reviewed", "--page-dir", PAGE_DIR)).rejects.toThrow("ARTIFACT_EXISTS_DIFFERENT");
+    expect(await readFile(path, "utf8")).toBe(before);
+  });
+
+  it("refuses an old 0.2.0 artifact and leaves it unchanged", async () => {
+    const project = await createProject();
+    await run(project, "init", "--page-dir", PAGE_DIR);
+    const path = join(project, artifactPath());
+    const oldArtifact = JSON.stringify({ schemaVersion: "0.2.0", legacy: true }, null, 2) + "\n";
+    await writeFile(path, oldArtifact, "utf8");
+
+    await expect(run(project, "from-openapi", openapiPath(), "--origin", "imported", "--reviewed", "--page-dir", PAGE_DIR)).rejects.toThrow();
+    expect(await readFile(path, "utf8")).toBe(oldArtifact);
+  });
+
+  it("refuses manual output changes, and --force replaces only a ready output", async () => {
+    const project = await createProject();
+    await createArtifact(project, { reviewed: true, port: 3100 });
+    await run(project, "export", "mockoon", "--from", artifactPath());
+    const output = join(project, PAGE_DIR, "mockoon-gen/mockoon.json");
+    await writeFile(output, "manual output\n", "utf8");
+
+    await expect(run(project, "export", "mockoon", "--from", artifactPath())).rejects.toThrow("OUTPUT_EXISTS_DIFFERENT");
+    expect(await readFile(output, "utf8")).toBe("manual output\n");
+    await setReviewStatus(project, "unreviewed");
+    await expect(run(project, "export", "mockoon", "--force", "--from", artifactPath())).rejects.toThrow("OPENAPI_UNREVIEWED");
+    expect(await readFile(output, "utf8")).toBe("manual output\n");
+    await setReviewStatus(project, "confirmed");
+    await run(project, "export", "mockoon", "--force", "--from", artifactPath());
+    expect(await readFile(output, "utf8")).not.toBe("manual output\n");
   });
 });
+
+async function createProject(): Promise<string> {
+  const project = await realpath(await mkdtemp(join(tmpdir(), "mockoon-gen-e2e-")));
+  projects.push(project);
+  await mkdir(join(project, PAGE_DIR, "mockoon-gen"), { recursive: true });
+  await writeFile(join(project, openapiPath()), OPENAPI, "utf8");
+  return project;
+}
+
+async function createArtifact(project: string, options: { reviewed: boolean; port: number; groupName?: string; host?: string }): Promise<void> {
+  await run(project, "init", "--page-dir", PAGE_DIR);
+  await run(project, "from-openapi", openapiPath(), "--origin", "imported", ...(options.reviewed ? ["--reviewed"] : []), "--page-dir", PAGE_DIR);
+  const artifact = await readArtifact(project);
+  artifact.outputs.mockoon.port = options.port;
+  artifact.outputs.whistle.groupName = options.groupName ?? null;
+  artifact.outputs.whistle.routes = artifact.outputs.whistle.routes.map((route: { endpointId: string; apiHost: string | null }) => ({ ...route, apiHost: options.host ?? null }));
+  await writeArtifact(project, artifact);
+}
+
+async function confirmArtifact(project: string): Promise<void> { await setReviewStatus(project, "confirmed"); }
+async function setReviewStatus(project: string, status: "unreviewed" | "confirmed"): Promise<void> { const artifact = await readArtifact(project); artifact.openapi.reviewStatus = status; await writeArtifact(project, artifact); }
+async function readArtifact(project: string): Promise<any> { return JSON.parse(await readFile(join(project, artifactPath()), "utf8")); }
+async function writeArtifact(project: string, artifact: unknown): Promise<void> { await writeFile(join(project, artifactPath()), JSON.stringify(artifact, null, 2) + "\n", "utf8"); }
+async function run(project: string, ...args: string[]): Promise<void> { await createProgram().parseAsync(["node", "mockoon-gen", ...args, "--cwd", project], { from: "user" }); }
+function openapiPath(): string { return `${PAGE_DIR}/mockoon-gen/openapi.yaml`; }
+function artifactPath(): string { return `${PAGE_DIR}/mockoon-gen/mock-artifact.json`; }

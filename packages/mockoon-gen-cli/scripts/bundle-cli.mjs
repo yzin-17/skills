@@ -4,11 +4,13 @@ import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const workspaceDir = resolve(packageDir, "../..");
 const outfile = resolve(packageDir, "../../skills/mockoon-gen/bin/mockoon-gen.mjs");
 
 await mkdir(dirname(outfile), { recursive: true });
 
 await build({
+  absWorkingDir: workspaceDir,
   entryPoints: [resolve(packageDir, "src/cli.ts")],
   outfile,
   bundle: true,

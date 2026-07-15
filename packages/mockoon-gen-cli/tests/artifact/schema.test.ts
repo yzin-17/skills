@@ -1,110 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { artifactSchema } from "../../src/artifact/schema.js";
+import { mockArtifactSchema } from "../../src/artifact/schema.js";
 
-const minimalArtifact = {
-  schemaVersion: "0.2.0",
-  sources: [],
-  openapi: {
-    file: "mockoon-gen/openapi.yaml",
-    sha256: "abc123",
-    origin: "generated",
-    reviewStatus: "confirmed"
-  },
+const artifact = {
+  schemaVersion: "0.3.0",
+  openapi: { file: "mockoon-gen/openapi.yaml", sha256: "abc", origin: "imported", reviewStatus: "confirmed" },
   reviewItems: [],
-  endpoints: [],
-  outputs: {
-    apiCode: {
-      suggestedFile: "src/api/generated/api.generated.ts",
-      placement: "pending-confirmation",
-      integrationMode: "standalone",
-      transformResponse: true,
-      lastGeneratedSha256: null,
-      origin: "generated",
-      reviewStatus: "unreviewed"
-    },
-    whistle: {
-      file: "mockoon-gen/whistle.json",
-      groupName: null,
-      routes: []
-    },
-    mockoon: {
-      file: "mockoon-gen/mockoon.json",
-      port: null,
-      defaultHeaders: {
-        "Content-Type": "application/json; charset=utf-8"
-      },
-      origin: "generated",
-      reviewStatus: "unreviewed"
-    }
-  }
+  policies: { listScenario: { enabled: true, itemCount: 20 } },
+  endpoints: [{ id: "ep-get-user", operationId: "getUser", method: "GET", path: "/users/{id}", mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, scenarios: [] } }],
+  outputs: { whistle: { groupName: null, routes: [{ endpointId: "ep-get-user", apiHost: null }] }, mockoon: { port: null, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } }
 };
 
-describe("artifactSchema", () => {
-  it("accepts a minimal 0.2.0 artifact", () => {
-    expect(() => artifactSchema.parse(minimalArtifact)).not.toThrow();
+describe("mockArtifactSchema", () => {
+  it("accepts schema 0.3.0 with semantic mock outputs", () => {
+    expect(mockArtifactSchema.parse(artifact).schemaVersion).toBe("0.3.0");
   });
 
-  it("rejects old single source shape", () => {
-    expect(() =>
-      artifactSchema.parse({
-        ...minimalArtifact,
-        source: { type: "file", file: "docs/api.md" }
-      })
-    ).toThrow();
+  it("rejects API code and derived Whistle fields", () => {
+    expect(() => mockArtifactSchema.parse({ ...artifact, dto: {} })).toThrow();
+    expect(() => mockArtifactSchema.parse({ ...artifact, endpoints: [{ ...artifact.endpoints[0], reviewItems: [] }] })).toThrow();
+    expect(() => mockArtifactSchema.parse({ ...artifact, outputs: { ...artifact.outputs, whistle: { ...artifact.outputs.whistle, routes: [{ endpointId: "ep-get-user", apiHost: null, sourcePattern: "/users/*" }] } } })).toThrow();
   });
 
-  it("rejects generic status fields on reviewable nodes", () => {
-    expect(() =>
-      artifactSchema.parse({
-        ...minimalArtifact,
-        openapi: {
-          ...minimalArtifact.openapi,
-          status: "generated"
-        }
-      })
-    ).toThrow();
-  });
-
-  it("accepts whistle routes with unresolved apiHost", () => {
-    expect(() =>
-      artifactSchema.parse({
-        ...minimalArtifact,
-        outputs: {
-          ...minimalArtifact.outputs,
-          whistle: {
-            ...minimalArtifact.outputs.whistle,
-            routes: [
-              {
-                endpointId: "endpoint-1",
-                operationId: "getThings",
-                method: "GET",
-                apiHost: "pending-confirmation",
-                sourcePath: "/things",
-                sourcePattern: "/things",
-                targetPort: null,
-                targetPath: "/things",
-                origin: "generated",
-                reviewStatus: "unreviewed"
-              }
-            ]
-          }
-        }
-      })
-    ).not.toThrow();
-  });
-
-  it("accepts confirmed whistle group names", () => {
-    expect(() =>
-      artifactSchema.parse({
-        ...minimalArtifact,
-        outputs: {
-          ...minimalArtifact.outputs,
-          whistle: {
-            ...minimalArtifact.outputs.whistle,
-            groupName: "User Detail Mock"
-          }
-        }
-      })
-    ).not.toThrow();
+  it("requires review resolutions for closed items and valid list policy counts", () => {
+    expect(() => mockArtifactSchema.parse({ ...artifact, reviewItems: [{ id: "review-1", severity: "fatal", scope: "global", path: "endpoints[0]", message: "Review", resolutionStatus: "resolved" }] })).toThrow();
+    expect(() => mockArtifactSchema.parse({ ...artifact, policies: { listScenario: { enabled: true, itemCount: 1 } } })).toThrow();
+    expect(() => mockArtifactSchema.parse({ ...artifact, policies: { listScenario: { enabled: true, itemCount: 1001 } } })).toThrow();
   });
 });

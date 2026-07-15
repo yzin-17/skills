@@ -1,0 +1,4 @@
+interface:
+  display_name: "API Code Gen"
+  short_description: "Generate reviewed TypeScript API code"
+  default_prompt: "Use $api-code-gen to create reviewed DTO, VO, mapper, and TypeScript API code from OpenAPI."
