@@ -25,7 +25,8 @@ on:
       - ".github/workflows/bundle-mockoon-gen-cli.yml"
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   verify:
@@ -63,6 +64,7 @@ jobs:
         run: pnpm bundle
 
       - name: Verify bundle reproducibility
+        if: github.event_name == 'pull_request'
         run: git diff --exit-code -- skills/mockoon-gen/bin/mockoon-gen.mjs skills/api-code-gen/bin/api-code-gen.mjs
 
       - name: Verify bundled CLIs
@@ -87,3 +89,17 @@ jobs:
             if (typeof frontmatter.name !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(frontmatter.name) || frontmatter.name.length > 64) throw new Error(`${skill}: invalid name`);
             if (typeof frontmatter.description !== "string" || frontmatter.description.length > 1024 || /[<>]/.test(frontmatter.description)) throw new Error(`${skill}: invalid description`);
           }'
+
+      - name: Create or update bundle PR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.SKILLS_BOT_TOKEN || github.token }}
+          branch: automation/mockoon-gen-cli-bundle
+          delete-branch: true
+          title: "chore: update bundled generator CLIs"
+          commit-message: "chore: update bundled generator CLIs"
+          body: "This PR updates the bundled generator CLIs used by the installable skills."
+          add-paths: |
+            skills/mockoon-gen/bin/mockoon-gen.mjs
+            skills/api-code-gen/bin/api-code-gen.mjs
