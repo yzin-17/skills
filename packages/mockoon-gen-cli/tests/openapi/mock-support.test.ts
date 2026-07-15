@@ -9,7 +9,8 @@ describe("mock OpenAPI support", () => {
   });
 
   it("preserves JSON primitive types in generated templates", () => {
-    expect(mockTemplate({ type: "integer" })).toBe("{{faker 'number.int'}}");
+    expect(mockTemplate({ type: "integer" })).toBe("{{faker 'number.int' min=-9007199254740991 max=9007199254740991}}");
+    expect(mockTemplate({ type: "string" })).toBe("{{faker 'string.sample' '{min: 0, max: 20}'}}");
     expect(mockTemplate({ type: "boolean" })).toBe("{{faker 'datatype.boolean'}}");
     expect(mockTemplate({ enum: [0, 1] })).toBe("0");
   });

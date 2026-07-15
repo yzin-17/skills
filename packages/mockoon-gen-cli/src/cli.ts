@@ -18,12 +18,12 @@ import { writeMockOutput } from "./utils/safe-write.js";
 export function createProgram(): Command {
   const program = new Command().name("mockoon-gen").description("Generate Mockoon and Whistle files from reviewed mock artifacts.").version(MOCKGEN_VERSION);
   program.command("init").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options: { pageDir: string; force?: boolean; cwd: string }) => writeMockOutput(configPath(options.cwd, options.pageDir), pretty(defaultMockConfig), { force: options.force }));
-  program.command("from-openapi").argument("<file>").requiredOption("--origin <origin>").option("--reviewed").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file: string, options: { origin: "generated" | "imported" | "manual"; reviewed?: boolean; pageDir: string; force?: boolean; cwd: string }) => {
+  program.command("from-openapi").argument("<file>").requiredOption("--origin <origin>").option("--reviewed").option("--random-empty-data", "Randomly emit empty values even when the OpenAPI contract disallows them").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file: string, options: { origin: "generated" | "imported" | "manual"; reviewed?: boolean; randomEmptyData?: boolean; pageDir: string; force?: boolean; cwd: string }) => {
     if (!["generated", "imported", "manual"].includes(options.origin)) throw new Error("--origin must be generated, imported, or manual");
     const artifactFile = artifactPath(options.cwd, options.pageDir); const openapi = await loadOpenApi(inputPath(options.cwd, file));
     if (existsSync(artifactFile)) { const existing = await readMockArtifact(artifactFile); if (existing.openapi.sha256 === openapi.sha256) return; if (!options.force) throw new Error("ARTIFACT_EXISTS_DIFFERENT: OpenAPI hash changed; use --force."); }
     const config = await loadMockConfig(configPath(options.cwd, options.pageDir));
-    await writeMockOutput(artifactFile, pretty(mockArtifactFromOpenApi(openapi, { origin: options.origin, reviewed: Boolean(options.reviewed), config })), { force: options.force });
+    await writeMockOutput(artifactFile, pretty(mockArtifactFromOpenApi(openapi, { origin: options.origin, reviewed: Boolean(options.reviewed), randomEmptyData: Boolean(options.randomEmptyData), config })), { force: options.force });
   });
   program.command("render-templates").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options: { from: string; cwd: string }) => {
     const artifactFile = inputPath(options.cwd, options.from);

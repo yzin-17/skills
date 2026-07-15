@@ -9,7 +9,7 @@ export function listScenarioShape(schema: OpenApiSchema | undefined): ListScenar
 }
 export function mockTemplate(schema: OpenApiSchema | undefined): string {
   if (schema?.enum?.length) return JSON.stringify(schema.enum[0]);
-  if (schema?.type === "integer" || schema?.type === "number") return "{{faker 'number.int'}}";
+  if (schema?.type === "integer" || schema?.type === "number") return "{{faker 'number.int' min=-9007199254740991 max=9007199254740991}}";
   if (schema?.type === "boolean") return "{{faker 'datatype.boolean'}}";
-  return "{{faker 'string.sample'}}";
+  return "{{faker 'string.sample' '{min: 0, max: 20}'}}";
 }

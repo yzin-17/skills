@@ -36,17 +36,17 @@ describe("mockArtifactFromOpenApi", () => {
     }), options());
 
     const body = artifact.endpoints[0]?.mock.scenarios.find((scenario) => scenario.name === "success-default")?.bodyTemplate;
-    expect(body).toContain('"id": "{{faker \'string.sample\'}}"');
+    expect(body).toContain('"id": "{{faker \'string.sample\' \'{min: 0, max: 20}\'}}"');
     expect(body).toContain('"active": {{faker \'datatype.boolean\'}}');
-    expect(body).toContain('"score": {{faker \'number.int\'}}');
+    expect(body).toContain('"score": {{faker \'number.int\' min=-9007199254740991 max=9007199254740991}}');
     expect(artifact.reviewItems).toEqual([]);
   });
 
   it("为顶层基本类型生成非空随机模板", () => {
     for (const [schema, expected] of [
-      [{ type: "string" }, '"{{faker \'string.sample\'}}"'],
-      [{ type: "number" }, "{{faker 'number.int'}}"],
-      [{ type: "integer" }, "{{faker 'number.int'}}"],
+      [{ type: "string" }, '"{{faker \'string.sample\' \'{min: 0, max: 20}\'}}"'],
+      [{ type: "number" }, "{{faker 'number.int' min=-9007199254740991 max=9007199254740991}}"],
+      [{ type: "integer" }, "{{faker 'number.int' min=-9007199254740991 max=9007199254740991}}"],
       [{ type: "boolean" }, "{{faker 'datatype.boolean'}}"],
       [{ enum: ["ready", "done"] }, '"ready"']
     ] satisfies Array<[OpenApiSchema, string]>) {
@@ -54,6 +54,48 @@ describe("mockArtifactFromOpenApi", () => {
       expect(artifact.endpoints[0]?.mock.scenarios.find((scenario) => scenario.name === "success-default")?.bodyTemplate).toBe(expected);
       expect(artifact.reviewItems).toEqual([]);
     }
+  });
+
+  it("遵守字符串和整数的边界，并让未声明长度的字符串覆盖空串到二十位", () => {
+    const source = openapi({
+      type: "object",
+      properties: {
+        defaultValue: { type: "string" },
+        limitedValue: { type: "string", minLength: 1, maxLength: 20 },
+        orderNo: { type: "string" },
+        count: { type: "integer", minimum: -10, maximum: 0 },
+        maximumSafe: { type: "integer", minimum: Number.MAX_SAFE_INTEGER, maximum: Number.MAX_SAFE_INTEGER }
+      }
+    });
+    const artifact = mockArtifactFromOpenApi(source, { ...options(), semanticMappingsByEndpoint: new Map([["ep-get-users", [{ path: "orderNo", faker: "string.alphanumeric" }]]]) });
+    const body = artifact.endpoints[0]!.mock.scenarios[0]!.bodyTemplate;
+
+    expect(body).toContain("string.sample' '{min: 0, max: 20}'");
+    expect(body).toContain("string.sample' '{min: 1, max: 20}'");
+    expect(body).toContain("string.alphanumeric' '{length: { min: 0, max: 20}}'");
+    expect(body).toContain("number.int' min=-10 max=0");
+    expect(body).toContain(`number.int' min=${Number.MAX_SAFE_INTEGER} max=${Number.MAX_SAFE_INTEGER}`);
+  });
+
+  it("在随机空数据模式中为所有类型加入空态分支", () => {
+    const artifact = mockArtifactFromOpenApi(openapi({
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        quantity: { type: "integer" },
+        active: { type: "boolean" },
+        items: { type: "array", items: { type: "string" } },
+        detail: { type: "object", properties: { id: { type: "string" } } }
+      }
+    }), { ...options(), randomEmptyData: true });
+    const body = artifact.endpoints[0]!.mock.scenarios[0]!.bodyTemplate;
+
+    expect(artifact.policies.randomEmptyData).toBe(true);
+    expect(body).toContain("null");
+    expect(body).toContain('""');
+    expect(body).toContain("[]");
+    expect(body).toContain("{}");
+    expect(body).toContain("{{#if (boolean)}}");
   });
 
   it("优先使用 format，并应用模型填写的中英文语义映射", () => {

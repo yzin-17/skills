@@ -14385,22 +14385,22 @@ function mockArtifactFromOpenApi(openapi, options) {
     const operation = pathItem[method];
     if (!operation) continue;
     const id = endpointId(method.toUpperCase(), path, operation);
-    const built = endpoint(method.toUpperCase(), path, operation, options.config, openapi.document, options.semanticMappingsByEndpoint?.get(id) ?? []);
+    const built = endpoint(method.toUpperCase(), path, operation, options.config, openapi.document, options.semanticMappingsByEndpoint?.get(id) ?? [], Boolean(options.randomEmptyData));
     endpoints.push(built.endpoint);
     reviewItems.push(...built.issues.map((message, index) => ({ id: `review-${built.endpoint.id}-schema-${index + 1}`, severity: "needsReview", scope: "endpoint", path: `paths.${path}.${method}.responses`, message, resolutionStatus: "open" })));
   }
-  return { schemaVersion: "0.3.0", openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" }, reviewItems, policies: structuredClone(options.config.mockPolicy), endpoints, outputs: { whistle: { groupName: options.config.whistleGroupName, routes: endpoints.map((value) => ({ endpointId: value.id, apiHost: null })) }, mockoon: { port: options.config.mockoonPort, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } } };
+  return { schemaVersion: "0.3.0", openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" }, reviewItems, policies: { ...structuredClone(options.config.mockPolicy), randomEmptyData: Boolean(options.randomEmptyData) }, endpoints, outputs: { whistle: { groupName: options.config.whistleGroupName, routes: endpoints.map((value) => ({ endpointId: value.id, apiHost: null })) }, mockoon: { port: options.config.mockoonPort, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } } };
 }
 function endpointId(method, path, operation) {
   return `ep-${kebab(operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`)}`;
 }
-function endpoint(method, path, operation, config, document, semanticMappings) {
+function endpoint(method, path, operation, config, document, semanticMappings, randomEmptyData) {
   const operationId = operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`;
   const schema2 = successSchema(operation);
   const mappings = new Map(semanticMappings.map((mapping) => [mapping.path, mapping.faker]));
   const stringPaths = /* @__PURE__ */ new Set();
-  const success = render(schema2, document, false, /* @__PURE__ */ new Set(), "", mappings, stringPaths);
-  const empty = render(schema2, document, true, /* @__PURE__ */ new Set(), "", mappings, stringPaths);
+  const success = render(schema2, document, false, /* @__PURE__ */ new Set(), "", mappings, stringPaths, randomEmptyData);
+  const empty = render(schema2, document, true, /* @__PURE__ */ new Set(), "", mappings, stringPaths, false);
   const list = findList(schema2, document);
   const issues = unique([...success.issues, ...empty.issues, ...list.issues]);
   const invalidMappings = semanticMappings.filter((mapping) => !stringPaths.has(mapping.path));
@@ -14411,7 +14411,7 @@ function endpoint(method, path, operation, config, document, semanticMappings) {
     { name: "error-default", statusCode: 500, headers: jsonHeaders(), bodyTemplate: '{\n  "code": "MOCK_ERROR"\n}', origin: "generated", enabled: true }
   ];
   if (config.mockPolicy.listScenario.enabled && list.location) {
-    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema2, document, list.location, config.mockPolicy.listScenario.itemCount, mappings, stringPaths), origin: "generated", enabled: true });
+    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema2, document, list.location, config.mockPolicy.listScenario.itemCount, mappings, stringPaths, randomEmptyData), origin: "generated", enabled: true });
     else issues.push("\u5217\u8868\u591A\u6761\u6210\u529F\u573A\u666F\u7684 itemCount \u5FC5\u987B\u5927\u4E8E 1\u3002");
   }
   return { endpoint: { id: endpointId(method, path, operation), operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, semanticMappings: [...semanticMappings], scenarios } }, issues: unique(issues) };
@@ -14426,30 +14426,33 @@ function successSchema(operation) {
   const response = Object.entries(operation.responses ?? {}).filter(([code]) => /^2\d\d$/.test(code)).sort(([left], [right]) => Number(left) - Number(right))[0]?.[1];
   return response?.content?.["application/json"]?.schema;
 }
-function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new Set(), path = "", mappings = /* @__PURE__ */ new Map(), stringPaths = /* @__PURE__ */ new Set()) {
+function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new Set(), path = "", mappings = /* @__PURE__ */ new Map(), stringPaths = /* @__PURE__ */ new Set(), randomEmptyData = false) {
   const resolved = resolve2(input, document, seen);
   if (!resolved.schema) return { body: "null", issues: resolved.issues };
   const schema2 = resolved.schema;
   if (schema2.allOf || schema2.anyOf || schema2.oneOf) return { body: "null", issues: [...resolved.issues, "\u7EC4\u5408 schema\uFF08allOf\u3001anyOf\u3001oneOf\uFF09\u65E0\u6CD5\u53EF\u9760\u63A8\u65AD\u3002"] };
-  if (schema2.enum?.length) return { body: JSON.stringify(schema2.enum[0]), issues: resolved.issues };
+  if (schema2.enum?.length) return { body: randomEmptyData ? nullable(JSON.stringify(schema2.enum[0])) : JSON.stringify(schema2.enum[0]), issues: resolved.issues };
   if (schema2.type === "array") {
     if (emptyArray) return { body: "[]", issues: resolved.issues };
-    const item = render(schema2.items, document, false, seen, `${path}[]`, mappings, stringPaths);
-    return { body: `[${item.body}]`, issues: [...resolved.issues, ...item.issues] };
+    const item = render(schema2.items, document, false, seen, `${path}[]`, mappings, stringPaths, randomEmptyData);
+    const body = `[${item.body}]`;
+    return { body: randomEmptyData ? emptyOr(body, "[]") : body, issues: [...resolved.issues, ...item.issues] };
   }
   if (schema2.type === "object" || schema2.properties) {
     const properties = Object.entries(schema2.properties ?? {});
     if (properties.length === 0) return { body: "{}", issues: resolved.issues };
-    const values = properties.map(([name, value]) => ({ name, ...render(value, document, emptyArray, seen, path ? `${path}.${name}` : name, mappings, stringPaths) }));
-    return { body: `{
+    const values = properties.map(([name, value]) => ({ name, ...render(value, document, emptyArray, seen, path ? `${path}.${name}` : name, mappings, stringPaths, randomEmptyData) }));
+    const body = `{
   ${values.map((value) => `${JSON.stringify(value.name)}: ${value.body}`).join(",\n  ")}
-}`, issues: [...resolved.issues, ...values.flatMap((value) => value.issues)] };
+}`;
+    return { body: randomEmptyData ? emptyOr(body, "{}") : body, issues: [...resolved.issues, ...values.flatMap((value) => value.issues)] };
   }
-  if (schema2.type === "integer" || schema2.type === "number") return { body: "{{faker 'number.int'}}", issues: resolved.issues };
-  if (schema2.type === "boolean") return { body: "{{faker 'datatype.boolean'}}", issues: resolved.issues };
+  if (schema2.type === "integer" || schema2.type === "number") return { body: randomEmptyData ? nullable(integerTemplate(schema2)) : integerTemplate(schema2), issues: resolved.issues };
+  if (schema2.type === "boolean") return { body: randomEmptyData ? nullable("{{faker 'datatype.boolean'}}") : "{{faker 'datatype.boolean'}}", issues: resolved.issues };
   if (schema2.type === "string") {
     if (path) stringPaths.add(path);
-    return { body: JSON.stringify(`{{faker '${formatFaker(schema2.format) ?? mappings.get(path) ?? "string.sample"}'}}`), issues: resolved.issues };
+    const body = JSON.stringify(stringTemplate(formatFaker(schema2.format) ?? mappings.get(path) ?? "string.sample", schema2));
+    return { body: randomEmptyData ? nullableOrEmptyString(body) : body, issues: resolved.issues };
   }
   return { body: "null", issues: [...resolved.issues, "\u6210\u529F\u54CD\u5E94\u7F3A\u5C11\u53EF\u63A8\u65AD\u7684 schema \u7C7B\u578B\u3002"] };
 }
@@ -14473,17 +14476,50 @@ function findList(input, document) {
   const arrays = Object.entries(resolved.schema.properties ?? {}).flatMap(([name, value]) => resolve2(value, document, /* @__PURE__ */ new Set()).schema?.type === "array" ? [name] : []);
   return arrays.length === 1 ? { location: arrays[0], issues: resolved.issues } : arrays.length > 1 ? { issues: [...resolved.issues, "\u6210\u529F\u54CD\u5E94\u5305\u542B\u591A\u4E2A\u5217\u8868\u5C5E\u6027\uFF0C\u65E0\u6CD5\u786E\u5B9A\u591A\u6761\u6570\u636E\u573A\u666F\u3002"] } : { issues: resolved.issues };
 }
-function renderList(input, document, location, count, mappings, stringPaths) {
+function renderList(input, document, location, count, mappings, stringPaths, randomEmptyData) {
   const resolved = resolve2(input, document, /* @__PURE__ */ new Set()).schema;
   if (!resolved) return "null";
   const listSchema = location === "root" ? resolved : resolve2(resolved.properties?.[location], document, /* @__PURE__ */ new Set()).schema;
-  const rendered = render(listSchema?.items, document, false, /* @__PURE__ */ new Set(), location === "root" ? "[]" : `${location}[]`, mappings, stringPaths);
+  const rendered = render(listSchema?.items, document, false, /* @__PURE__ */ new Set(), location === "root" ? "[]" : `${location}[]`, mappings, stringPaths, randomEmptyData);
   const repeated = `[{{#repeat ${count}}}${rendered.body}{{/repeat}}]`;
   if (location === "root") return repeated;
-  const values = Object.entries(resolved.properties ?? {}).map(([name, value]) => `${JSON.stringify(name)}: ${name === location ? repeated : render(value, document, false, /* @__PURE__ */ new Set(), name, mappings, stringPaths).body}`);
+  const values = Object.entries(resolved.properties ?? {}).map(([name, value]) => `${JSON.stringify(name)}: ${name === location ? repeated : render(value, document, false, /* @__PURE__ */ new Set(), name, mappings, stringPaths, randomEmptyData).body}`);
   return `{
   ${values.join(",\n  ")}
 }`;
+}
+function integerTemplate(schema2) {
+  const minimum = integerBound(schema2.minimum, Number.MIN_SAFE_INTEGER, Math.ceil);
+  const maximum = integerBound(schema2.maximum, Number.MAX_SAFE_INTEGER, Math.floor);
+  const min = Math.min(minimum, maximum);
+  const max = Math.max(minimum, maximum);
+  return `{{faker 'number.int' min=${min} max=${max}}}`;
+}
+function integerBound(value, fallback, round) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(Number.MIN_SAFE_INTEGER, Math.min(Number.MAX_SAFE_INTEGER, round(value))) : fallback;
+}
+function stringTemplate(faker, schema2) {
+  const { min, max } = stringLengthBounds(schema2);
+  if (["string.alpha", "string.alphanumeric", "string.numeric"].includes(faker)) return `{{faker '${faker}' '{length: { min: ${min}, max: ${max}}}'}}`;
+  if (["string.sample", "string.symbol", "string.nanoid"].includes(faker)) return `{{faker '${faker}' '{min: ${min}, max: ${max}}'}}`;
+  return `{{faker '${faker}'}}`;
+}
+function stringLengthBounds(schema2) {
+  const minimum = nonNegativeInteger(schema2.minLength, 0);
+  const maximum = nonNegativeInteger(schema2.maxLength, 20);
+  return minimum <= maximum ? { min: minimum, max: maximum } : { min: maximum, max: minimum };
+}
+function nonNegativeInteger(value, fallback) {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : fallback;
+}
+function nullable(value) {
+  return `{{#if (boolean)}}null{{else}}${value}{{/if}}`;
+}
+function nullableOrEmptyString(value) {
+  return `{{#if (boolean)}}null{{else}}{{#if (boolean)}}""{{else}}${value}{{/if}}{{/if}}`;
+}
+function emptyOr(value, empty) {
+  return `{{#if (boolean)}}${empty}{{else}}${value}{{/if}}`;
 }
 function formatFaker(format) {
   switch (format?.toLowerCase()) {
@@ -14514,7 +14550,7 @@ function formatFaker(format) {
 }
 function refreshMockArtifactTemplates(artifact, openapi) {
   const mappings = new Map(artifact.endpoints.map((endpoint2) => [endpoint2.id, endpoint2.mock.semanticMappings ?? []]));
-  const regenerated = mockArtifactFromOpenApi(openapi, { origin: artifact.openapi.origin, reviewed: artifact.openapi.reviewStatus === "confirmed", config: { mockoonPort: artifact.outputs.mockoon.port, whistleGroupName: artifact.outputs.whistle.groupName, mockPolicy: artifact.policies }, semanticMappingsByEndpoint: mappings });
+  const regenerated = mockArtifactFromOpenApi(openapi, { origin: artifact.openapi.origin, reviewed: artifact.openapi.reviewStatus === "confirmed", randomEmptyData: artifact.policies.randomEmptyData, config: { mockoonPort: artifact.outputs.mockoon.port, whistleGroupName: artifact.outputs.whistle.groupName, mockPolicy: artifact.policies }, semanticMappingsByEndpoint: mappings });
   if (regenerated.endpoints.length !== artifact.endpoints.length || regenerated.endpoints.some((endpoint2) => !mappings.has(endpoint2.id))) throw new Error("SEMANTIC_MAPPING_ENDPOINT_MISMATCH: regenerate the artifact from OpenAPI first.");
   const existingById = new Map(artifact.endpoints.map((endpoint2) => [endpoint2.id, endpoint2]));
   return { ...artifact, endpoints: regenerated.endpoints.map((endpoint2) => mergeRefreshedEndpoint(existingById.get(endpoint2.id), endpoint2)) };
@@ -14559,7 +14595,7 @@ var mockArtifactSchema = z.object({
   schemaVersion: z.literal("0.3.0"),
   openapi: z.object({ file: z.string().min(1), sha256: z.string().min(1), origin: z.enum(["generated", "imported", "manual"]), reviewStatus: z.enum(["unreviewed", "needs-change", "confirmed"]) }).strict(),
   reviewItems: z.array(reviewItem),
-  policies: z.object({ listScenario: z.object({ enabled: z.boolean(), itemCount: z.number().int().min(2).max(1e3) }).strict() }).strict(),
+  policies: z.object({ listScenario: z.object({ enabled: z.boolean(), itemCount: z.number().int().min(2).max(1e3) }).strict(), randomEmptyData: z.boolean().default(false) }).strict(),
   endpoints: z.array(z.object({ id: z.string().min(1), operationId: z.string().min(1), method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]), path: z.string().min(1), summary: z.string().optional(), mock }).strict()),
   outputs: z.object({ whistle: z.object({ groupName: z.string().min(1).nullable(), routes: z.array(z.object({ endpointId: z.string().min(1), apiHost: z.string().min(1).nullable() }).strict()) }).strict(), mockoon: z.object({ port: z.number().int().min(1).max(65535).nullable(), defaultHeaders: z.record(z.string()) }).strict() }).strict()
 }).strict();
@@ -14681,7 +14717,7 @@ async function writeMockOutput(file, content, options = {}) {
 function createProgram() {
   const program2 = new Command().name("mockoon-gen").description("Generate Mockoon and Whistle files from reviewed mock artifacts.").version(MOCKGEN_VERSION);
   program2.command("init").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => writeMockOutput(configPath(options.cwd, options.pageDir), pretty(defaultMockConfig), { force: options.force }));
-  program2.command("from-openapi").argument("<file>").requiredOption("--origin <origin>").option("--reviewed").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file, options) => {
+  program2.command("from-openapi").argument("<file>").requiredOption("--origin <origin>").option("--reviewed").option("--random-empty-data", "Randomly emit empty values even when the OpenAPI contract disallows them").requiredOption("--page-dir <dir>").option("--force").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (file, options) => {
     if (!["generated", "imported", "manual"].includes(options.origin)) throw new Error("--origin must be generated, imported, or manual");
     const artifactFile = artifactPath(options.cwd, options.pageDir);
     const openapi = await loadOpenApi(inputPath(options.cwd, file));
@@ -14691,7 +14727,7 @@ function createProgram() {
       if (!options.force) throw new Error("ARTIFACT_EXISTS_DIFFERENT: OpenAPI hash changed; use --force.");
     }
     const config = await loadMockConfig(configPath(options.cwd, options.pageDir));
-    await writeMockOutput(artifactFile, pretty(mockArtifactFromOpenApi(openapi, { origin: options.origin, reviewed: Boolean(options.reviewed), config })), { force: options.force });
+    await writeMockOutput(artifactFile, pretty(mockArtifactFromOpenApi(openapi, { origin: options.origin, reviewed: Boolean(options.reviewed), randomEmptyData: Boolean(options.randomEmptyData), config })), { force: options.force });
   });
   program2.command("render-templates").requiredOption("--from <artifact>").option("--cwd <cwd>", "Working directory", process.cwd()).action(async (options) => {
     const artifactFile = inputPath(options.cwd, options.from);
