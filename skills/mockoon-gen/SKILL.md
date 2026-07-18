@@ -9,7 +9,12 @@ Treat reviewed OpenAPI as the contract source. Store `mock-artifact.json`, confi
 
 1. Identify the project and related page directory. Stop and ask if the page directory is unclear.
 2. Normalize loose docs into `<page-dir>/mockoon-gen/openapi.yaml`. Do not mark it reviewed without an explicit human or project review decision.
-3. Before creating the artifact, explicitly ask the user whether to enable random empty-data mode. When enabled, it adds a separate `success-random-empty` scenario that may emit `null`, an empty string, an empty array, or an empty object for any field, including `required` or non-`nullable` fields, to test responses that do not follow the contract. It does not change `success-default`. Add `--random-empty-data` to `from-openapi` only when the user explicitly enables it.
+3. Before creating the artifact, ask the user once to explicitly confirm both options:
+
+   - whether to enable random empty-data mode; and
+   - the Whistle export format: exactly one of `json` or `cjs`.
+
+   Random empty-data mode adds a separate `success-random-empty` scenario that may emit `null`, an empty string, an empty array, or an empty object for any field, including `required` or non-`nullable` fields, to test responses that do not follow the contract. It does not change `success-default`. Add `--random-empty-data` to `from-openapi` only when the user explicitly enables it. Keep the selected Whistle format for the current task and use it only at export time; do not store it in config or the artifact.
 
 4. Initialize page-local config, then create the artifact:
 
@@ -50,9 +55,9 @@ node <skill-dir>/bin/mockoon-gen.mjs validate --from <page-dir>/mockoon-gen/mock
 
 ## HARD-GATE: Whistle format confirmation
 
-Before exporting Whistle, ask the user to choose exactly one format: `json` or `cjs`. Do not infer the format from filenames, examples, prior docs, or defaults.
+Use the format explicitly selected in step 3. Do not infer it from filenames, examples, prior docs, or defaults.
 
-If the user has not explicitly selected `json` or `cjs` in the current task, stop before Whistle export. This gate does not prevent Mockoon export.
+If no format was selected in the current task, stop before Whistle export and ask only for that missing choice. This gate does not prevent Mockoon export.
 
 7. Export only after readiness succeeds and the Whistle format gate is satisfied. Choose Whistle format at export time, not in config or artifact:
 
