@@ -14387,7 +14387,7 @@ function mockArtifactFromOpenApi(openapi, options) {
     const id = endpointId(method.toUpperCase(), path, operation);
     const built = endpoint(method.toUpperCase(), path, operation, options.config, openapi.document, options.semanticMappingsByEndpoint?.get(id) ?? [], Boolean(options.randomEmptyData));
     endpoints.push(built.endpoint);
-    reviewItems.push(...built.issues.map((message, index) => ({ id: `review-${built.endpoint.id}-schema-${index + 1}`, severity: "needsReview", scope: "endpoint", path: `paths.${path}.${method}.responses`, message, resolutionStatus: "open" })));
+    reviewItems.push(...built.issues.map((issue, index) => ({ id: `review-${built.endpoint.id}-schema-${index + 1}`, severity: issue.severity, scope: "endpoint", path: `paths.${path}.${method}.responses`, message: issue.message, resolutionStatus: "open" })));
   }
   return { schemaVersion: "0.3.0", openapi: { file: openapi.file, sha256: openapi.sha256, origin: options.origin, reviewStatus: options.reviewed ? "confirmed" : "unreviewed" }, reviewItems, policies: { ...structuredClone(options.config.mockPolicy), randomEmptyData: Boolean(options.randomEmptyData) }, endpoints, outputs: { whistle: { groupName: options.config.whistleGroupName, routes: endpoints.map((value) => ({ endpointId: value.id, apiHost: null })) }, mockoon: { port: options.config.mockoonPort, defaultHeaders: { "Content-Type": "application/json; charset=utf-8" } } } };
 }
@@ -14397,15 +14397,20 @@ function endpointId(method, path, operation) {
 function endpoint(method, path, operation, config, document, semanticMappings, randomEmptyData) {
   const operationId = operation.operationId ?? `${method.toLowerCase()}${path.replace(/[^A-Za-z0-9]+/g, "-")}`;
   const schema2 = successSchema(operation);
-  const mappings = new Map(semanticMappings.map((mapping) => [mapping.path, mapping.faker]));
-  const stringPaths = /* @__PURE__ */ new Set();
-  const success = render(schema2, document, false, /* @__PURE__ */ new Set(), "", mappings, stringPaths, false);
-  const empty = render(schema2, document, true, /* @__PURE__ */ new Set(), "", mappings, stringPaths, false);
-  const randomEmpty = randomEmptyData ? render(schema2, document, false, /* @__PURE__ */ new Set(), "", mappings, stringPaths, true) : void 0;
+  const mappings = new Map(semanticMappings.map((mapping) => [mapping.path, mapping]));
+  const primitivePaths = /* @__PURE__ */ new Map();
+  const success = render(schema2, document, false, /* @__PURE__ */ new Set(), "", mappings, primitivePaths, false);
+  const empty = render(schema2, document, true, /* @__PURE__ */ new Set(), "", mappings, primitivePaths, false);
+  const randomEmpty = randomEmptyData ? render(schema2, document, false, /* @__PURE__ */ new Set(), "", mappings, primitivePaths, true) : void 0;
   const list = findList(schema2, document);
-  const issues = unique([...success.issues, ...empty.issues, ...list.issues]);
-  const invalidMappings = semanticMappings.filter((mapping) => !stringPaths.has(mapping.path));
+  const timestampWarnings = [...primitivePaths.entries()].flatMap(([fieldPath, fieldSchema]) => isDateLikePath(fieldPath) && isNumeric(fieldSchema) && lacksNumericBounds(fieldSchema, mappings.get(fieldPath)) ? [`${fieldPath} appears to be a timestamp but has no realistic minimum/maximum range.`] : []);
+  const issues = [
+    ...unique([...success.issues, ...empty.issues, ...list.issues]).map((message) => ({ message, severity: "needsReview" })),
+    ...unique(timestampWarnings).map((message) => ({ message, severity: "warning" }))
+  ];
+  const invalidMappings = semanticMappings.filter((mapping) => !primitivePaths.has(mapping.path));
   if (invalidMappings.length) throw new Error(`SEMANTIC_MAPPING_INVALID_PATH: ${invalidMappings.map((mapping) => mapping.path).join(", ")}`);
+  for (const mapping of semanticMappings) validateMapping(mapping, primitivePaths.get(mapping.path));
   const scenarios = [
     { name: "success-default", statusCode: 200, headers: jsonHeaders(), bodyTemplate: success.body, origin: "generated", enabled: true },
     { name: "success-empty", statusCode: 200, headers: jsonHeaders(), bodyTemplate: empty.body, origin: "generated", enabled: true },
@@ -14413,10 +14418,10 @@ function endpoint(method, path, operation, config, document, semanticMappings, r
   ];
   if (randomEmpty) scenarios.splice(1, 0, { name: "success-random-empty", statusCode: 200, headers: jsonHeaders(), bodyTemplate: randomEmpty.body, origin: "generated", enabled: true });
   if (config.mockPolicy.listScenario.enabled && list.location) {
-    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema2, document, list.location, config.mockPolicy.listScenario.itemCount, mappings, stringPaths, false), origin: "generated", enabled: true });
-    else issues.push("\u5217\u8868\u591A\u6761\u6210\u529F\u573A\u666F\u7684 itemCount \u5FC5\u987B\u5927\u4E8E 1\u3002");
+    if (config.mockPolicy.listScenario.itemCount > 1) scenarios.splice(1, 0, { name: `success-list-${config.mockPolicy.listScenario.itemCount}`, statusCode: 200, headers: jsonHeaders(), bodyTemplate: renderList(schema2, document, list.location, config.mockPolicy.listScenario.itemCount, mappings, primitivePaths, false), origin: "generated", enabled: true });
+    else issues.push({ message: "\u5217\u8868\u591A\u6761\u6210\u529F\u573A\u666F\u7684 itemCount \u5FC5\u987B\u5927\u4E8E 1\u3002", severity: "needsReview" });
   }
-  return { endpoint: { id: endpointId(method, path, operation), operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, semanticMappings: [...semanticMappings], scenarios } }, issues: unique(issues) };
+  return { endpoint: { id: endpointId(method, path, operation), operationId, method, path, summary: operation.summary, mock: { selection: { mode: "query", key: "scenario", defaultScenario: "success-default" }, semanticMappings: [...semanticMappings], scenarios } }, issues };
 }
 function jsonHeaders() {
   return { "Content-Type": "application/json; charset=utf-8" };
@@ -14428,7 +14433,7 @@ function successSchema(operation) {
   const response = Object.entries(operation.responses ?? {}).filter(([code]) => /^2\d\d$/.test(code)).sort(([left], [right]) => Number(left) - Number(right))[0]?.[1];
   return response?.content?.["application/json"]?.schema;
 }
-function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new Set(), path = "", mappings = /* @__PURE__ */ new Map(), stringPaths = /* @__PURE__ */ new Set(), randomEmptyData = false) {
+function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new Set(), path = "", mappings = /* @__PURE__ */ new Map(), primitivePaths = /* @__PURE__ */ new Map(), randomEmptyData = false) {
   const resolved = resolve2(input, document, seen);
   if (!resolved.schema) return { body: "null", issues: resolved.issues };
   const schema2 = resolved.schema;
@@ -14436,24 +14441,33 @@ function render(input, document, emptyArray = false, seen = /* @__PURE__ */ new 
   if (schema2.enum?.length) return { body: randomEmptyData ? nullable(JSON.stringify(schema2.enum[0])) : JSON.stringify(schema2.enum[0]), issues: resolved.issues };
   if (schema2.type === "array") {
     if (emptyArray) return { body: "[]", issues: resolved.issues };
-    const item = render(schema2.items, document, false, seen, `${path}[]`, mappings, stringPaths, randomEmptyData);
+    const item = render(schema2.items, document, false, seen, `${path}[]`, mappings, primitivePaths, randomEmptyData);
     const body = `[${item.body}]`;
     return { body: randomEmptyData ? nullableOrEmpty(body, "[]") : body, issues: [...resolved.issues, ...item.issues] };
   }
   if (schema2.type === "object" || schema2.properties) {
     const properties = Object.entries(schema2.properties ?? {});
     if (properties.length === 0) return { body: "{}", issues: resolved.issues };
-    const values = properties.map(([name, value]) => ({ name, ...render(value, document, emptyArray, seen, path ? `${path}.${name}` : name, mappings, stringPaths, randomEmptyData) }));
+    const values = properties.map(([name, value]) => ({ name, ...render(value, document, emptyArray, seen, path ? `${path}.${name}` : name, mappings, primitivePaths, randomEmptyData) }));
     const body = `{
   ${values.map((value) => `${JSON.stringify(value.name)}: ${value.body}`).join(",\n  ")}
 }`;
     return { body: randomEmptyData ? nullableOrEmpty(body, "{}") : body, issues: [...resolved.issues, ...values.flatMap((value) => value.issues)] };
   }
-  if (schema2.type === "integer" || schema2.type === "number") return { body: randomEmptyData ? nullable(integerTemplate(schema2)) : integerTemplate(schema2), issues: resolved.issues };
-  if (schema2.type === "boolean") return { body: randomEmptyData ? nullable("{{faker 'datatype.boolean'}}") : "{{faker 'datatype.boolean'}}", issues: resolved.issues };
+  if (schema2.type === "integer" || schema2.type === "number") {
+    if (path) primitivePaths.set(path, schema2);
+    const body = numericTemplate(schema2, mappings.get(path));
+    return { body: randomEmptyData ? nullable(body) : body, issues: resolved.issues };
+  }
+  if (schema2.type === "boolean") {
+    if (path) primitivePaths.set(path, schema2);
+    const faker = mappings.get(path)?.faker ?? "datatype.boolean";
+    const body = `{{faker '${faker}'}}`;
+    return { body: randomEmptyData ? nullable(body) : body, issues: resolved.issues };
+  }
   if (schema2.type === "string") {
-    if (path) stringPaths.add(path);
-    const body = JSON.stringify(stringTemplate(formatFaker(schema2.format) ?? mappings.get(path) ?? "string.sample", schema2));
+    if (path) primitivePaths.set(path, schema2);
+    const body = JSON.stringify(stringTemplate(formatFaker(schema2.format) ?? mappings.get(path)?.faker ?? "string.sample", schema2));
     return { body: randomEmptyData ? nullableOrEmptyString(body) : body, issues: resolved.issues };
   }
   return { body: "null", issues: [...resolved.issues, "\u6210\u529F\u54CD\u5E94\u7F3A\u5C11\u53EF\u63A8\u65AD\u7684 schema \u7C7B\u578B\u3002"] };
@@ -14478,24 +14492,27 @@ function findList(input, document) {
   const arrays = Object.entries(resolved.schema.properties ?? {}).flatMap(([name, value]) => resolve2(value, document, /* @__PURE__ */ new Set()).schema?.type === "array" ? [name] : []);
   return arrays.length === 1 ? { location: arrays[0], issues: resolved.issues } : arrays.length > 1 ? { issues: [...resolved.issues, "\u6210\u529F\u54CD\u5E94\u5305\u542B\u591A\u4E2A\u5217\u8868\u5C5E\u6027\uFF0C\u65E0\u6CD5\u786E\u5B9A\u591A\u6761\u6570\u636E\u573A\u666F\u3002"] } : { issues: resolved.issues };
 }
-function renderList(input, document, location, count, mappings, stringPaths, randomEmptyData) {
+function renderList(input, document, location, count, mappings, primitivePaths, randomEmptyData) {
   const resolved = resolve2(input, document, /* @__PURE__ */ new Set()).schema;
   if (!resolved) return "null";
   const listSchema = location === "root" ? resolved : resolve2(resolved.properties?.[location], document, /* @__PURE__ */ new Set()).schema;
-  const rendered = render(listSchema?.items, document, false, /* @__PURE__ */ new Set(), location === "root" ? "[]" : `${location}[]`, mappings, stringPaths, randomEmptyData);
+  const rendered = render(listSchema?.items, document, false, /* @__PURE__ */ new Set(), location === "root" ? "[]" : `${location}[]`, mappings, primitivePaths, randomEmptyData);
   const repeated = `[{{#repeat ${count}}}${rendered.body}{{/repeat}}]`;
   if (location === "root") return repeated;
-  const values = Object.entries(resolved.properties ?? {}).map(([name, value]) => `${JSON.stringify(name)}: ${name === location ? repeated : render(value, document, false, /* @__PURE__ */ new Set(), name, mappings, stringPaths, randomEmptyData).body}`);
+  const values = Object.entries(resolved.properties ?? {}).map(([name, value]) => `${JSON.stringify(name)}: ${name === location ? repeated : render(value, document, false, /* @__PURE__ */ new Set(), name, mappings, primitivePaths, randomEmptyData).body}`);
   return `{
   ${values.join(",\n  ")}
 }`;
 }
-function integerTemplate(schema2) {
-  const minimum = integerBound(schema2.minimum, Number.MIN_SAFE_INTEGER, Math.ceil);
-  const maximum = integerBound(schema2.maximum, Number.MAX_SAFE_INTEGER, Math.floor);
-  const min = Math.min(minimum, maximum);
-  const max = Math.max(minimum, maximum);
-  return `{{faker 'number.int' min=${min} max=${max}}}`;
+function numericTemplate(schema2, mapping) {
+  const schemaMinimum = integerBound(schema2.minimum, Number.MIN_SAFE_INTEGER, Math.ceil);
+  const schemaMaximum = integerBound(schema2.maximum, Number.MAX_SAFE_INTEGER, Math.floor);
+  const mappedMinimum = integerBound(mapping?.args?.min, schemaMinimum, Math.ceil);
+  const mappedMaximum = integerBound(mapping?.args?.max, schemaMaximum, Math.floor);
+  const min = Math.max(schemaMinimum, mappedMinimum);
+  const max = Math.min(schemaMaximum, mappedMaximum);
+  if (min > max) throw new Error("SEMANTIC_MAPPING_CONFLICTS_WITH_OPENAPI_BOUNDS");
+  return `{{faker '${mapping?.faker ?? "number.int"}' min=${min} max=${max}}}`;
 }
 function integerBound(value, fallback, round) {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(Number.MIN_SAFE_INTEGER, Math.min(Number.MAX_SAFE_INTEGER, round(value))) : fallback;
@@ -14550,6 +14567,25 @@ function formatFaker(format) {
       return void 0;
   }
 }
+function isNumeric(schema2) {
+  return schema2.type === "integer" || schema2.type === "number";
+}
+function lacksNumericBounds(schema2, mapping) {
+  return typeof schema2.minimum !== "number" && typeof schema2.maximum !== "number" && typeof mapping?.args?.min !== "number" && typeof mapping?.args?.max !== "number";
+}
+function isDateLikePath(path) {
+  const name = path.split(".").at(-1)?.replace(/\[\]/g, "") ?? path;
+  const words = name.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/);
+  return words.some((word) => ["date", "time", "timestamp", "created", "updated", "expires", "expiry", "issued"].includes(word));
+}
+function validateMapping(mapping, schema2) {
+  if (isNumeric(schema2)) {
+    if (mapping.faker !== "number.int") throw new Error(`SEMANTIC_MAPPING_TYPE_MISMATCH: ${mapping.path} must use number.int for a numeric field`);
+    for (const key of ["min", "max"]) if (mapping.args?.[key] !== void 0 && typeof mapping.args[key] !== "number") throw new Error(`SEMANTIC_MAPPING_INVALID_ARGS: ${mapping.path}.${key} must be a number`);
+    return;
+  }
+  if (schema2.type === "boolean" && mapping.faker !== "datatype.boolean") throw new Error(`SEMANTIC_MAPPING_TYPE_MISMATCH: ${mapping.path} must use datatype.boolean for a boolean field`);
+}
 function refreshMockArtifactTemplates(artifact, openapi) {
   const mappings = new Map(artifact.endpoints.map((endpoint2) => [endpoint2.id, endpoint2.mock.semanticMappings ?? []]));
   const regenerated = mockArtifactFromOpenApi(openapi, { origin: artifact.openapi.origin, reviewed: artifact.openapi.reviewStatus === "confirmed", randomEmptyData: artifact.policies.randomEmptyData, config: { mockoonPort: artifact.outputs.mockoon.port, whistleGroupName: artifact.outputs.whistle.groupName, mockPolicy: artifact.policies }, semanticMappingsByEndpoint: mappings });
@@ -14585,7 +14621,11 @@ var reviewItem = z.object({ id: z.string().min(1), severity: z.enum(["fatal", "n
   if (item.resolutionStatus !== "open" && !item.resolution) context.addIssue({ code: z.ZodIssueCode.custom, message: "closed item requires resolution" });
 });
 var scenario = z.object({ name: z.string().min(1), statusCode: z.number().int().min(100).max(599), headers: z.record(z.string()), bodyTemplate: z.string(), origin: z.enum(["generated", "inferred", "manual"]), enabled: z.boolean() }).strict();
-var semanticMapping = z.object({ path: z.string().min(1), faker: z.string().regex(/^[a-z][A-Za-z0-9]*(?:\.[a-z][A-Za-z0-9]*)+$/, "faker must use module.method syntax") }).strict();
+var semanticMapping = z.object({
+  path: z.string().min(1),
+  faker: z.string().regex(/^[a-z][A-Za-z0-9]*(?:\.[a-z][A-Za-z0-9]*)+$/, "faker must use module.method syntax"),
+  args: z.record(z.union([z.string(), z.number().finite(), z.boolean()])).optional()
+}).strict();
 var mock = z.object({ selection: z.object({ mode: z.enum(["random", "query", "header", "manual"]), key: z.string().optional(), defaultScenario: z.string().min(1) }).strict(), semanticMappings: z.array(semanticMapping).superRefine((mappings, context) => {
   const paths = /* @__PURE__ */ new Set();
   for (const [index, mapping] of mappings.entries()) {

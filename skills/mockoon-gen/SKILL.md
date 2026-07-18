@@ -23,21 +23,28 @@ node <skill-dir>/bin/mockoon-gen.mjs init --page-dir <page-dir> --cwd <project-d
 node <skill-dir>/bin/mockoon-gen.mjs from-openapi <openapi-file> --origin <generated|imported|manual> --page-dir <page-dir> --cwd <project-dir> [--random-empty-data]
 ```
 
-5. Before rendering or exporting, the model must inspect every string field in each successful JSON response schema and make a semantic Faker decision. Use this order:
+5. Before rendering or exporting, the model must inspect every primitive field in each successful JSON response schema, including `string`, `integer`, `number`, `boolean`, and date-like fields, and make a semantic Faker decision that respects both semantic meaning and the OpenAPI type. Use this order:
 
    - Treat an explicit OpenAPI `format` as the contract constraint.
    - Otherwise infer from the field name, full field path, `title`, `description`, parent object, neighboring fields, and request/response context.
-   - When the meaning is clear, add an entry to that endpoint's `mock.semanticMappings` in `mock-artifact.json`. Use a Faker.js `module.method` path without Mockoon braces, for example:
+   - When the meaning is clear, add an entry to that endpoint's `mock.semanticMappings` in `mock-artifact.json`. Use a Faker.js `module.method` path without Mockoon braces. `args` is optional, but use it for typed numeric semantics. For example:
 
 ```json
 {
-  "path": "items[].productName",
-  "faker": "commerce.productName"
+  "path": "batches[].batchDate",
+  "faker": "number.int",
+  "args": {
+    "min": 0,
+    "max": 1893456000000
+  }
 }
 ```
 
-   - Do not invent a mapping when the meaning is ambiguous. Leaving the field unmapped is valid and causes the renderer to use `string.sample`.
+   - Keep Faker compatible with the OpenAPI primitive type: `number.int` for numeric timestamp mappings and `datatype.boolean` for booleans. Numeric timestamp `0` is 1970-01-01T00:00:00Z; the standard mock range ends at 2030-01-01T00:00:00Z (`1893456000000`).
+   - Do not invent a mapping when the meaning is ambiguous. Leaving the field unmapped is valid and causes the renderer to use its type-specific fallback.
    - Keep the mapping decision separate from `bodyTemplate`; never hand-edit generated templates to encode the decision.
+
+   After rendering, inspect generated review items. If a date-like numeric field falls back to an unbounded `number.int`, resolve it with OpenAPI numeric bounds or a semantic mapping with realistic `args.min` and `args.max`; the generator emits a warning for this condition.
 
    After adding or changing mappings, materialize them into generated success scenarios:
 
@@ -45,7 +52,7 @@ node <skill-dir>/bin/mockoon-gen.mjs from-openapi <openapi-file> --origin <gener
 node <skill-dir>/bin/mockoon-gen.mjs render-templates --from <page-dir>/mockoon-gen/mock-artifact.json --cwd <project-dir>
 ```
 
-The renderer applies the precedence `semanticMappings > OpenAPI format > string.sample` and keeps default, list, empty, and nested templates consistent. Review the artifact afterward: OpenAPI status/hash, mock scenarios, each `semanticMappings` entry, Mockoon port, Whistle group, and each semantic `apiHost`. Keep unresolved semantic questions as open review items.
+The renderer applies the precedence `semanticMappings > OpenAPI format > type-specific fallback` and keeps default, list, empty, and nested templates consistent. Review the artifact afterward: OpenAPI status/hash, mock scenarios, each `semanticMappings` entry, timestamp-range warnings, Mockoon port, Whistle group, and each semantic `apiHost`. Keep unresolved semantic questions as open review items.
 
 6. Validate the target before output:
 

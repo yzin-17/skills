@@ -3,7 +3,11 @@ import { z } from "zod";
 const resolution = z.object({ reason: z.string().min(1), resolvedBy: z.enum(["human", "mockoon-gen-skill"]), resolvedAt: z.string().min(1) }).strict();
 const reviewItem = z.object({ id: z.string().min(1), severity: z.enum(["fatal", "needsReview", "warning"]), scope: z.enum(["global", "openapi", "endpoint", "mock", "output"]), path: z.string().min(1), message: z.string().min(1), suggestion: z.string().optional(), resolutionStatus: z.enum(["open", "resolved", "ignored"]), resolution: resolution.optional() }).strict().superRefine((item, context) => { if (item.resolutionStatus === "open" && item.resolution) context.addIssue({ code: z.ZodIssueCode.custom, message: "open item cannot have resolution" }); if (item.resolutionStatus !== "open" && !item.resolution) context.addIssue({ code: z.ZodIssueCode.custom, message: "closed item requires resolution" }); });
 const scenario = z.object({ name: z.string().min(1), statusCode: z.number().int().min(100).max(599), headers: z.record(z.string()), bodyTemplate: z.string(), origin: z.enum(["generated", "inferred", "manual"]), enabled: z.boolean() }).strict();
-const semanticMapping = z.object({ path: z.string().min(1), faker: z.string().regex(/^[a-z][A-Za-z0-9]*(?:\.[a-z][A-Za-z0-9]*)+$/, "faker must use module.method syntax") }).strict();
+const semanticMapping = z.object({
+  path: z.string().min(1),
+  faker: z.string().regex(/^[a-z][A-Za-z0-9]*(?:\.[a-z][A-Za-z0-9]*)+$/, "faker must use module.method syntax"),
+  args: z.record(z.union([z.string(), z.number().finite(), z.boolean()])).optional()
+}).strict();
 const mock = z.object({ selection: z.object({ mode: z.enum(["random", "query", "header", "manual"]), key: z.string().optional(), defaultScenario: z.string().min(1) }).strict(), semanticMappings: z.array(semanticMapping).superRefine((mappings, context) => { const paths = new Set<string>(); for (const [index, mapping] of mappings.entries()) { if (paths.has(mapping.path)) context.addIssue({ code: z.ZodIssueCode.custom, path: [index, "path"], message: "semantic mapping path must be unique" }); paths.add(mapping.path); } }).default([]), scenarios: z.array(scenario) }).strict();
 
 export const mockArtifactSchema = z.object({

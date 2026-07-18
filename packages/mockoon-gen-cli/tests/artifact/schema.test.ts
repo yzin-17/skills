@@ -15,6 +15,23 @@ describe("mockArtifactSchema", () => {
     expect(mockArtifactSchema.parse(artifact).schemaVersion).toBe("0.3.0");
   });
 
+  it("accepts primitive semantic mapping arguments and rejects non-primitive or redundant arguments", () => {
+    const mapped = {
+      ...artifact,
+      endpoints: [{ ...artifact.endpoints[0], mock: { ...artifact.endpoints[0].mock, semanticMappings: [{ path: "batchDate", faker: "number.int", args: { min: 0, max: 1893456000000 } }] } }]
+    };
+    expect(mockArtifactSchema.parse(mapped).endpoints[0]?.mock.semanticMappings?.[0]?.args).toEqual({ min: 0, max: 1893456000000 });
+
+    const invalid = {
+      ...mapped,
+      endpoints: [{ ...mapped.endpoints[0], mock: { ...mapped.endpoints[0].mock, semanticMappings: [{ path: "batchDate", faker: "number.int", args: { min: {} } }] } }]
+    };
+    expect(() => mockArtifactSchema.parse(invalid)).toThrow();
+
+    const redundant = { ...mapped, endpoints: [{ ...mapped.endpoints[0], mock: { ...mapped.endpoints[0].mock, semanticMappings: [{ path: "batchDate", faker: "number.int", meaning: "unix-time-milliseconds" }] } }] };
+    expect(() => mockArtifactSchema.parse(redundant)).toThrow();
+  });
+
   it("rejects API code and derived Whistle fields", () => {
     expect(() => mockArtifactSchema.parse({ ...artifact, dto: {} })).toThrow();
     expect(() => mockArtifactSchema.parse({ ...artifact, endpoints: [{ ...artifact.endpoints[0], reviewItems: [] }] })).toThrow();

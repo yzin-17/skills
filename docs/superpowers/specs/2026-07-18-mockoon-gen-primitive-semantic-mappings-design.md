@@ -21,12 +21,11 @@
   "args": {
     "min": 0,
     "max": 1893456000000
-  },
-  "meaning": "unix-time-milliseconds"
+  }
 }
 ```
 
-`args` 与 `meaning` 均为可选字段。`args` 的值为 JSON 基础值；数值型 Faker 映射仅接受有限数值的 `min`、`max`。路径必须唯一，`faker` 继续限制为 `module.method`。渲染前将验证映射路径对应成功响应 schema 中的基础类型字段，并验证映射与字段类型相容。
+`args` 为可选字段，其值为 JSON 基础值；数值型 Faker 映射仅接受有限数值的 `min`、`max`。路径必须唯一，`faker` 继续限制为 `module.method`。渲染前将验证映射路径对应成功响应 schema 中的基础类型字段，并验证映射与字段类型相容。字段语义由路径、Faker 方法和参数表达，不额外存储冗余的 `meaning` 字段。
 
 ## 渲染规则
 
@@ -44,7 +43,7 @@
 
 对于字段名、路径、标题或描述明显表示日期/时间的 `integer` 或 `number` 字段，若最终使用无约束的 `number.int`，生成 artifact 时新增开放 `warning` 审阅项。消息说明字段看起来是时间戳但没有现实的最小/最大范围，并建议添加 OpenAPI 边界或带 `min/max` 的语义映射。
 
-含有 `unix-time-milliseconds` 映射或 OpenAPI 边界的字段不产生该告警。名称语义不明确的普通数值字段不告警。
+含有合理 `min/max` 数值映射或 OpenAPI 边界的字段不产生该告警。名称语义不明确的普通数值字段不告警。
 
 ## 技能说明
 

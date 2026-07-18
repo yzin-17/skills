@@ -145,9 +145,36 @@ describe("mockArtifactFromOpenApi", () => {
     expect(scenarios.find((scenario) => scenario.name === "success-custom")?.bodyTemplate).toBe('{"manual": true}');
   });
 
-  it("拒绝不指向字符串字段的语义映射", () => {
-    const source = openapi({ type: "object", properties: { count: { type: "integer" } } });
-    expect(() => mockArtifactFromOpenApi(source, { ...options(), semanticMappingsByEndpoint: new Map([["ep-get-users", [{ path: "count", faker: "commerce.productName" }]]]) })).toThrow("SEMANTIC_MAPPING_INVALID_PATH: count");
+  it("拒绝不指向基础类型字段或与字段类型不匹配的语义映射", () => {
+    const source = openapi({ type: "object", properties: { count: { type: "integer" }, detail: { type: "object", properties: {} } } });
+    expect(() => mockArtifactFromOpenApi(source, { ...options(), semanticMappingsByEndpoint: new Map([["ep-get-users", [{ path: "detail", faker: "commerce.productName" }]]]) })).toThrow("SEMANTIC_MAPPING_INVALID_PATH: detail");
+    expect(() => mockArtifactFromOpenApi(source, { ...options(), semanticMappingsByEndpoint: new Map([["ep-get-users", [{ path: "count", faker: "commerce.productName" }]]]) })).toThrow("SEMANTIC_MAPPING_TYPE_MISMATCH: count");
+  });
+
+  it("为数值型时间戳应用语义映射参数，并在所有成功场景中保持数值类型", () => {
+    const source = openapi({ type: "object", properties: { batches: { type: "array", items: { type: "object", properties: { batchDate: { type: "integer" } } } } } });
+    const mapping = { path: "batches[].batchDate", faker: "number.int", args: { min: 0, max: 1893456000000 } };
+    const artifact = mockArtifactFromOpenApi(source, { ...options({ itemCount: 3 }), semanticMappingsByEndpoint: new Map([["ep-get-users", [mapping]]]) });
+
+    expect(artifact.endpoints[0]!.mock.semanticMappings).toEqual([mapping]);
+    for (const scenario of artifact.endpoints[0]!.mock.scenarios.filter((scenario) => scenario.name === "success-default" || scenario.name.startsWith("success-list-"))) {
+      expect(scenario.bodyTemplate).toContain("{{faker 'number.int' min=0 max=1893456000000}}");
+      expect(scenario.bodyTemplate).not.toContain('"{{faker \'number.int\'');
+    }
+    expect(artifact.reviewItems).toEqual([]);
+  });
+
+  it("为未约束的数值型日期字段创建 warning，并在 OpenAPI 或映射提供范围时消除 warning", () => {
+    const unconstrained = mockArtifactFromOpenApi(openapi({ type: "object", properties: { createdAt: { type: "integer" } } }), options());
+    expect(unconstrained.reviewItems).toEqual(expect.arrayContaining([expect.objectContaining({ severity: "warning", message: "createdAt appears to be a timestamp but has no realistic minimum/maximum range." })]));
+
+    const constrained = mockArtifactFromOpenApi(openapi({ type: "object", properties: { createdAt: { type: "integer", minimum: 0, maximum: 1893456000000 } } }), options());
+    expect(constrained.reviewItems).toEqual([]);
+  });
+
+  it("不允许语义映射放宽 OpenAPI 数值边界", () => {
+    const source = openapi({ type: "object", properties: { batchDate: { type: "integer", minimum: 0, maximum: 100 } } });
+    expect(() => mockArtifactFromOpenApi(source, { ...options(), semanticMappingsByEndpoint: new Map([["ep-get-users", [{ path: "batchDate", faker: "number.int", args: { min: 101 } }]]]) })).toThrow("SEMANTIC_MAPPING_CONFLICTS_WITH_OPENAPI_BOUNDS");
   });
 
   it("未映射时回退，并允许显式通用字符串映射", () => {
