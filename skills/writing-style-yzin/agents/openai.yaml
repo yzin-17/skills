@@ -1,11 +1,11 @@
 interface:
   display_name: Yzin Writing Style
-  short_description: Technical writing with code, evidence, and inline sources.
-  default_prompt: Draft this in my technical writing style.
+  short_description: External technical article writing in Yzin's style.
+  default_prompt: Use $writing-style-yzin to draft this external technical article.
 policy:
   products:
   - chatgpt
   - codex
   - api
   - atlas
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false
