@@ -1,0 +1,7 @@
+interface:
+  display_name: "Handoff"
+  short_description: "Prepare a concise handoff for a fresh session"
+  default_prompt: "Create a handoff for a fresh agent session."
+
+policy:
+  allow_implicit_invocation: false
