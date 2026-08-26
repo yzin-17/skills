@@ -1,0 +1,4 @@
+interface:
+  display_name: "Spec-Driven Workflow"
+  short_description: "规范化编写 Spec 与 Task，按需驱动实施和一致性 Review"
+  default_prompt: "使用 $spec-driven-workflow 处理这项需求。优先创建、更新或审查符合项目约定的 Spec 与任务文档；先判断是否需要拆分独立 Spec 单元，使用带首次创建日期的 Spec 文件名，为验收标准分配稳定 AC 编号并映射到可独立验证的 Task，完成 planning preflight。只有当当前请求明确包含实施且不存在 Blocking 问题时，才继续代码实施、验证与最终一致性 Review。"
