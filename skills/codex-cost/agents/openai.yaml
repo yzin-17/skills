@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Cost"
+  short_description: "Delegate token-heavy Sol work to Luna or Terra"
+  default_prompt: "Use $codex-cost to decide whether this gpt-5.6-sol task should be delegated to Luna or Terra, keep one implementation worker through fixes and validation, and minimize Sol context and verification cost without reducing reliability."
