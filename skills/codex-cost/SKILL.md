@@ -1,6 +1,6 @@
 ---
 name: codex-cost
-description: Use when gpt-5.6-sol is the active parent and a coding task is likely to consume substantial Sol context through broad code reading, cross-file implementation, testing, debugging, repeated fixes, logs, or browser validation. Delegates worthwhile execution to Luna or Terra while Sol retains scope, key decisions, and final review. Do not use for simple, local, low-risk work.
+description: Use when gpt-5.6-sol is the active parent and a coding task is likely to consume substantial Sol context through broad code reading, cross-file implementation, testing, debugging, repeated fixes, logs, or browser validation. This skill explicitly authorizes and requires Luna/Terra sub-agent delegation when its delegation criteria are met, while Sol retains scope, key decisions, risk judgment, and final review. Do not use for simple, local, low-risk work.
 ---
 
 # Sol Delegation and Cost Control
@@ -8,6 +8,16 @@ description: Use when gpt-5.6-sol is the active parent and a coding task is like
 Reduce `gpt-5.6-sol` token usage and model-call cost without weakening task reliability.
 
 Keep Sol focused on task interpretation, scope, necessary architecture decisions, risk judgment, and final acceptance. Delegate token-intensive execution to a lower-cost worker only when the context switch is worthwhile.
+
+## Delegation authorization
+
+This skill explicitly authorizes and requests sub-agent delegation when its delegation criteria are met.
+
+When this skill determines that delegation is worthwhile, **spawn the appropriate lower-cost sub-agent and delegate the work**. Do not merely recommend delegation, describe a delegation plan, or continue the delegated workload in the parent Sol.
+
+This authorization applies to the worker lifecycle defined below, including implementation-detail exploration, implementation, tests, debugging, normal browser validation, and repair cycles within the delegated scope.
+
+Sol remains responsible for task interpretation, scope control, necessary architecture decisions, risk judgment, targeted final review, and final acceptance.
 
 ## Applicability
 
@@ -19,7 +29,7 @@ Do not impose this delegation policy on a Luna or Terra parent unless the user o
 
 Delegate only when the expected savings in Sol tokens, tool calls, or execution effort clearly exceed worker startup, context transfer, coordination, and final-review overhead.
 
-Prefer delegation when one or more of these are materially present:
+Delegation is normally worthwhile when one or more of these are materially present:
 
 - broad or repeated code reading across multiple files;
 - cross-file implementation;
@@ -37,6 +47,8 @@ Keep the work in the current Sol when it is:
 - cheaper to complete directly than to describe, delegate, and verify.
 
 As a practical heuristic, delegate when Sol would otherwise spend most of the task reading, implementing, testing, debugging, or inspecting execution evidence rather than making decisions.
+
+Once the criteria above make delegation worthwhile, delegation is an execution requirement of this skill, not an optional suggestion.
 
 Do not split one cohesive task into separate workers merely because it spans Server, Desktop, modules, phases, implementation, review, or validation.
 
