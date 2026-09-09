@@ -1,164 +1,128 @@
 # Spec Authoring
 
-This reference defines how to inspect project context, choose Spec boundaries, author stable Specs, define acceptance criteria, and keep Specs synchronized with later feedback.
+Define stable intent, acceptance, and decision boundaries without turning the Spec into a file-by-file execution plan.
 
 ## 1. Context discovery
 
-Before creating or updating a Spec, inspect the project context directly related to the requested change. Do not design only from the request text when the repository can establish current behavior or constraints.
+Inspect only context relevant to the requested change and within the permitted source boundary:
 
-At minimum, check as relevant:
+- current code, domain models, behavior, and reusable test seams when available;
+- terminology, ADRs, architecture constraints, and nearby Specs;
+- existing callers, compatibility paths, persisted data, and deployment constraints that affect the design.
 
-- current code, domain models, and existing behavior;
-- existing project terminology and naming;
-- ADRs, architecture constraints, or design conventions in scope;
-- reusable interfaces, module boundaries, and test entry points;
-- nearby features, compatibility logic, migration paths, or prior Specs.
+When only documents are available, distinguish their reported implementation or runtime state from independently verified state. Do not infer the contents of linked but unread reports or repositories.
 
-Prefer the repository's existing domain terminology. Do not introduce a second name for an existing concept without a clear reason.
-
-If the current structure materially increases the risk or complexity of the target change, a prerequisite refactor may be proposed, but only when it directly serves the Spec. Avoid speculative refactoring.
+Reuse existing domain names. Propose a prerequisite refactor only when it directly serves the approved change; avoid speculative abstractions and unrelated cleanup.
 
 ## 2. Scope and Spec boundaries
 
-Before authoring the Spec, decide whether the request spans independently deliverable subsystems.
+Prefer separate Spec units when subsystems deliver independently useful behavior, can be independently accepted, and do not need strong transactional or architectural coupling to land together. Each unit needs its own linked task document and stable ID.
 
-Prefer separate Spec units when different parts:
+Keep one Spec when the areas jointly define a cohesive domain or product contract. Explain the shared boundary when material. Split its implementation tasks and gates as needed; do not create separate Specs merely for each database, API, runtime, or client.
 
-- can deliver independently useful behavior;
-- can be tested and accepted independently;
-- do not require strong transactional or architectural coupling to land together.
-
-If separate Spec units are created, each unit must have its own linked task document and stable task ID.
-
-If one Spec is retained across multiple areas, record why those areas must be designed and delivered together.
+Scope templates never override explicit non-goals. Optional queues, isolated workers, storage adapters, or migration mechanisms remain optional unless an approved decision activates them.
 
 ## 3. Spec contract
 
-A Spec describes stable design intent, domain boundaries, and externally observable behavior. It should not become a file-by-file implementation plan.
+A Spec should contain:
 
-A Spec should contain at least:
+- background, goals, non-goals, and dated current-state constraints;
+- design, externally observable behavior, interfaces, and domain boundaries;
+- data, state, permission, compatibility, and migration effects;
+- test strategy, risks, alternatives, open questions, and acceptance criteria.
 
-- Background and problem
-- Goals
-- Non-goals
-- Current state and constraints
-- Design
-- External behavior or interface changes
-- Data, state, or compatibility impact
-- Test strategy
-- Risks and alternatives
-- Open questions
-- Acceptance criteria
-
-Avoid concrete file paths, long code listings, or implementation details that are likely to become stale. Keep concise state machines, Schemas, type structures, or similar formal examples only when they express an already-confirmed design decision more precisely than prose.
+Avoid exhaustive file paths, implementation logs, and long code listings. Include concise Schemas, types, state machines, or formal examples when they express confirmed semantics more precisely than prose.
 
 ### Recommended template
 
 ```md
 # <任务名称> Spec
 
+> 任务标识：<稳定 ID>
+> 日期：<首次创建日期>
+> 状态：<与当前计划一致的状态>
+> 对应任务：<任务文档链接>
+
 ## 背景与问题
-
 ## 目标
-
 ## 非目标
-
 ## 现状与约束
-
 ## 设计方案
-
 ## 对外行为或接口变化
-
 ## 数据、状态或兼容性影响
-
 ## 测试策略
-
 ### 关键可观察行为
-
-### 优先测试层级
-
-### 可复用的现有测试入口
-
-### 需要新增的测试入口
-
+### 测试层级与证据边界
+### 可复用或需要新增的测试入口
 ### 关键边界与回归场景
-
+### 必要集成与真实运行态门禁（如适用）
 ## 风险与备选方案
-
 ## 未决问题
-
 ### Blocking
-
 ### Non-blocking
-
 ## 验收标准
-
-- AC1：<可观察且可验证的验收结果>
-- AC2：<可观察且可验证的验收结果>
+- AC1：<可观察或可独立验证的结果>
 ```
 
-## 4. Open-question gate
+## 4. Decisions, inventories, and readiness
 
-Do not turn an important assumption into a confirmed requirement.
+Do not convert an assumption into a confirmed requirement.
 
-Classify unresolved questions as:
+- **Blocking**: different answers materially change behavior, interfaces, data semantics, permissions, compatibility, test strategy, or acceptance. Stop affected implementation until resolved.
+- **Non-blocking**: the stable contract is unchanged and work can proceed using an explicit default with a bounded impact. Record both the default and its boundary.
 
-- **Blocking**: different answers would materially change external behavior, interfaces, data semantics, compatibility, test strategy, or acceptance criteria.
-- **Non-blocking**: the stable contract remains unchanged and work can proceed using an explicitly recorded default assumption without expanding scope.
+Write `无` when there are no open questions. Document-only work may finish with clearly reported blockers unless an implementation-ready plan was requested. Independent work may continue only when it does not rely on an unresolved decision.
 
-If there are no open questions, write `无` rather than leaving the section ambiguous.
+Distinguish design uncertainty from operational readiness: an unavailable test environment can block required validation without making unrelated domain implementation unsafe.
 
-For every Non-blocking question that remains open, record the current default assumption and its impact boundary.
+For existing systems:
 
-Implementation must not begin while a Blocking question remains unresolved. Document-only work may still be completed with Blocking questions clearly recorded, unless the user explicitly requires an implementation-ready Spec.
+- Place read-only data/caller inventories before the decisions or changes they govern. If the Spec requires an inventory before implementation, do not defer it to final acceptance.
+- Existing rows do not establish whether they may be deleted, converted, or ignored. Record retention requirements and authorization before migration or Contract decisions.
+- Define the required deployment or adapter behavior, not an accidental local topology. Lack of an optional worker or queue is not itself a failure.
+- An environment gate should identify the target revision/configuration, migration state, required routes, and relevant capabilities. Healthy processes alone do not prove feature readiness.
+
+Use conditional branches for retention or infrastructure decisions. Do not silently activate both branches or add compatibility that the Spec prohibits.
 
 ## 5. Acceptance criteria
 
-Acceptance criteria are the bridge between Spec intent and executable tasks.
+Each criterion must have a stable ID such as `AC1`, express an observable or independently verifiable outcome, and permit a clear pass/fail decision. Include every material requirement rather than leaving acceptance obligations only in prose.
 
-Each criterion must:
+A broad AC may contain several assertions. Keep its stable ID and identify its sub-assertions in the task mapping, for example `AC1 / Schema 拒绝` and `AC1 / 运行时拒绝`; do not renumber unrelated ACs merely to improve ownership.
 
-- use a stable unique ID such as `AC1`, `AC2`;
-- describe an externally observable or otherwise independently verifiable outcome;
-- be specific enough that a reviewer can determine pass or fail;
-- avoid implementation-only wording unless implementation structure is itself part of the contract.
+State acceptance boundaries when ambiguity matters:
 
-Do not hide requirements only inside prose when they are necessary for acceptance. Each material acceptance requirement should appear as an AC or be directly covered by one.
+- supported behavior versus explicit unavailable/unsupported behavior;
+- contract or fixture proof versus deployed interoperability or real-data proof;
+- required functionality versus a conditional performance or deployment enhancement;
+- local deliverable completion versus whole-feature release acceptance.
+
+A correct unavailable response proves that error path, not a successful run for that capability. A representative scenario proves its declared coverage, not an untested support matrix.
 
 ## 6. Test strategy
 
-Define the test strategy during Spec authoring rather than after implementation.
+Define tests with the design, not as a final repair phase. Prefer observable behavior, existing entry points, and the smallest evidence sufficient for the risk. TDD is optional; validated completion is not.
 
-Prefer tests that verify observable behavior over internal implementation details.
+Distinguish evidence levels as applicable:
 
-When choosing test seams:
+1. Component/contract: local semantics, persistence behavior, serialization, and boundary failures.
+2. Integration: real components connected through the actual contracts, including a bounded real-semantic path.
+3. Target runtime: the required deployed services, data, persistence, isolation, or recovery behavior on an identified configuration.
 
-- reuse existing test entry points first;
-- prefer higher-level tests that cover a complete behavior chain when practical;
-- add a new test seam only when existing entry points cannot validate the target behavior effectively;
-- avoid introducing many new test seams for a single feature;
-- record important boundaries, compatibility behavior, and regression risks.
+These are evidence boundaries, not a requirement to create three tasks for every feature. Targeted tests stay with their implementation. Separate a gate when it has an independent acceptance decision, shared integration responsibility, distinct environment, or materially different setup/verification cost.
 
-For internal refactors that intentionally preserve external behavior, existing regression coverage may be sufficient if it meaningfully proves behavior remains unchanged.
+Plan the earliest useful real-semantic path before all enhancements are complete. Preserve the minimum safety invariants needed for that path. It demonstrates integration risk reduction, not completion of the entire support matrix.
 
-TDD is not mandatory. The required invariant is that completed work has validation evidence appropriate to its risk.
+Specify assertions, not just command names or test counts. Static dependency scans do not prove the absence of runtime side effects; layout smoke does not prove a persisted user journey. Shared evidence may satisfy several assertions when its actual coverage is explicit.
 
-## 7. Spec change rules
+Performance spikes may establish a baseline or support an infrastructure decision. A baseline is not a passed performance threshold unless the applicable acceptance threshold and workload are defined. Do not tune a pass threshold after the fact merely to make a measurement pass.
 
-Update the Spec when feedback changes any stable contract, including:
+## 7. Change and status rules
 
-- feature or interaction behavior;
-- business rules or boundary conditions;
-- external interfaces or data structures;
-- state, permission, or compatibility requirements;
-- test strategy when it changes how acceptance is determined;
-- acceptance criteria;
-- previously ambiguous, missing, or invalid Spec statements.
+Update the Spec first when confirmed feedback changes stable behavior, business rules, interfaces, data/state/permission semantics, compatibility, acceptance-relevant testing, or acceptance criteria. Replace obsolete requirements instead of keeping contradictory active statements.
 
-Pure implementation refactors, naming changes, formatting, or other changes that do not alter externally observable behavior generally do not require a Spec update.
+Change only the task document for implementation sequencing, task granularity, or internal details that preserve the stable contract. A local task may hand a product-level check to an explicit gate only if the same feature-level obligation remains intact.
 
-When new explicit user feedback conflicts with the current Spec, the latest confirmed feedback wins. Modify or remove obsolete Spec statements rather than keeping contradictory history in the active contract.
+Keep current status and linked task IDs synchronized. Preserve historical baseline descriptions with an explicit baseline date; do not present pre-implementation state as current fact after implementation has progressed. Keep detailed execution evidence in Tasks or linked reports, not in the Spec.
 
-Use this test:
-
-> If the current implementation disappeared and another developer received only the updated Spec, they should be able to implement the newly intended result.
+Use this check: another developer given only the updated Spec should be able to implement the intended behavior without guessing newly confirmed requirements.

@@ -1,219 +1,173 @@
 # Task Planning
 
-This reference defines how to turn a Spec into independently verifiable implementation tasks without over-fragmenting the work.
+Turn a Spec into bounded, independently reviewable deliverables without over-fragmentation or hidden final integration.
 
 ## 1. Task document contract
 
-The task document must link its corresponding Spec and use Markdown checklist items.
+Link the Spec and retain stable Task IDs. Follow repository paths; otherwise use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`. Keep the Spec's first-creation date stable.
 
-If the repository has no naming convention:
+Every executable task must state its AC coverage, dependencies, scope, completion conditions, and validation method. Its primary outcome and acceptance boundary must be unambiguous. Include the configuration, scaffolding, tests, and documentation needed for that outcome.
 
-- Spec: `docs/specs/YYYY-MM-DD-<task-id>.md`
-- Tasks: `docs/tasks/<task-id>.md`
+A fresh-context agent should be able to identify what to deliver, what not to change, and what proves completion without reading the entire execution history. Name concrete modules or paths when useful; do not turn file lists into acceptance criteria.
 
-`YYYY-MM-DD` is the Spec's first creation date. Later Spec revisions keep the same filename.
-
-The Spec's acceptance criteria must use stable IDs such as `AC1`, `AC2`. Every Task must explicitly declare which acceptance criteria it covers, and every AC must be covered by at least one Task.
-
-### Recommended template
+### Compact template
 
 ```md
 # <任务名称>实施任务
 
-对应 Spec：[`../specs/YYYY-MM-DD-<任务标识>.md`](../specs/YYYY-MM-DD-<任务标识>.md)
+对应 Spec：<相对链接>
+> 状态：<实现进度；未通过的必要门禁>
 
 ## 任务
 
-- [ ] T1：任务描述
-  - 覆盖验收标准：AC1
+- [ ] T1：<一个主要交付目标>
+  - 覆盖验收标准：AC1（<本任务证明的断言>）
   - 依赖：无
-  - 涉及范围：
-  - 完成条件：
-  - 验证方式：
+  - 涉及范围：<责任边界；必要时说明不包含的内容>
+  - 完成条件：<可独立接受或拒绝的结果>
+  - 验证方式：<入口、环境与关键断言>
+  - 验证证据：<实施后记录；规划时可省略>
 
-- [ ] T2：任务描述
-  - 覆盖验收标准：AC2、AC3
-  - 依赖：T1
-  - 涉及范围：
-  - 完成条件：
-  - 验证方式：
+## 验收映射（多个任务共同覆盖同一 AC 时使用）
+| AC / 断言 | 实现责任任务 | 验证责任任务或门禁 |
+| --- | --- | --- |
+| AC1 / <具体断言> | T1 | T1；必要时关联 I1 |
 
 ## 最终一致性 Review
-
-- [ ] Spec 中的全部验收标准均有对应实现
-- [ ] 所有已勾选任务均有验证证据
-- [ ] 所有任务依赖均已满足且无错误阻塞关系
-- [ ] 跨任务接口、类型和命名保持一致（如适用）
-- [ ] 不存在未解决的 Blocking 问题、占位描述或未定义的实现契约
-- [ ] 实现未超出 Spec 声明的范围
-- [ ] 测试策略、测试实现与验证结果一致
-- [ ] 测试与文档已同步更新
-- [ ] 必要实施 Step 均已验证；如已获提交授权，已形成合理 commit，否则已记录提交状态或建议边界
-- [ ] 未发现实现、Spec 与任务文档之间的不一致
-
-### Review 结论
-
-- 结论：
-- 发现的问题：
-- 遗留风险：
-- 验证命令与结果：
+<采用 references/review.md 中的单一检查清单与结论结构>
 ```
 
-Each Task must:
+Add fields only when they resolve real coordination ambiguity: `接口契约`, `验收依赖`, `关联门禁`, `环境前提`, `责任方`, or a reference to existing evidence. Do not require a large schema for every small task.
 
-- have a stable unique ID such as `T1`, `T2`;
-- produce an independently verifiable implementation result;
-- state `覆盖验收标准`, dependencies, scope, completion conditions, and validation method;
-- be granular enough to determine whether it is complete;
-- contain the implementation-and-validation loop needed for that deliverable;
-- include necessary configuration, scaffolding, tests, and documentation rather than mechanically splitting them into separate tasks;
-- be understandable in principle by an Agent starting from a fresh context;
-- be valuable enough to justify an independent reviewer gate.
+Do not leave implementation instructions such as `TBD`, `TODO`, `later`, `处理细节`, `适当处理错误`, `补相关测试`, or `类似 T1`. Put unresolved requirements in the Spec's open questions. Template placeholders are not instructions to retain placeholders in a finished plan.
 
-Avoid unverifiable descriptions such as `完成开发` or `处理细节`.
+## 2. Right-size by acceptance, not file count
 
-Do not use placeholders in place of decisions, including:
+A Task is the smallest implementation unit that carries its own complete validation cycle and warrants an independent Review decision. This does not require a separate reviewer agent or commit.
 
-- `TBD`, `TODO`, `later`;
-- `添加适当的错误处理`;
-- `处理边界情况`;
-- `补充相关测试`;
-- `类似 T1`;
-- other wording that requires the implementer to guess the real requirement.
+Split when distinct deliverables can reasonably receive different acceptance decisions, especially when they have different ownership, completion conditions, failure boundaries, or required environments. Keep related success/error cases together when they establish one coherent behavior.
 
-If a requirement is genuinely unresolved, move it back to the Spec's open-question section.
+Review granularity when:
 
-Unlike the Spec, the task document may name concrete modules, directories, or files when that helps execution.
+- work crosses three or more execution surfaces, such as persistence/migration, a queue/worker, a domain runtime, API, client, or deployment environment;
+- one task changes multiple applications or repositories, many unrelated files, or requires verification across multiple packages;
+- it combines several independently useful outputs or cannot be verified without several unfinished components converging;
+- an implementation task is accumulating migration decisions, lifecycle enhancements, UI work, and final runtime acceptance;
+- adding Steps or parallel agents is expanding the scope rather than resolving a bounded deliverable.
 
-## 2. Task right-sizing
+These are review triggers, not automatic split thresholds. Several code layers can be one small synchronous behavior; several failure cases can belong to one acceptance guarantee. Do not equate technical layers with independent runtimes.
 
-Tasks are not better merely because they are smaller.
+After review, split if the task still contains independently acceptable deliveries, hides an integration responsibility, or has no bounded acceptance loop. Otherwise retain it with a brief boundary explanation. Aim for a task that can be understood in a fresh context, not a specific line count or context-window percentage.
 
-Use this definition:
+## 3. Bounded vertical slices and enabling deliverables
 
-> A Task is the smallest implementation unit that can carry a complete validation cycle and is worth an independent Review decision.
+Prefer a bounded vertical slice for one behavior. Include only the layers needed to prove that behavior, not every eventual consumer or release concern.
 
-When splitting work:
+A vertical slice may span Schema, Domain, API, UI, and tests when that remains one small acceptance loop. It must not become the default justification for combining all persistence, runtime, lifecycle, client, and deployment work.
 
-- include setup, configuration, scaffolding, tests, and documentation in the delivery task that needs them;
-- split two Tasks only when a reviewer could reasonably accept one and reject the other;
-- end each Task with an independently testable or verifiable result;
-- do not turn one natural delivery loop into many tiny tasks with no independent acceptance value;
-- prefer Tasks that can fit within one fresh context window for an implementation Agent.
+Independently acceptable enabling tasks are valid, including:
 
-## 3. Prefer vertical slices
+- a stable, testable Schema or producer/consumer contract;
+- a migration with verifiable data and compatibility invariants;
+- a storage, snapshot, or runtime capability with a bounded behavioral test;
+- a client interaction proven against a ready contract, with deployed interoperability assigned to an explicit gate.
 
-Default to independently verifiable end-to-end vertical slices rather than technical-layer slices.
+These are behavior or contract boundaries, not mechanical `修改 Schema → 修改 Server → 修改 UI → 补测试` slices. Tests remain with the implementation they validate.
 
-Prefer:
+A task must not need a later task to prove its **own declared result**. It may precede a separate gate that proves the **combined feature**. Name that gate and keep the distinction explicit; do not retrospectively redefine incomplete work as complete without re-planning its acceptance ownership.
+
+## 4. Early integration and explicit gates
+
+When several components must connect, assign an integration owner and executable entry point before parallel implementation. Schedule the first useful integration as soon as its real prerequisites are ready, not after all enhancement tasks finish.
+
+A typical early path is:
 
 ```text
-T1：完成一个可使用、可验证的最小行为闭环
-    ├─ Schema
-    ├─ Domain
-    ├─ API
-    ├─ UI（如需要）
-    └─ Tests
+输入 → 执行一次真实领域语义 → 持久化明确终态 → 查询结果
 ```
 
-Avoid defaulting to:
+Use the real domain implementation, not a hardcoded successful result. Controlled input facts may be fixtures when clearly labeled; that proves fixture-based integration, not live provider availability. The path need not wait for the full client UI or every supported scenario.
 
-```text
-T1：修改 Schema
-T2：修改 Server
-T3：修改 Desktop
-T4：补测试
-```
+Keep safety-critical identity, isolation, minimum state transitions, atomic result publication, and duplicate protection in this path when required by the Spec or execution model. Retry, cancellation, recovery, progress, and diagnostics may become separate tasks only where delaying them does not invalidate the minimum safe path. All Spec-required lifecycle behavior remains mandatory before feature completion.
 
-A vertical slice should:
+Create an explicit gate when acceptance involves independent integration ownership, a distinct environment, an irreversible transition, or materially different verification setup. A gate records:
 
-- cover the layers required for that behavior;
-- be independently demonstrable, testable, or regression-verifiable when complete;
-- not require a later task merely to prove that the current task is correct;
-- remain small enough to be implemented safely.
+- the precise assertion and required scenario coverage;
+- prerequisites, required environment, and who owns its execution;
+- the entry point and sufficient evidence;
+- what fails or remains blocked if evidence is unavailable.
 
-If a behavior cannot form a complete vertical slice, declare its prerequisite explicitly.
+Do not automatically create separate tasks for every browser check, cross-package command, performance test, or fault case. Reuse a coherent gate or existing test entry when its acceptance boundary matches. Do not replace one oversized implementation task with one oversized final gate containing all integration, isolation, migration, performance, and release work.
 
-## 4. Dependencies
+Integration work may wire completed components and fix bounded seam defects. Missing core capabilities return to an explicit implementation task. The existing final consistency Review is the final review gate; do not create a second task that repeats the same review without a distinct purpose.
 
-Every Task must declare `依赖`.
+## 5. Dependencies and parallel readiness
 
-A dependency means only:
+`依赖` means a prerequisite that prevents safe start, not a preferred order. Preserve this default for ordinary tasks.
 
-> This Task cannot safely begin until the named Task is complete.
+When starting against a contract is safe, depend on a **named, verified contract deliverable or milestone**, not on the producer's entire unfinished implementation. Record the milestone's owner, stable contract reference, and readiness evidence. A vague claim that an interface is "basically ready" is not a dependency exemption.
 
-Do not create dependencies merely to express a preferred order.
+Distinguish only when needed:
 
-Example:
+- `依赖`: required before work can safely start.
+- `验收依赖`: may arrive during implementation but must be satisfied before this task's own completion.
+- `关联门禁`: accepts the combined feature after local deliverables complete; does not automatically block their local completion.
 
-```md
-- [ ] T3：支持部分平仓后的 Trade 投影
-  - 依赖：T1、T2
-```
+Consumers may implement against a ready shared contract or fixture before the producer is deployed. Do not infer real interoperability from this. The integration gate must depend on both implementations and the required environment.
 
-Tasks with no dependency relationship may be implemented in parallel when they do not conflict.
+Check start and acceptance relationships for cycles. In particular, do not make task completion depend on a gate that itself requires that task to be complete; reassign the assertions to remove the cycle.
 
-During implementation, only tasks whose dependencies are complete belong to the current dependency frontier.
+Parallel tasks must have ready prerequisites, distinct deliverables, and non-conflicting write ownership. When sharing a worktree, coordinate shared schemas, package exports, migrations, generated files, lockfiles, and package-wide checks. Without isolation, an unrelated unfinished change can contaminate evidence.
 
-If implementation reveals an inaccurate dependency graph, update the task document.
+If an implementation uses a helper from a task absent from its dependency record, check whether the helper is already a verified shared prerequisite or whether the graph is stale. Update the real dependency; do not infer safety from the original table.
 
-## 5. Cross-task contracts
+## 6. Cross-task contracts
 
-Record a cross-task contract only when separate Tasks depend on a stable interface, Schema, type, event, or data structure.
+Record only contracts needed for coordination; do not force `Consumes / Produces` on every task.
 
-Example:
+Before contract-dependent parallel work, establish the relevant names, Schema/types, inputs/outputs, error behavior, and state, timing, identity, or side-effect semantics. Use a shared Schema, authoritative fixtures, contract tests, or another inspectable artifact. A list of type names alone may be insufficient.
 
-```md
-- [ ] T2：接入 Trade 投影
-  - 依赖：T1
-  - 接口契约：
-    - Consumes：T1 产出的 `TradeProjection`
-    - Produces：供后续查询使用的 Trade read model
-```
+Contract readiness does not require the producer's full implementation. Tests must demonstrate the relevant agreement; independently invented producer and consumer mocks are not shared evidence.
 
-Do not force every Task to declare `Consumes / Produces`.
+A frozen contract is a coordination baseline, not a ban on justified changes. Change its authoritative definition, update affected tasks and consumers, identify invalidated evidence, and rerun impacted checks. Do not let concurrent implementations guess incompatible contracts and defer reconciliation to the end.
 
-Record only the contract needed for coordination. Do not enumerate ordinary internal details.
+## 7. Acceptance ownership and evidence scope
 
-Later Tasks must use the same interface, field, type, and event semantics established by prerequisite Tasks. If that contract changes, synchronize all affected Tasks.
+Every material AC assertion needs an implementation owner and an appropriate verification owner. They may be the same task. An AC spanning layers can have several owners for **different assertions**, not several undifferentiated claims that the whole AC is complete.
 
-## 6. Wide-refactor exception
+Do not use `AC1–AC30 → 最终任务` as a substitute for concrete acceptance ownership. The final Review audits coverage; it does not inherit all missing implementation and verification work.
 
-Do not force a mechanical wide refactor into artificial vertical feature slices.
+Examples:
 
-Examples include:
+| 断言 | 本地证据 | 不能据此宣称的结果 |
+| --- | --- | --- |
+| Schema 拒绝非法配置 | 输入 fixture 与字段错误断言 | 已部署 API/UI 均拒绝 |
+| 冻结数据可重放 | Artifact 读写、哈希和确定性测试 | 实时 Provider 已可用 |
+| 无禁止依赖 | 静态边界检查 | 运行前后真实数据完全未变 |
+| 编辑器可操作且无溢出 | 页面/组件 smoke | 创建、执行、持久化、查询闭环通过 |
 
-- shared field or type renames;
-- wide DTO / Schema migrations;
-- public package interface replacement;
-- module moves that affect many callers at once.
+Reference reusable evidence instead of repeating expensive checks solely because several tasks cite the same AC. Coverage and evidence validity, not test-count growth, determine completion.
 
-Prefer Expand / Migrate / Contract:
+## 8. Existing-system migration and conditional work
 
-```text
-Expand
-  ↓
-Migrate A ─┐
-Migrate B ─┼→ Contract
-Migrate C ─┘
-```
+Perform required inventory at the point mandated by the Spec, and before any dependent irreversible decision. State the retention branch, permitted temporary compatibility, removal conditions, and rollback or recovery behavior.
 
-### Expand
+For wide mechanical changes, prefer bounded Expand / Migrate-or-Cutover / Contract when compatible with the Spec:
 
-- introduce the new form;
-- preserve temporary compatibility with the old form;
-- keep existing callers functional.
+- **Expand:** introduce the new form without prohibited or destructive side effects; preserve existing behavior only through permitted mechanisms.
+- **Migrate/Cutover:** move bounded consumers or traffic/data under the approved retention policy; verify each batch.
+- **Contract:** remove the old form only after required migrations, caller checks, retention decisions, and authorized removal conditions pass.
 
-### Migrate
+Do not introduce compatibility re-exports, conversion adapters, backfills, dual writes, or infrastructure merely because a generic template suggests them. If a retention decision requires a separate migration Spec, stop the affected Contract path rather than quietly implementing that migration here.
 
-- migrate by package, directory, domain, or another bounded blast radius;
-- validate each batch independently;
-- keep CI passing after each batch when practical.
+Performance-dependent infrastructure tasks are conditional. Record the activation decision and evidence. Validate the selected runtime's required behavior; the absence of an unselected optional component is not a failed gate.
 
-### Contract
+## 9. Progress and re-planning
 
-- remove the old form only after all migration Tasks are complete;
-- depend on every required migration Task;
-- confirm that no legacy callers remain before removal.
+Use checkboxes for executable tasks and acceptance gates. Use headings or explicit group entries for parents; do not count both the parent and its children as completed work.
 
-If a migration batch cannot stay independently verifiable, an explicit integration Task may be used, but its reason and final validation boundary must be stated.
+A task is checked only when its own required implementation and validation pass. Keep incomplete tasks unchecked with concise implementation, validation, and blocker details. Store shared integration/runtime gate status once and reference it from local tasks.
+
+Report implementation progress separately from outstanding feature acceptance. A count such as `13/14` is a task count, not an estimate of remaining effort or proof of release readiness. After splitting, state the changed counting basis rather than implying progress increased through relabeling.
+
+Keep stable IDs and original AC obligations when splitting. Use child IDs such as `T12.1`; map existing work and still-valid evidence without automatically repeating it. Follow `implementation.md` for execution-time re-planning. Do not reopen all completed work or create new agents, conversations, commits, or tests merely because the plan was split.

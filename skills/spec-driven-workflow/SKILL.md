@@ -1,58 +1,49 @@
 ---
 name: spec-driven-workflow
-description: Use when creating, updating, reviewing, or implementing from software Specs and linked implementation task documents. Apply especially when the user asks to write or revise a feature Spec, technical Spec, implementation plan, or task document that should follow spec-driven conventions. Also use for non-trivial code changes, refactors, or migrations that need a stable Spec, independently verifiable tasks, evidence, and consistency review. Do not use for general documentation, README edits, simple questions, routine low-risk edits, one-line changes, or explicitly plan-free changes.
+description: Use when creating, updating, reviewing, or implementing software Specs and linked task documents, including re-scoping tasks that become difficult to verify during execution. Also use for non-trivial changes, refactors, or migrations that need stable acceptance criteria, bounded deliverables, verification evidence, and consistency review. Do not use for general documentation, simple questions, routine low-risk edits, one-line changes, or explicitly plan-free work.
 ---
 
 # Spec-Driven Workflow
 
-Use this skill primarily to create and maintain durable Spec and task-document contracts. Implementation is optional and should only begin when it is part of the current request.
+Maintain durable Spec and task-document contracts. Implementation begins only when the current request includes it.
 
 ## Reference routing
 
 Read only the references required for the current phase:
 
-- Creating or revising a Spec: [references/spec-authoring.md](references/spec-authoring.md)
-- Creating or revising implementation tasks: [references/task-planning.md](references/task-planning.md)
-- Reviewing Spec/task documents or performing consistency review: [references/review.md](references/review.md)
-- Implementing approved work: [references/implementation.md](references/implementation.md)
+- Spec authoring or stable-contract changes: [references/spec-authoring.md](references/spec-authoring.md)
+- Task planning, dependencies, acceptance boundaries, or re-scoping: [references/task-planning.md](references/task-planning.md)
+- Planning preflight or final consistency review: [references/review.md](references/review.md)
+- Implementation, evidence, delegation handoff, or execution-time re-planning: [references/implementation.md](references/implementation.md)
 
-For document-only work, do not load implementation rules unless they are needed to judge whether a task is executable. For a full Spec → Task → implementation workflow, read references progressively as each phase begins.
+Load references progressively. For document-only work, read implementation guidance only when needed to assess executability. When re-scoping during implementation, consult the affected planning and review sections rather than restarting the entire workflow.
 
 ## Operating contract
 
-- Treat the current user request, applicable project rules, and confirmed project context as authoritative. References are process guidance, not permission to expand scope, mutate external systems, or commit.
-- Preserve existing worktree changes. Separate confirmed requirements, current-state facts, assumptions, and unresolved decisions.
-- Reuse the repository's terminology, document locations, interfaces, and test entry points when compatible.
-- If no repository convention exists, default to `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`. Use the Spec's first creation date in `YYYY-MM-DD` form and keep that filename stable on later revisions.
-- Keep the Spec focused on stable intent, domain boundaries, and externally observable behavior. Keep the task document concrete about implementation scope, dependencies, completion conditions, validation, and status.
-- A Spec and its linked task document form one planning unit. If the request contains independently deliverable subsystems, prefer multiple planning units instead of one oversized Spec.
+- Follow the current request, applicable project rules, and confirmed context. These instructions do not authorize scope expansion, external mutations, deployment, destructive migration, or commits.
+- Respect the requested source boundary. Distinguish confirmed requirements, source-reported facts, directly verified facts, assumptions, and unresolved decisions. Do not claim to have inspected unavailable code or environments.
+- Preserve existing worktree changes. Reuse project terminology, interfaces, document locations, and test entry points.
+- Without a repository convention, use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`. Keep the Spec's first-creation date and filename stable on later revisions.
+- The Spec owns stable intent, domain boundaries, behavior, and acceptance. Tasks own implementation scope, dependencies, local completion conditions, evidence, and status.
+- Prefer separate Spec units for independently deliverable subsystems. Multiple runtimes or many tasks alone do not justify separate Specs; a cohesive Spec may contain several bounded tasks and explicit gates.
+- A task completes its own declared acceptance loop. The feature completes only after all required integration and runtime gates pass. Neither an oversized task nor a catch-all final gate may hide independent deliverables.
+- Do not choose models, require subagents, or impose fixed file, token, task, or commit counts through this skill. Apply the existing delegation policy separately.
 
 ## Workflow
 
-1. Determine whether the request is document-only or includes implementation. Document authoring is a valid completed outcome; do not continue into code unless implementation is requested.
-2. Inspect the project context needed to write accurate documents: relevant code, domain models, terminology, ADRs, interfaces, compatibility paths, and test seams.
-3. Decide whether the request should remain one Spec unit or be split into independently deliverable Spec units.
-4. For each Spec unit, create or update one dated Spec and one linked task document using the same stable task ID.
-5. Give acceptance criteria stable IDs such as `AC1`, `AC2`, and explicitly map every acceptance criterion to one or more tasks.
-6. Run the planning preflight defined in `references/review.md`: Spec coverage, placeholder scan, dependency checks, cross-task contract consistency, and unresolved-question status. Fix the documents before considering planning complete.
-7. If the request is document-only, stop after the planning review and report the document paths plus any Blocking Questions or residual planning risks.
-8. If implementation is requested, do not begin while an unresolved Blocking Question can materially change behavior, interfaces, data semantics, compatibility, testing, or acceptance criteria. Then follow `references/implementation.md`.
-9. If feedback changes stable behavior or acceptance, update the Spec first, then synchronize affected tasks, tests, documentation, and implementation.
-10. After implementation, perform the final consistency review in `references/review.md` before reporting completion.
+1. Determine whether the request is document-only or includes implementation.
+2. Inspect the relevant permitted sources and current-state constraints. Identify inventories, environment checks, or decisions that must precede dependent implementation or irreversible changes.
+3. Choose Spec boundaries; create or update each dated Spec and its linked task document.
+4. Give acceptance criteria stable IDs. Map each material assertion to an implementation owner and sufficient verification; name product-level gates where local evidence is insufficient.
+5. Plan bounded deliverables, real dependencies, contract-ready parallelism, and an early real-semantic integration path where multiple components must connect.
+6. Run the planning preflight in `references/review.md`. Resolve document defects and report any genuine blockers.
+7. For document-only work, stop after the planning review. Do not continue into implementation or installation.
+8. For implementation, follow `references/implementation.md` on the verified dependency frontier. Unresolved Blocking Questions stop affected work; unrelated dependency-ready work need not stop.
+9. If the acceptance boundary drifts, re-plan affected tasks before extending them or adding parallel workers. Preserve requirements, existing changes, and still-valid evidence. Update the Spec first when the stable contract changes.
+10. Complete the final consistency review before claiming the requested feature or implementation scope is complete.
 
 ## Handoff
 
-For document-only work, the final response must state:
+For document-only work, report the generated or revised paths, planning-review conclusion, Blocking Questions, and residual planning risks. State when only files were generated and nothing was installed or applied.
 
-- Spec and task-document paths;
-- planning-review conclusion;
-- Blocking Questions, if any;
-- remaining planning risks or follow-up items.
-
-For implementation work, also state:
-
-- completed and incomplete tasks;
-- dependency or blocking status;
-- validations that were run and their results;
-- final consistency-review conclusion;
-- remaining implementation risks or explicitly accepted follow-up items.
+For implementation, also report completed and incomplete deliverables, outstanding integration/runtime gates, actual validations and limitations, final-review conclusion, and commit status when relevant. Do not equate written code, fixture tests, browser layout checks, and real-runtime acceptance.
