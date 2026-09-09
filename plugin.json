@@ -4,8 +4,10 @@
   "version": "0.1.0",
   "description": "A personal library of reusable skills for Codex and other agents that consume SKILL.md-based skills.",
   "author": {
-    "name": "yzin"
+    "name": "yzin",
+    "url": "https://github.com/yzin-17"
   },
+  "homepage": "https://github.com/yzin-17/skills",
   "repository": "https://github.com/yzin-17/skills",
   "license": "Apache-2.0",
   "keywords": [
@@ -20,7 +22,18 @@
         "shortDescription": "Reusable skills for Codex workflows",
         "longDescription": "A personal library of reusable skills for Codex and other agents.",
         "developerName": "yzin",
-        "category": "Productivity"
+        "category": "Productivity",
+        "capabilities": [
+          "Read",
+          "Write",
+          "Interactive"
+        ],
+        "defaultPrompt": [
+          "Use the OpenAPI mock artifact workflow.",
+          "Use the OpenAPI API-code workflow.",
+          "Use the spec-driven workflow."
+        ],
+        "brandColor": "#334155"
       }
     }
   }
