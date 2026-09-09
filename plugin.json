@@ -1,0 +1,27 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "yzin-skills",
+  "version": "0.1.0",
+  "description": "A personal library of reusable skills for Codex and other agents that consume SKILL.md-based skills.",
+  "author": {
+    "name": "yzin"
+  },
+  "repository": "https://github.com/yzin-17/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "codex",
+    "skills",
+    "openapi"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "yzin Skills",
+        "shortDescription": "Reusable skills for Codex workflows",
+        "longDescription": "A personal library of reusable skills for Codex and other agents.",
+        "developerName": "yzin",
+        "category": "Productivity"
+      }
+    }
+  }
+}
