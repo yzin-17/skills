@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Cost"
-  short_description: "Delegate token-heavy Sol work to Luna or Terra"
-  default_prompt: "Use $codex-cost to decide whether this gpt-5.6-sol task should be delegated to Luna or Terra, keep one implementation worker through fixes and validation, and minimize Sol context and verification cost without reducing reliability."
+  short_description: "Role-based delegation with user-selected models"
+  default_prompt: "Use $codex-cost to decide whether delegation is worthwhile, using the user's specified models or configured agent roles and reasoning settings. Keep simple tasks with the parent. The parent owns scope, key decisions, risk judgment, mandatory final review, and acceptance; reuse one implementation worker for implementation, self-review, tests, validation, and fixes by default. Minimize total token usage, model-call cost, and duplicated work without reducing reliability. Report configuration blockers instead of changing models or applying automatic fallback."
