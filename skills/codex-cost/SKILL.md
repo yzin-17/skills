@@ -1,248 +1,158 @@
 ---
 name: codex-cost
-description: Use for coding tasks involving substantial code reading, cross-file implementation, testing, debugging, repeated fixes, logs, or browser validation. Apply regardless of model identity. Delegate when worthwhile using user-specified models or configured agent roles, while the parent orchestrator retains scope, key decisions, risk judgment, and mandatory final review. Keep simple, local, low-risk work with the parent.
+description: Use for coding tasks involving substantial code reading, cross-file implementation, testing, debugging, log analysis, or browser validation. Delegate only when the overall benefit justifies it; user-specified models constrain model selection only after delegation is deemed worthwhile. When no worker is specified, default non-UI work to Luna, while frontend visual, layout, or styling work must not be assigned to Luna. The parent always owns scope, key decisions, and final review.
 ---
 
 # Role-Based Delegation and Cost Control
 
-Control total token usage, model-call cost, and duplicated work without weakening task reliability.
+Reduce total token usage, model-call cost, and duplicated work without weakening task reliability.
 
-Keep the parent orchestrator focused on task interpretation, scope, necessary architecture decisions, risk judgment, and final acceptance. Delegate token-intensive execution to a worker only when the context switch is worthwhile.
+Core principle: the parent orchestrator owns decisions and acceptance; workers own bounded execution. Whether to delegate depends on overall benefit, not on model names or roles themselves.
 
-## Delegation authorization
+## 1. Decide Whether Delegation Is Worthwhile
 
-This skill explicitly authorizes and requests sub-agent delegation when its delegation criteria are met, subject to higher-priority instructions and the user's model configuration.
+Delegate only when the expected benefit clearly exceeds worker startup, context transfer, coordination, and final-review overhead. A user explicitly naming a sub-agent or model constrains which model to use if delegation happens; it does not make delegation mandatory.
 
-When this skill determines that delegation is worthwhile and the user-specified worker configuration is available, **spawn the configured worker and delegate the work**. Do not merely recommend delegation, describe a delegation plan, or continue the delegated workload in the orchestrator.
-
-This authorization applies to the worker lifecycle defined below, including implementation-detail exploration, implementation, tests, debugging, normal browser validation, and repair cycles within the delegated scope. It does not authorize changing the user's model selections.
-
-The orchestrator remains responsible for task interpretation, scope control, necessary architecture decisions, risk judgment, targeted final review, and final acceptance.
-
-## Applicability and role definitions
-
-Apply this workflow regardless of the active parent or worker model. Roles describe responsibilities, not model names, providers, price tiers, or capability rankings.
-
-- **User:** specifies the models or configured agent roles to use, together with any reasoning settings and model-selection constraints.
-- **Parent orchestrator:** the agent responsible for the user-facing task. Owns requirements, scope, task decomposition, delegation contracts, necessary architecture decisions, risk judgment, final review, integration, and final acceptance.
-- **Worker:** a sub-agent assigned a bounded deliverable. Owns the permitted implementation-detail exploration, implementation, self-review, tests, debugging, normal browser validation, and repair cycles within that assignment.
-
-The parent and workers may use the same model or different models when specified by the user. A worker's model does not transfer the parent's final-review responsibility or make the worker responsible for overall acceptance.
-
-When operating as a delegated worker, follow the worker responsibilities and return results to the assigning orchestrator. Do not treat yourself as the parent or create further sub-agents unless the user explicitly authorizes nested delegation.
-
-## 1. Decide whether delegation is worthwhile
-
-Delegate only when the expected benefit in total token usage, model-call cost, or execution effort clearly exceeds worker startup, context transfer, coordination, and final-review overhead.
-
-Evaluate the orchestrator and workers together. Moving tokens out of the parent does not by itself establish a total cost saving. Do not assume a worker is cheaper or less capable, or that the orchestrator is more capable, merely because of their roles.
-
-Delegation is normally worthwhile when one or more of these are materially present:
+Delegation is usually worthwhile for:
 
 - broad or repeated code reading across multiple files;
 - cross-file implementation;
-- implementation plus tests or repeated test/fix cycles;
-- large searches, logs, traces, build output, or debugging evidence;
-- repeated review fixes;
-- browser validation or UI-state inspection;
-- straightforward execution that the user-configured worker can handle reliably but that would consume substantial orchestrator context.
+- implementation followed by testing, debugging, or repeated repair cycles;
+- large search results, logs, traces, build output, or browser evidence;
+- straightforward execution that a configured worker can handle reliably but that would otherwise consume substantial parent context.
 
-Keep the work in the current orchestrator when it is:
+The parent orchestrator should usually handle work directly when it is:
 
-- simple, local, and low-risk;
+- simple, local, and low risk;
 - a small edit requiring little context;
 - pure analysis or a small documentation change;
-- cheaper to complete directly than to describe, delegate, and verify.
+- cheaper to complete directly than to delegate and verify.
 
-As a practical heuristic, delegate when the orchestrator would otherwise spend most of the task reading, implementing, testing, debugging, or inspecting execution evidence rather than making decisions.
+Practical rule: if most of the work is reading, implementing, testing, debugging, or inspecting execution evidence rather than making key decisions, prefer delegation.
 
-Once the criteria above make delegation worthwhile and the user-specified worker configuration is available, delegation is an execution requirement of this skill, not an optional suggestion. Handle configuration blockers under Section 2.
+Once the overall-benefit judgment confirms that delegation is worthwhile and an appropriate worker is available, actually create and delegate to that worker. Do not merely describe a delegation plan and then continue the delegated workload in the parent.
 
-Do not split one cohesive task into separate workers merely because it spans Server, Desktop, modules, phases, implementation, review, or validation.
+Do not mechanically split one task across multiple workers merely because it spans multiple modules, phases, implementation steps, or validation stages. Apart from the UI / non-UI model boundary below, use multiple workers only for genuinely independent work that benefits from parallelism.
 
-### Avoid exploratory duplication
+## 2. Model and Role Constraints
 
-Once the orchestrator has enough information to define the objective, boundaries, settled decisions, and required validation, stop broad implementation-detail exploration and delegate.
+Roles describe responsibilities, not fixed model capability, price, or model names.
 
-Do not fully investigate implementation details in the orchestrator merely to prepare a worker that will need to investigate the same details again.
+- **User:** specifies models, agent roles, reasoning settings, and model-selection constraints.
+- **Parent orchestrator:** owns requirement understanding, scope, task decomposition, necessary architecture decisions, risk judgment, and final acceptance.
+- **Worker:** owns permitted implementation-detail exploration, implementation, self-review, tests, debugging, necessary browser validation, and repairs within the delegated scope.
 
-## 2. Respect user-specified models
+First decide whether delegation is worthwhile, then choose the worker. If the user explicitly specifies a model, agent role, or model-selection constraint, follow it strictly only after delegation has already been judged worthwhile. Do not skip the delegation-benefit check merely because the user named a sub-agent.
 
-Use the user's explicit model or configured-agent assignment for each role. When the current task does not override it, reuse the existing user-configured assignment; do not ask the user to repeat a selection that is already available.
+When the user does not specify a worker:
 
-This skill decides responsibilities, delegation boundaries, and whether delegation is worthwhile. It does not decide which model belongs in each role.
+- **Default non-UI work to Luna.** Luna's model-call cost is not a reason to avoid delegation or switching to Luna; whether delegation is worthwhile should still be judged only by real overhead such as startup, context transfer, coordination, and final review.
+- **Frontend visual, layout, or styling work must not be assigned to Luna;** use another available worker.
+- If the same task contains both UI and non-UI work, workers may switch at that boundary: assign the non-UI portion to Luna and the UI portion to a non-Luna worker. This is not considered unnecessary mechanical splitting.
 
-- Do not hard-code a parent model, a default worker model, a model preference order, or a prohibition on parent and worker sharing the same model.
-- Do not choose or switch models based on assumed price, capability, task size, or model-name conventions. Preserve any user-specified reasoning settings rather than overriding them through this skill.
-- If the user provides several worker configurations, follow the user's role mapping or explicit selection rule. Do not invent a ranking or use an arbitrary fallback when the intended assignment is unresolved.
-- If the required worker assignment is missing, unavailable, or cannot be honored by the current runtime, report the exact blocker. Do not silently substitute a model, escalate to a different model, retry with other model identities, or take over the delegated scope as an automatic fallback.
-- If work reveals that the assigned worker cannot reliably complete the scope, return the evidence and remaining work to the orchestrator. Any model change remains the user's decision.
+If the user explicitly assigns Luna to frontend visual, layout, or styling work, report the constraint conflict rather than silently substituting another model. If a user-specified worker is missing or unavailable, report the exact blocker. If a worker chosen by the parent cannot reliably complete the work, reassess how the remaining scope should be delegated.
 
-Direct execution of a simple task under Section 1 is a workload decision, not permission to bypass the user's model configuration when delegation is blocked.
+When operating as a worker, do not create additional sub-agents unless the user explicitly authorizes nested delegation.
 
-## 3. Give the worker one self-contained assignment
+## 3. Delegation Contract
 
-Before spawning a worker, provide one concise, self-contained assignment. Do not rely on the worker reconstructing the parent conversation or rediscovering decisions the orchestrator has already made.
+Before delegating, provide a concise, self-contained assignment. Do not make the worker depend on the full parent conversation or rediscover decisions that are already settled.
 
-Include only what is needed to execute correctly:
+The assignment should include at least:
 
-- **Objective:** concrete result to produce.
-- **Scope:** files, components, behaviors, or boundaries that may be inspected or changed.
-- **Exclusions:** what must not be changed or expanded into.
-- **Decisions and constraints:** architecture choices, user requirements, compatibility constraints, and project rules already settled by the orchestrator.
-- **Permissions:** whether the worker may edit code, tests, docs, run commands, or use browser tooling.
-- **Validation:** minimum tests, checks, or browser paths required.
-- **Return contract:** concise evidence the orchestrator needs for final review.
-- **Stopping condition:** what constitutes completion and what blockers require returning control to the orchestrator.
+- **Objective:** the concrete result to produce;
+- **Scope:** files, components, behaviors, or boundaries that may be inspected or changed;
+- **Exclusions:** what must not be changed or expanded into;
+- **Decisions and constraints:** settled architecture, compatibility requirements, user requirements, and project rules;
+- **Permissions:** what may be edited and which tools or commands may be used;
+- **Validation:** required tests, checks, or browser paths;
+- **Return:** the change summary, key diff, validation, risks, and blockers needed for final review;
+- **Stopping condition:** what counts as complete and when the worker should stop and return control to the parent.
 
-Do not forward the entire parent history when a concise assignment is sufficient.
-
-Use this compact contract when useful:
+Use this compact contract when helpful:
 
 ```text
 Role: implementation worker
 Objective: <concrete outcome>
-Scope: <allowed files/components/behaviors>
+Scope: <allowed files / components / behaviors>
 Do not: <explicit exclusions>
-Decisions/constraints: <already-settled requirements>
-Permissions: <allowed edits/tools/commands>
-Validation: <required checks/tests/browser paths>
+Decisions / constraints: <settled requirements>
+Permissions: <allowed edits / tools / commands>
+Validation: <required checks / tests / browser paths>
 Return: <changed areas, key diff, validation, risks, blockers>
 Stop when: <completion condition or blocker>
 ```
 
-Treat the orchestrator's supplied scope, decisions, verification requirements, and stopping condition as authoritative unless they conflict with higher-priority instructions. The assignment must preserve the user's model-selection constraints.
+Once the parent has enough information to define the objective, boundaries, key decisions, and validation requirements, stop digging further into implementation details. Avoid making the parent and worker explore the same material twice.
 
-## 4. Keep one implementation worker through the lifecycle
+## 4. Execution Lifecycle and Context Control
 
-Use no worker when direct execution is preferable under Section 1. Once delegation is justified, default to one implementation worker for the entire cohesive task.
+Reuse the original worker within the same execution type by default: continue using Luna for non-UI work, and continue using the corresponding non-Luna worker for frontend visual, layout, or styling work. When the task moves between UI and non-UI work, switch workers accordingly.
 
-The same worker should, when applicable, continue through:
+Within its scope, the same worker should continue through:
 
-1. targeted code reading and exploration;
-2. implementation;
-3. self-review;
-4. tests and debugging;
-5. browser validation;
-6. fixes resulting from tests, review, or validation.
+1. necessary code reading and implementation-detail exploration;
+2. implementation and self-review;
+3. testing, debugging, and repair;
+4. browser validation when needed;
+5. repairs resulting from the parent's final review.
 
-Once implementation has been delegated, enter **delegation mode**:
+After delegation, the parent orchestrator should not duplicate the delegated implementation, testing, or routine validation work in parallel. When a problem is found, return the concrete finding to the original worker responsible for that scope rather than creating another worker of the same type.
 
-- the worker owns implementation-detail exploration, implementation, tests, debugging, normal browser validation, and repair cycles;
-- the orchestrator owns requirements, scope, necessary architecture decisions, risk judgment, final review, and final acceptance;
-- the orchestrator should not duplicate delegated implementation or validation work in parallel;
-- if the orchestrator finds a defect during final review, return the targeted finding to the original worker for repair;
-- prefer continuing the original worker instead of creating another worker;
-- do not create separate workers merely for tests, review fixes, or browser validation.
+Workers should absorb high-volume execution context such as broad code searches, long logs, build output, traces, DOM, Console, Network output, and repeated debugging evidence, then return only the concise information needed for final review.
 
-Use multiple workers only when assignments are genuinely independent and the parallelism benefit clearly exceeds the additional model, context, coordination, and verification cost.
-
-## 5. Protect orchestrator context
-
-The orchestrator should read only the context needed for decisions and final verification.
-
-Delegate high-volume material such as:
-
-- repository-wide or broad code searches;
-- implementation-detail exploration;
-- long test or build output;
-- logs and traces;
-- repeated debugging evidence;
-- DOM, screenshots, Console output, and Network output from browser validation.
-
-The worker should return a concise result containing:
+Worker returns should focus on:
 
 - changed files or affected areas;
-- modification summary;
-- key or high-risk diff information;
+- change summary and high-risk diff details;
 - validation performed and results;
 - browser-validation conclusion when applicable;
-- unresolved issues or blockers;
-- material risks;
-- only the evidence the orchestrator needs for final review.
+- unresolved issues, blockers, and material risks.
 
-Do not return complete source files, complete logs, large DOM dumps, repeated screenshots, or long chronological process records unless the orchestrator explicitly needs them to resolve a specific doubt.
+Unless the parent explicitly needs them to resolve a specific doubt, do not return complete source files, complete logs, large DOM dumps, repeated screenshots, or long chronological process records.
 
-Do not make the orchestrator repeat a broad scan, full analysis, full test suite, or full browser inspection that the worker already completed reliably without evidence of a problem.
+Stable decisions or long-lived task state should be recorded in the applicable spec, task, or project documentation rather than relying on conversation history for persistence.
 
-When stable decisions or task state must survive future work, record them in the applicable spec, task, or project documentation instead of preserving them only in conversation history.
+## 5. Browser Validation
 
-If substantial conversation history is unrelated to the remaining work, prefer compaction or a new task over increasing orchestrator context merely to retain that history.
+Perform browser validation only when a change affects visible UI, interaction, or browser behavior.
 
-## 6. Final review and acceptance
-
-**Every delegated task requires a final review by the parent orchestrator before acceptance, regardless of the models assigned to either role. Worker self-review never substitutes for the orchestrator's final review.**
-
-The orchestrator must verify that the worker's result actually satisfies the assignment rather than accepting the worker's completion claim at face value.
-
-For delegated code or test changes, the orchestrator must inspect the final implementation at least at a targeted diff level before acceptance. Verification depth should then increase with risk.
-
-Use the smallest review level that provides adequate confidence:
-
-- **Low risk:** verify objective and scope, review the worker's validation evidence, and inspect the relevant final diff or changed area.
-- **Medium risk:** inspect the important diff plus relevant surrounding code or call sites, and confirm required validation results.
-- **High risk or doubtful result:** inspect the critical diff and independently run or reproduce the minimum validation needed to resolve the risk.
-
-During final review, the orchestrator must explicitly check:
-
-- the assignment objective was satisfied;
-- changes stayed within scope and exclusions;
-- settled architecture and compatibility constraints were respected;
-- required tests or checks passed, or an explicit blocker was reported;
-- browser validation passed when visible UI, interaction, or browser behavior changed;
-- no material regression, incomplete path, or suspicious implementation remains in the reviewed area;
-- unresolved issues and risks are known.
-
-If final review finds a defect, missing evidence, or failed acceptance condition, the task is not complete. Return the specific finding to the original worker for repair and review the resulting change again.
-
-Do not rerun the worker's complete analysis or full validation suite by default. Independent verification should resolve specific risk, not duplicate the whole task.
-
-Only after the orchestrator's final review passes may the orchestrator integrate the result and report completion to the user.
-
-## 7. Browser validation
-
-Perform browser validation only when the change affects visible UI, interaction, or browser behavior.
-
-The implementation worker owns normal browser validation and should keep it proportional to the changed behavior:
+Normally the worker owns browser validation and should keep it minimal:
 
 - cover only directly affected critical paths and necessary states;
-- perform the minimum sufficient interaction checks;
-- avoid whole-site inspection by default;
-- avoid repeatedly collecting snapshots, DOM, screenshots, Console output, or Network output without a concrete need.
+- perform only the interactions needed to establish correctness;
+- do not inspect the whole site by default;
+- do not repeatedly collect screenshots, DOM, Console, or Network data without a concrete need.
 
-The worker returns the browser-validation conclusion, failures, and only the evidence needed for the orchestrator's final review.
+The parent orchestrator should perform an additional small independent check only when the result is doubtful, evidence conflicts, or the change is high risk.
 
-The orchestrator does not repeat browser validation unless the result is doubtful, evidence conflicts with the implementation, or the change is sufficiently high-risk to justify a small independent check.
+## 6. Final Review and Completion Gate
 
-## 8. Handle incomplete or failed delegated work
+**Every delegated task must receive a final review by the parent orchestrator before acceptance. Worker self-review never replaces the parent's final review.**
 
-If a worker is blocked, it should return:
+At minimum, the parent must:
 
-- the exact blocker;
-- what has already been established;
-- remaining work;
-- the minimum evidence the orchestrator needs to decide the next action.
+- confirm against the original objective and scope that the task is actually complete;
+- inspect the final key diff or affected area;
+- confirm that settled architecture, compatibility constraints, and exclusions were preserved;
+- review the required test, check, and browser-validation results;
+- confirm that no obvious regression, incomplete path, or undisclosed high-risk issue remains.
 
-When a worker result is incomplete:
+Review depth should increase with risk:
 
-1. continue with the original worker when possible;
-2. provide the specific defect, failed validation, or missing evidence;
-3. avoid restating the full assignment unless essential context changed;
-4. do not spin up speculative retry workers or change models as a repair strategy.
+- **Low risk:** verify the objective, scope, validation evidence, and relevant final diff;
+- **Medium risk:** additionally inspect important surrounding code or call sites;
+- **High risk or doubtful result:** independently run the minimum validation needed to resolve the specific risk.
 
-While the worker is actively handling the delegated task, the orchestrator should not duplicate that implementation or validation work in parallel merely to finish faster.
+If final review finds a defect, missing evidence, or failed acceptance condition, the task is not complete. Return the specific finding to the original worker for repair, then review the result again.
 
-## 9. Completion gate
+Report completion only when all of the following are true:
 
-The orchestrator may report delegated work as completed only when all of the following are true:
-
-- objective and scope are satisfied;
+- the objective and scope are satisfied;
 - required validation passed;
 - required browser validation passed when applicable;
 - material unresolved issues and risks are known;
-- the orchestrator completed the mandatory final review at a level appropriate to the risk;
-- any defect found during final review was repaired and re-reviewed.
+- the parent's final review passed;
+- issues found during review were repaired and rechecked.
 
-If required validation cannot be completed because of a blocker, the completion gate does not pass. Report the task as blocked or partially complete, including the blocker, completed work, remaining work, and known risks.
-
-After this gate passes, the orchestrator reports the final outcome to the user from the parent task.
+If validation cannot be completed because of a blocker, report the task as blocked or partially complete and include the completed work, remaining work, and known risks.
