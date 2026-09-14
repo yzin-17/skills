@@ -1,6 +1,6 @@
 ---
 name: codex-cost
-description: Use only when the active parent/orchestrator model is not Luna, for coding tasks involving substantial code reading, cross-file implementation, testing, debugging, log analysis, or browser validation. Do not trigger this skill when the active model is Luna, including when Luna is running as a delegated worker. Delegate only when the overall benefit justifies it; when no worker is specified, default non-UI work to Luna, while frontend visual, layout, or styling work must not be assigned to Luna. The parent always owns scope, key decisions, and final review.
+description: Use only when the active parent/orchestrator model is not Luna, for coding tasks involving substantial code reading, cross-file implementation, testing, debugging, log analysis, or browser validation. Do not trigger this skill when the active model is Luna, including when Luna is running as a delegated worker. Delegate only when the overall benefit justifies it; when no worker is specified, default non-UI work to Luna, while frontend visual, layout, or styling work must not be assigned to Luna. Only one worker may execute at a time. The parent always owns scope, key decisions, and final review.
 ---
 
 # Role-Based Delegation and Cost Control
@@ -34,8 +34,6 @@ Practical rule: if most of the work is reading, implementing, testing, debugging
 
 Once the overall-benefit judgment confirms that delegation is worthwhile and an appropriate worker is available, actually create and delegate to that worker. Do not merely describe a delegation plan and then continue the delegated workload in the parent.
 
-Do not mechanically split one task across multiple workers merely because it spans multiple modules, phases, implementation steps, or validation stages. Apart from the UI / non-UI model boundary below, use multiple workers only for genuinely independent work that benefits from parallelism.
-
 ## 2. Model and Role Constraints
 
 Roles describe responsibilities, not fixed model capability, price, or model names.
@@ -56,7 +54,15 @@ If the user explicitly assigns Luna to frontend visual, layout, or styling work,
 
 When operating as a worker, do not create additional sub-agents unless the user explicitly authorizes nested delegation.
 
-## 3. Delegation Contract
+## 3. Worker Concurrency
+
+Only one worker may execute at a time within a task. Do not run multiple sub-agents in parallel, even when their assignments appear independent.
+
+When work requires a different worker, the current worker must finish or return control to the parent before the next worker starts. UI / non-UI boundaries may justify switching workers, but never parallel execution.
+
+This limits concurrency, not the total number of workers used over the task lifecycle. A task may use Luna for non-UI work, then switch to a non-Luna worker for frontend visual, layout, or styling work, and switch again later if needed.
+
+## 4. Delegation Contract
 
 Before delegating, provide a concise, self-contained assignment. Do not make the worker depend on the full parent conversation or rediscover decisions that are already settled.
 
@@ -87,9 +93,9 @@ Stop when: <completion condition or blocker>
 
 Once the parent has enough information to define the objective, boundaries, key decisions, and validation requirements, stop digging further into implementation details. Avoid making the parent and worker explore the same material twice.
 
-## 4. Execution Lifecycle and Context Control
+## 5. Execution Lifecycle and Context Control
 
-Reuse the original worker within the same execution type by default: continue using Luna for non-UI work, and continue using the corresponding non-Luna worker for frontend visual, layout, or styling work. When the task moves between UI and non-UI work, switch workers accordingly.
+Reuse the original worker within the same execution type by default: continue using Luna for non-UI work, and continue using the corresponding non-Luna worker for frontend visual, layout, or styling work. When the task moves between UI and non-UI work, switch workers sequentially according to Section 3.
 
 Within its scope, the same worker should continue through:
 
@@ -99,7 +105,7 @@ Within its scope, the same worker should continue through:
 4. browser validation when needed;
 5. repairs resulting from the parent's final review.
 
-After delegation, the parent orchestrator should not duplicate the delegated implementation, testing, or routine validation work in parallel. When a problem is found, return the concrete finding to the original worker responsible for that scope rather than creating another worker of the same type.
+After delegation, the parent orchestrator should not duplicate the delegated implementation, testing, or routine validation work. Do not start another worker while the current worker is still executing. When a problem is found, return the concrete finding to the original worker responsible for that scope rather than creating another worker of the same type.
 
 Workers should absorb high-volume execution context such as broad code searches, long logs, build output, traces, DOM, Console, Network output, and repeated debugging evidence, then return only the concise information needed for final review.
 
@@ -115,7 +121,7 @@ Unless the parent explicitly needs them to resolve a specific doubt, do not retu
 
 Stable decisions or long-lived task state should be recorded in the applicable spec, task, or project documentation rather than relying on conversation history for persistence.
 
-## 5. Browser Validation
+## 6. Browser Validation
 
 Perform browser validation only when a change affects visible UI, interaction, or browser behavior.
 
@@ -128,7 +134,7 @@ Normally the worker owns browser validation and should keep it minimal:
 
 The parent orchestrator should perform an additional small independent check only when the result is doubtful, evidence conflicts, or the change is high risk.
 
-## 6. Final Review and Completion Gate
+## 7. Final Review and Completion Gate
 
 **Every delegated task must receive a final review by the parent orchestrator before acceptance. Worker self-review never replaces the parent's final review.**
 
