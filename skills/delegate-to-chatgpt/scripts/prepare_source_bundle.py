@@ -151,6 +151,33 @@ def select_paths(candidates: list[str], includes: list[str], excludes: list[str]
     return selected, skipped
 
 
+def git_visible_paths(repo: Path) -> list[str]:
+    raw = run_git(repo, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+    return sorted(x.decode("utf-8", "surrogateescape") for x in raw.split(b"\0") if x)
+
+
+def assert_source_snapshot(
+    repo: Path,
+    expected_head: str,
+    expected_selected: list[str],
+    includes: list[str],
+    excludes: list[str],
+    files: list[dict[str, object]],
+) -> None:
+    current_head = run_git(repo, "rev-parse", "HEAD", check=False).decode().strip() or "UNBORN"
+    if current_head != expected_head:
+        raise RuntimeError("HEAD changed while preparing the bundle; regenerate it")
+
+    current_selected, _ = select_paths(git_visible_paths(repo), includes, excludes)
+    if current_selected != expected_selected:
+        raise RuntimeError("selected file set changed while preparing the bundle; regenerate it")
+
+    for entry in files:
+        source = repo / str(entry["path"])
+        if not source.exists() or source.is_symlink() or sha256_file(source) != entry["sha256"]:
+            raise RuntimeError(f"source changed while preparing the bundle: {entry['path']}")
+
+
 def choose_output(repo: Path, requested: str | None) -> Path:
     if requested:
         output = Path(requested).expanduser().resolve()
@@ -201,9 +228,7 @@ def main() -> int:
 
     includes = [normalize_rule(x) for x in args.include]
     excludes = [normalize_rule(x) for x in args.exclude]
-    raw = run_git(repo, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
-    candidates = sorted(x.decode("utf-8", "surrogateescape") for x in raw.split(b"\0") if x)
-    selected, skipped = select_paths(candidates, includes, excludes)
+    selected, skipped = select_paths(git_visible_paths(repo), includes, excludes)
     if not selected:
         raise RuntimeError("no files selected; check include/exclude rules")
 
@@ -254,14 +279,7 @@ def main() -> int:
                               "message": "exclude the matched file or send a smaller excerpt; do not bypass the scan"}, ensure_ascii=False, indent=2))
             return 3
 
-        # Detect source changes while preparing the bundle.
-        current_head = run_git(repo, "rev-parse", "HEAD", check=False).decode().strip() or "UNBORN"
-        if current_head != head:
-            raise RuntimeError("HEAD changed while preparing the bundle; regenerate it")
-        for entry in files:
-            source = repo / str(entry["path"])
-            if not source.exists() or source.is_symlink() or sha256_file(source) != entry["sha256"]:
-                raise RuntimeError(f"source changed while preparing the bundle: {entry['path']}")
+        assert_source_snapshot(repo, head, selected, includes, excludes, files)
 
         status_after = run_git(repo, "status", "--porcelain=v1", "--untracked-files=normal").decode("utf-8", "replace")
         manifest = {

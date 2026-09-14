@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import stat
 import subprocess
@@ -12,6 +13,10 @@ import zipfile
 from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("prepare_source_bundle.py")
+SPEC = importlib.util.spec_from_file_location("prepare_source_bundle", SCRIPT)
+assert SPEC and SPEC.loader
+BUNDLE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(BUNDLE)
 
 
 def run(*args: str) -> subprocess.CompletedProcess[str]:
@@ -86,6 +91,22 @@ class BundleTests(unittest.TestCase):
         result = run("--repo", str(self.repo), "--include", "src", "--output", str(output))
         self.assertEqual(result.returncode, 2)
         self.assertEqual(output.read_text(encoding="utf-8"), "keep")
+
+    def test_snapshot_detects_selected_path_change(self) -> None:
+        selected, _ = BUNDLE.select_paths(BUNDLE.git_visible_paths(self.repo), ["src"], [])
+        head = BUNDLE.run_git(self.repo, "rev-parse", "HEAD").decode().strip()
+        (self.repo / "src" / "new.py").write_text("print('new')\n", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "selected file set changed"):
+            BUNDLE.assert_source_snapshot(self.repo, head, selected, ["src"], [], [])
+
+    def test_snapshot_detects_source_change(self) -> None:
+        source = self.repo / "src" / "main.py"
+        selected, _ = BUNDLE.select_paths(BUNDLE.git_visible_paths(self.repo), ["src"], [])
+        head = BUNDLE.run_git(self.repo, "rev-parse", "HEAD").decode().strip()
+        files = [{"path": "src/main.py", "sha256": BUNDLE.sha256_file(source)}]
+        source.write_text("print('changed')\n", encoding="utf-8")
+        with self.assertRaisesRegex(RuntimeError, "source changed"):
+            BUNDLE.assert_source_snapshot(self.repo, head, selected, ["src"], [], files)
 
 
 if __name__ == "__main__":

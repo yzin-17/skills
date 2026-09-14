@@ -10,10 +10,9 @@ Delegate an explicitly requested task to the strongest ChatGPT model/mode that i
 ## 1. Hard activation gate
 
 - Run this skill ONLY when the user explicitly invokes `$delegate-to-chatgpt` in the current request.
-- Do not infer activation from task complexity, expected quality gains, PR size, architecture risk, debugging difficulty, or mentions of ChatGPT.
-- Do not activate because another rule says delegation would be useful.
+- Never infer activation from task complexity, expected benefit, PR size, architecture risk, debugging difficulty, mentions of ChatGPT, or another delegation rule.
 - Once explicitly invoked, do not skip delegation merely because Codex believes it can solve the task locally.
-- Explicit invocation decides **whether** to delegate. Codex still decides **what context to send**, **how to integrate the result**, and **whether the result passes verification**.
+- Explicit invocation decides **whether** to delegate. Codex decides **what context to send**, **how to integrate the result**, and **whether it passes verification**.
 
 ## 2. Responsibilities
 
@@ -23,9 +22,8 @@ Codex must:
 - establish repository and runtime facts before delegation;
 - send only the minimum context required;
 - preserve user changes and permissions;
-- independently review any analysis, patch, or claim returned by ChatGPT;
-- run applicable local validation itself;
-- decide final acceptance.
+- independently review ChatGPT's analysis, patches, and claims;
+- run applicable local validation and decide final acceptance.
 
 ChatGPT may:
 - perform deep analysis, root-cause investigation, architecture review, code review, research, or implementation design;
@@ -35,17 +33,16 @@ Never treat ChatGPT's statement that a command, test, deployment, or runtime che
 
 ## 3. Model selection
 
-The webpage is the source of truth for model availability and strength.
+The opened ChatGPT page is the only source of truth for model availability and strength.
 
-1. Open the user's ChatGPT page first.
-2. Inspect the model and mode options that are actually selectable in the current UI.
-3. Select the strongest / highest-capability option the page currently allows.
-4. If the selected model exposes a reasoning-strength or effort control, select the maximum strength currently available.
-5. Do not maintain a static model ranking, assume availability from the user's plan, or rely on remembered product names.
-6. If the strongest option is unavailable, disabled, rate-limited, or otherwise cannot be selected, choose the next strongest option that is actually selectable at that moment.
-7. Do not infer the backend model from self-reported identity. Record the model/mode label and strength shown by the ChatGPT UI when relevant.
+1. Open the user's ChatGPT page before choosing a model.
+2. Inspect only the model, mode, and strength options the current UI actually makes selectable.
+3. Follow the capability/strength ordering presented by the UI and select its highest available option. Do not maintain or infer an independent model ranking from plan names, remembered product names, or prior knowledge.
+4. If that option exposes a reasoning-strength or effort control, select the maximum level currently available.
+5. If the chosen option becomes unavailable, disabled, or rate-limited, use the next-highest option the UI actually makes selectable.
+6. Do not infer the backend model from self-reported identity. Record the UI's selected model/mode label and strength when relevant.
 
-If the user explicitly requests a particular model or mode, prefer that request when it is selectable; otherwise fall back to the strongest option the page currently makes available and report the substitution.
+If the user explicitly requests a particular model or mode, use it when selectable; otherwise use the highest option currently available in the UI and report the substitution.
 
 ## 4. Establish local facts
 
@@ -94,8 +91,8 @@ Never upload `.env`, credentials, tokens, cookies, private keys, databases, user
 ## 6. Browser and account boundary
 
 - Use the Codex built-in browser by default for `chatgpt.com` when it is available.
-- Do not silently switch to another browser profile because it happens to be logged in.
-- Use another browser only when the user explicitly asks for it.
+- Do not silently switch to another browser profile because it happens to be logged in. Use another browser only when the user explicitly asks for it.
+- If the built-in browser is unavailable and the user has not authorized another browser, stop external delegation and report the blocker.
 - If authentication, account selection, CAPTCHA, 2FA, passkey, or another security check appears, leave the page for the user to complete. Never request passwords, cookies, recovery codes, or other authentication secrets.
 - Reuse an existing ChatGPT tab/conversation when appropriate; otherwise create one conversation for the delegated task.
 - Save the conversation URL when the browser exposes one so the work can be resumed and reported.
@@ -104,16 +101,7 @@ Never upload `.env`, credentials, tokens, cookies, private keys, databases, user
 
 Read `references/task-brief.md` before delegation and fill the appropriate template from repository facts. Do not ask the user to fill placeholders that Codex can resolve itself.
 
-The brief must include:
-- goal and relevant background;
-- repository/module and current HEAD;
-- local dirty/clean state when relevant;
-- architecture and compatibility boundaries;
-- allowed scope and explicit exclusions;
-- expected deliverables;
-- acceptance criteria and tests;
-- local/private resources ChatGPT cannot access;
-- a prohibition on pretending to have run unavailable commands or environments.
+The brief must include the goal/background, repository baseline, relevant architecture and compatibility boundaries, allowed scope and exclusions, expected deliverables, acceptance criteria/tests, inaccessible local/private resources, and a prohibition on pretending to have run unavailable commands or environments.
 
 For implementation tasks, ask for the smallest complete patch that satisfies the task. For review tasks, ask for actionable findings rather than speculative rewrites.
 
