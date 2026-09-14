@@ -1,9 +1,11 @@
 ---
 name: codex-cost
-description: Use for coding tasks involving substantial code reading, cross-file implementation, testing, debugging, log analysis, or browser validation. Delegate only when the overall benefit justifies it; user-specified models constrain model selection only after delegation is deemed worthwhile. When no worker is specified, default non-UI work to Luna, while frontend visual, layout, or styling work must not be assigned to Luna. The parent always owns scope, key decisions, and final review.
+description: Use only when the active parent/orchestrator model is not Luna, for coding tasks involving substantial code reading, cross-file implementation, testing, debugging, log analysis, or browser validation. Do not trigger this skill when the active model is Luna, including when Luna is running as a delegated worker. Delegate only when the overall benefit justifies it; when no worker is specified, default non-UI work to Luna, while frontend visual, layout, or styling work must not be assigned to Luna. The parent always owns scope, key decisions, and final review.
 ---
 
 # Role-Based Delegation and Cost Control
+
+**Applicability gate:** If the active model is Luna, do not use this skill. This applies both when Luna is the current parent model and when Luna is running as a delegated worker. Luna should execute its assigned work directly rather than invoking `codex-cost` or starting another delegation cycle.
 
 Reduce total token usage, model-call cost, and duplicated work without weakening task reliability.
 
