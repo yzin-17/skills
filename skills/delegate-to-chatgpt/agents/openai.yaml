@@ -2,3 +2,5 @@ interface:
   display_name: "委派给 ChatGPT"
   short_description: "显式调用后，委派给当前可用的最高性能 ChatGPT 模型并由 Codex 独立验收"
   default_prompt: "使用 $delegate-to-chatgpt 完成以下需求。仅因本次显式调用而启用该 Skill；你负责检查仓库、准备最小上下文、选择当前 ChatGPT 可用的最高性能模型、调度外部模型，并在本地独立验收：<直接描述需求>"
+policy:
+  allow_implicit_invocation: false

@@ -2,3 +2,5 @@ interface:
   display_name: "Mockoon Gen"
   short_description: "Generate reviewed Mockoon and Whistle artifacts"
   default_prompt: "Use $mockoon-gen to turn reviewed OpenAPI into page-local Mockoon and Whistle artifacts."
+policy:
+  allow_implicit_invocation: false
