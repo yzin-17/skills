@@ -138,34 +138,35 @@ Yzin 的个人 skill 库，供 Codex 及其他支持 `SKILL.md` 的 agent 使用
 
 > **共享约束**：`mockoon-gen` 与 `api-code-gen` 只共享已 review 的 OpenAPI 输入。`mock-artifact.json` 与 `api-code-artifact.json` 相互独立，互不为反向输入；生成文件是派生物，不做反向同步。
 
-#### delegate-to-chatgpt
+#### to-chatgpt
 
-**触发方式**：显式调用 `$delegate-to-chatgpt`（`agents/openai.yaml` 已声明 `policy: allow_implicit_invocation: false`）。任务难度、规模、风险或"可能受益于更强模型"都不会触发它；显式调用后，Codex 也不会因为觉得自己能解决而跳过委派。
+**触发方式**：显式调用 `$to-chatgpt`（`agents/openai.yaml` 已声明 `policy: allow_implicit_invocation: false`）。任务难度、规模、风险或"可能受益于更强模型"都不会触发它；显式调用后，Codex 也不会因为觉得自己能解决而跳过委派。
 
-**用途**：把显式委派的任务交给当前 ChatGPT 页面上实际可选的最强模型/模式；Codex 始终是唯一协调者和最终验收者，外部 ChatGPT 是有能力但不可信的资深工程师。
+**用途**：把显式委派的任务交给当前 ChatGPT 页面上用户指定的模型/模式/推理等级；未指定的选择项才默认使用当前实际可用的最高档。Codex 始终是唯一协调者和最终验收者，外部 ChatGPT 是有能力但不可信的资深工程师。
 
 **适用场景**：
 
-- 想借当前账号可用的最强 ChatGPT 模型做深度分析、根因调查、架构 review 或代码 review。
+- 想借当前账号可用的 ChatGPT 模型做深度分析、根因调查、架构 review 或代码 review，并按需要指定模型、模式或推理等级。
 - 已发布 PR 的外部 review（ChatGPT 能访问 PR diff 时优先直接给 PR URL）。
 - 未发布或私有代码，通过最小脱敏源码包（内置 secret 扫描）送出去分析。
 
-**教程**（完整流程见 [SKILL.md](skills/delegate-to-chatgpt/SKILL.md)）：
+**教程**（完整流程见 [SKILL.md](skills/to-chatgpt/SKILL.md)）：
 
-1. 显式调用，可附任务描述，也可显式指定当前账号可选的模型/模式：
+1. 显式调用，可附任务描述，也可显式指定当前账号可选的模型/模式和推理等级：
 
    ```text
-   $delegate-to-chatgpt review 当前 PR，重点检查架构、并发和测试缺口
-   $delegate-to-chatgpt 使用 <模型/模式> 分析这个难以复现的并发问题
+   $to-chatgpt review 当前 PR，重点检查架构、并发和测试缺口
+   $to-chatgpt 推理强度 <等级> review 当前 PR
+   $to-chatgpt 使用 <模型/模式>，推理强度 <等级> 分析这个难以复现的并发问题
    ```
 
-2. Codex 打开用户当前的 ChatGPT 页面，只按 UI 实际可选的选项判断模型可用性，选最高能力档；有推理强度控制则选最高档；所选选项不可用时退到 UI 实际可选的次高档并报告替代情况。
+2. Codex 打开用户当前的 ChatGPT 页面，只按 UI 实际可选的选项判断模型、模式和推理等级。用户明确指定的项按指定值选择；某一项未指定时，才对该项选择当前 UI 实际可用的最高档。可用的用户指定等级不会因为存在更高等级而被覆盖；指定项不可用时才使用兼容替代项并报告替代情况。
 3. 建立本地事实：读仓库指令（`AGENTS.md` 等）、确认分支/HEAD/工作区状态、需要时用 GitHub/`gh` 解析 PR 真实信息；绝不为了干净的基线重置用户改动。
 4. 选择最小上下文通道：已发布的 PR 直接给 URL；本地/未发布代码用 `prepare_source_bundle.py` 生成最小脱敏源码包。永不携带 `.env`、凭据、token、私钥、数据库、用户数据；secret 扫描失败时排除命中文件而不是绕过。
 5. 发送任务简报（目标、基线、边界、交付物、验收标准、禁止谎称执行过不可用的命令/环境）；实施任务要最小完整补丁，review 任务要可执行结论而非推测性重写。
 6. 独立验收：逐条 review ChatGPT 的改动建议，本地实际运行适用的格式化/lint/类型/测试/构建检查；ChatGPT 声称"测试通过""已执行"不构成本地证据。
 7. 本地验证失败时，带具体证据（失败命令、脱敏日志、位置、违反的验收标准）回到同一会话要求最小修正；反复修正不收敛时重新评估方案。
-8. 最终报告：所选模型/模式及是否被替代、会话 URL、采纳与拒绝的建议、实际变更、实际跑过的本地验证及结果、遗留风险。
+8. 最终报告：所选模型/模式/推理等级、用户显式指定项及是否发生替代、会话 URL、采纳与拒绝的建议、实际变更、实际跑过的本地验证及结果、遗留风险。
 
 #### writing-style-yzin
 
@@ -198,12 +199,12 @@ npx skills@latest add yzin-17/skills
 
 安装或更新后重启 Codex，让新的 skill 元数据加载。
 
-`spec-driven-workflow` 和 `codex-cost` 在请求匹配描述时自动触发；`mockoon-gen`、`api-code-gen`、`delegate-to-chatgpt`、`writing-style-yzin` 声明了 `policy: allow_implicit_invocation: false`，只在显式调用 `$<skill-name>` 时运行。
+`spec-driven-workflow` 和 `codex-cost` 在请求匹配描述时自动触发；`mockoon-gen`、`api-code-gen`、`to-chatgpt`、`writing-style-yzin` 声明了 `policy: allow_implicit_invocation: false`，只在显式调用 `$<skill-name>` 时运行。
 
 ```text
 $mockoon-gen 根据已 review 的 OpenAPI 生成 Mockoon 和 Whistle 配置
 $api-code-gen 根据已 review 的 OpenAPI 生成 TypeScript API 代码
-$delegate-to-chatgpt review 当前 PR，重点检查架构、并发和测试缺口
+$to-chatgpt review 当前 PR，重点检查架构、并发和测试缺口
 $writing-style-yzin 按我的风格写这篇 mockoon-gen 公开文章
 ```
 
