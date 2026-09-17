@@ -32,6 +32,7 @@ Load references progressively. For document-only work, read implementation guida
 - Prefer separate Spec units for independently deliverable subsystems. Multiple runtimes or many tasks alone do not justify separate Specs; a cohesive Spec may contain several bounded tasks and explicit gates.
 - A task completes its own declared acceptance loop. The feature completes only after all required integration and runtime gates pass. Neither an oversized task nor a catch-all final gate may hide independent deliverables.
 - Archive a task document only after its entire claimed scope is complete and the final consistency review passes. A completed child task, partial milestone, blocked gate, or unavailable runtime does not make the task document archival-ready.
+- A Task document must not be archived while it still owns unresolved implementation work. Valid future work must first transfer to the repository TODO index or an active successor Spec/Task; a historical reference to transferred work does not itself block archival.
 - Do not choose models, require subagents, or impose fixed file, token, task, or commit counts through this skill. Apply the existing delegation policy separately.
 
 ## Workflow
@@ -47,7 +48,7 @@ Load references progressively. For document-only work, read implementation guida
 9. For implementation, follow `references/implementation.md` on the verified dependency frontier. Unresolved Blocking Questions stop affected work; unrelated dependency-ready work need not stop.
 10. If the acceptance boundary drifts, re-plan affected tasks before extending them or adding parallel workers. Preserve requirements, existing changes, and still-valid evidence. Update the Spec first when the stable contract changes. Synchronize affected TODO references when confirmed follow-up scope changes.
 11. Before claiming the requested feature or implementation scope complete, synchronize affected TODO entries with the authoritative Spec/Task state, then complete the final consistency review.
-12. When a task document's entire claimed scope is complete and the final consistency review passes, apply `references/archive-handling.md`: preserve historical evidence, keep still-current Specs active, update affected TODO/source links, and remove completed execution documents from active task entry points according to repository convention.
+12. When a task document's entire claimed scope is complete and the final consistency review passes, first ensure it owns no unresolved work by transferring valid future items to TODO or an active successor, then apply `references/archive-handling.md`: preserve historical evidence, keep still-current Specs active, update affected TODO/source links, and remove completed execution documents from active task entry points according to repository convention.
 
 ## Handoff
 
