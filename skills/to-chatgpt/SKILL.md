@@ -1,15 +1,15 @@
 ---
-name: delegate-to-chatgpt
-description: Explicit-only workflow for delegating a task to the strongest ChatGPT model/mode that is actually selectable after opening the user's ChatGPT page. Use ONLY when the user explicitly invokes `$delegate-to-chatgpt`. Never activate automatically because a task is difficult, large, risky, architectural, or likely to benefit from a stronger model.
+name: to-chatgpt
+description: Explicit-only workflow for delegating a task to a user-selected ChatGPT model, mode, and reasoning level, defaulting only unspecified selection dimensions to the strongest option actually selectable after opening the user's ChatGPT page. Use ONLY when the user explicitly invokes `$to-chatgpt`. Never activate automatically because a task is difficult, large, risky, architectural, or likely to benefit from a stronger model.
 ---
 
-# Delegate to ChatGPT
+# To ChatGPT
 
-Delegate an explicitly requested task to the strongest ChatGPT model/mode that is actually available on the user's currently opened ChatGPT page. Codex remains the sole coordinator and final verifier.
+Delegate an explicitly requested task using the user's requested ChatGPT model, mode, and reasoning level when provided; otherwise use the strongest currently selectable defaults. Codex remains the sole coordinator and final verifier.
 
 ## 1. Hard activation gate
 
-- Run this skill ONLY when the user explicitly invokes `$delegate-to-chatgpt` in the current request.
+- Run this skill ONLY when the user explicitly invokes `$to-chatgpt` in the current request.
 - Never infer activation from task complexity, expected benefit, PR size, architecture risk, debugging difficulty, mentions of ChatGPT, or another delegation rule.
 - Once explicitly invoked, do not skip delegation merely because Codex believes it can solve the task locally.
 - Explicit invocation decides **whether** to delegate. Codex decides **what context to send**, **how to integrate the result**, and **whether it passes verification**.
@@ -33,16 +33,23 @@ Never treat ChatGPT's statement that a command, test, deployment, or runtime che
 
 ## 3. Model selection
 
-The opened ChatGPT page is the only source of truth for model availability and strength.
+The opened ChatGPT page is the only source of truth for model, mode, and reasoning-level availability and strength.
 
 1. Open the user's ChatGPT page before choosing a model.
-2. Inspect only the model, mode, and strength options the current UI actually makes selectable.
-3. Follow the capability/strength ordering presented by the UI and select its highest available option. Do not maintain or infer an independent model ranking from plan names, remembered product names, or prior knowledge.
-4. If that option exposes a reasoning-strength or effort control, select the maximum level currently available.
-5. If the chosen option becomes unavailable, disabled, or rate-limited, use the next-highest option the UI actually makes selectable.
-6. Do not infer the backend model from self-reported identity. Record the UI's selected model/mode label and strength when relevant.
+2. Inspect only the model, mode, and reasoning-strength/effort options the current UI actually makes selectable.
+3. Parse the user's explicit selection independently across model, mode, and reasoning strength/effort. Do not treat omission of one dimension as an instruction to override another explicitly requested dimension.
+4. For every dimension the user explicitly specifies, use that exact selectable option.
+5. For every dimension the user does not specify, follow the capability/strength ordering presented by the UI and select the highest available option for that dimension. In particular, if the selected model/mode exposes a reasoning-strength or effort control and the user did not specify a level, select the maximum level currently available.
+6. If an explicitly requested option is unavailable, disabled, or rate-limited, use the highest available compatible substitute only when substitution is necessary to continue, and report the substitution. Never replace an available user-requested level merely because a stronger level exists.
+7. Do not maintain or infer an independent model/strength ranking from plan names, remembered product names, prior knowledge, or self-reported model identity. Record the UI's selected model/mode label and reasoning level when relevant.
 
-If the user explicitly requests a particular model or mode, use it when selectable; otherwise use the highest option currently available in the UI and report the substitution.
+Examples:
+
+```text
+$to-chatgpt review 当前 PR，重点检查架构、并发和测试缺口
+$to-chatgpt 推理强度 <等级> review 当前 PR
+$to-chatgpt 使用 <模型/模式>，推理强度 <等级> 分析这个难以复现的并发问题
+```
 
 ## 4. Establish local facts
 
@@ -131,7 +138,7 @@ Prefer evidence-driven corrections over restarting the whole task. If repeated c
 ## 10. Final report
 
 Report concisely:
-- model/mode selected in the ChatGPT UI and whether it was substituted;
+- model/mode and reasoning level selected in the ChatGPT UI, what the user explicitly requested, and whether any substitution occurred;
 - ChatGPT conversation URL when available;
 - PR URL/head or source-bundle identity when applicable;
 - accepted and rejected recommendations;
