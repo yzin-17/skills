@@ -15,18 +15,32 @@ Archive a Task document only when all of the following are true for its claimed 
 - every required integration, runtime, migration, release, or other named gate for that scope has passed or has a valid `not applicable` basis;
 - the final consistency Review passes for the scope being closed;
 - no Blocking Question or unowned current-scope acceptance obligation remains;
-- any explicitly confirmed future work that is outside the completed scope has been moved to the repository TODO index or to an active successor Spec/Task.
+- the Task document no longer owns unresolved implementation work, including unchecked tasks or deferred `TODO` / `later` items;
+- any explicitly confirmed future work that is outside the completed scope has been transferred to the repository TODO index or to an active successor Spec/Task.
 
 Do not archive a task document merely because most checkboxes pass, code was written, a local milestone is done, or a required environment is currently unavailable. Partial or blocked work remains active and must state the remaining condition.
 
 Archiving applies to the completed **task document lifecycle**, not each child `Tn` checkbox independently.
+
+### Unresolved-work ownership
+
+A Task is not archive-eligible while it still owns any unresolved work. Ownership means the Task itself remains the authoritative place that tracks whether the work must be implemented, validated, or accepted.
+
+Before archival, resolve each remaining item in one of these ways:
+
+- complete it and preserve the validation evidence in the Task;
+- keep the Task active if the item still belongs to the current acceptance scope;
+- for explicitly confirmed future work outside the completed scope, transfer ownership to the repository TODO index or an active successor Spec/Task, preserving a source link instead of a second status copy;
+- remove the item only when the authoritative decision explicitly cancels or supersedes it.
+
+A historical reference such as `后续事项见 docs/TODO.md` does not itself block archival after ownership has moved. Likewise, the literal word `TODO` in historical prose or a link is not an archive blocker. The blocker is unresolved work still owned by the document.
 
 ## 2. Pre-archive closure
 
 Before moving a completed Task document:
 
 1. Finalize its status, required evidence, and final Review conclusion. Preserve stable Task/AC IDs and enough evidence to explain why the scope was accepted.
-2. Synchronize confirmed deferred work through `todo-tracking.md`. Current-scope gaps cannot be relabeled as future work during closure.
+2. Synchronize confirmed deferred work through `todo-tracking.md`. Current-scope gaps cannot be relabeled as future work during closure. Verify that no unresolved work remains owned by the Task after synchronization.
 3. Decide separately whether the linked Spec remains a current contract. Completion of implementation does not by itself make a Spec historical.
 4. Identify active references that would break or become misleading after the move, especially TODO entries, indexes, READMEs, successor documents, and Review links.
 5. Update active documentation that owns current architecture, operation, or domain truth when the repository convention requires it. Do not keep a completed Task active merely to serve as current architecture documentation.
@@ -70,6 +84,7 @@ After moving documents, verify that:
 
 - no completed Task remains presented as an active implementation entry unless the repository convention intentionally keeps it there;
 - no blocked or incomplete Task was archived;
+- no archived Task still owns unresolved implementation work;
 - active indexes and TODO links resolve to the intended current or historical source;
 - still-current Specs remain discoverable and are not archived solely because their implementation finished;
 - archived Specs/Tasks are not described as current requirements or current runtime truth;
