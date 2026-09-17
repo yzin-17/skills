@@ -1,5 +1,5 @@
 interface:
-  display_name: "委派给 ChatGPT"
+  display_name: "To ChatGPT"
   short_description: "显式调用后按指定模型/等级委派；未指定项使用当前最高可用项，并由 Codex 独立验收"
   default_prompt: "使用 $to-chatgpt 完成以下需求。仅因本次显式调用而启用该 Skill；你负责检查仓库、准备最小上下文、尊重用户显式指定的 ChatGPT 模型/模式/推理等级；仅对用户未指定的选择项使用当前 UI 实际可用的最高档，调度外部模型，并在本地独立验收：<直接描述需求>"
 policy:
