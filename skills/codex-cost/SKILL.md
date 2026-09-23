@@ -1,11 +1,9 @@
 ---
 name: codex-cost
-description: Delegate substantial coding, code reading, testing, debugging, or browser validation from a top-level non-Luna orchestrator. Not for trivial work, a Luna parent, or delegated workers.
+description: Delegate substantial coding, code reading, testing, debugging, or browser validation through small, bounded assignments. Not for trivial work.
 ---
 
 # Fresh-Context Delegation and Cost Control
-
-**Applicability:** Only the top-level, non-Luna orchestrator uses this skill. Luna executes directly when it is the parent. A delegated worker of any model executes its assignment directly and must not invoke this skill or create sub-agents.
 
 Optimize for reliable completion and a small parent context. Treat Luna's model-call cost as negligible for this workflow: do not preserve a long worker conversation merely to save tokens or agent startups. The parent owns requirements, scope, key decisions, scheduling, and final acceptance; workers own bounded execution and local validation.
 
@@ -65,7 +63,7 @@ Create a **new worker thread for every assignment**, even when the model and age
 
 Use only fresh-thread/history controls exposed by the active tools. Disable parent-history inheritance when supported, and pass a self-contained assignment instead of a parent transcript or old worker chat. A new thread ID is not proof of clean history. When clean-history creation is unsupported or cannot be verified, report that limitation before dispatch rather than inventing flags, claiming isolation, or silently using inherited history.
 
-A worker may finish the small local implementation/test/repair loop inside its current assignment, but must stop at its stated completion condition or checkpoint boundary. No worker may pull the next task from the queue itself.
+A worker executes its assigned work directly, without creating further sub-agents. It may finish the small local implementation/test/repair loop, but must stop at its stated completion condition or checkpoint boundary. No worker may pull the next task from the queue itself.
 
 ## 6. Self-Contained Assignment and Compact Return
 
