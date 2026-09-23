@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Cost"
   short_description: "Fresh-context parallel tasks with one final review"
-  default_prompt: "Use $codex-cost to delegate substantial work as a top-level non-Luna orchestrator. Honor configured models; default non-visual work to Luna and keep visuals, layout, and styling off Luna. Use small, conflict-free assignments with fresh contexts, persistent handoffs, and parallel execution where safe. Collect compact status without per-task parent review; review the integrated result once the task set is ready."
+  default_prompt: "Use $codex-cost to delegate substantial work. Honor configured models; default non-visual work to Luna and keep visuals, layout, and styling off Luna. Use small, conflict-free assignments with fresh contexts, persistent handoffs, and parallel execution where safe. Collect compact status without per-task parent review; review the integrated result once the task set is ready."
