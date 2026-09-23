@@ -143,7 +143,7 @@ Yzin 的个人 skill 库，供 Codex 及其他支持 `SKILL.md` 的 agent 使用
 
 **适用场景**：
 
-- 想借当前账号可用的 ChatGPT 模型做深度分析、架构 review 或代码 review，并按需要指定模型、模式或推理等级。
+- 想借当前账号可用的 ChatGPT 模型做深度分析、根因调查、架构 review 或代码 review，并按需要指定模型、模式或推理等级。
 - 已发布 PR 的外部 review（ChatGPT 能访问 PR diff 时优先直接给 PR URL）。
 - 未发布或私有代码，通过最小脱敏源码包（内置 secret 扫描）送出去分析。
 
