@@ -1,11 +1,11 @@
 ---
 name: codex-cost
-description: Use for substantial coding, code reading, testing, debugging, or browser validation when the top-level orchestrator is not Luna. Do not activate as a delegated worker. Split delegated work into small assignments with fresh contexts, explicit dependencies, and exclusive write ownership; run independent assignments in parallel. Default non-visual work to Luna; never assign frontend visuals, layout, or styling to Luna. Keep durable task state and defer parent review until the complete task set is ready.
+description: Delegate substantial coding, code reading, testing, debugging, or browser validation from a top-level non-Luna orchestrator. Not for trivial work, a Luna parent, or delegated workers.
 ---
 
 # Fresh-Context Delegation and Cost Control
 
-**Applicability:** Only the top-level, non-Luna orchestrator uses this skill. Luna, including GPT-6 Luna, executes directly when it is the parent. A delegated worker of any model executes its assignment directly and must not invoke this skill or create sub-agents.
+**Applicability:** Only the top-level, non-Luna orchestrator uses this skill. Luna executes directly when it is the parent. A delegated worker of any model executes its assignment directly and must not invoke this skill or create sub-agents.
 
 Optimize for reliable completion and a small parent context. Treat Luna's model-call cost as negligible for this workflow: do not preserve a long worker conversation merely to save tokens or agent startups. The parent owns requirements, scope, key decisions, scheduling, and final acceptance; workers own bounded execution and local validation.
 
@@ -15,12 +15,11 @@ Judge delegation benefit once for the overall task. Substantial exploration, cro
 
 Once delegation is worthwhile, actually delegate. Do not repeat the benefit calculation for every small assignment or pull those assignments back into the parent simply because each is now small.
 
-- Honor explicit user model, agent-role, reasoning, and selection constraints. Keep the current parent model; do not assume the parent must be Sol or change its reasoning mode to enable delegation.
-- Default non-visual work to the configured Luna worker. On GPT-6 setups, `gpt-6-luna` is an example model ID, not permission to override a user-selected model or an existing role configuration.
+- Honor explicit user model, agent-role, reasoning, and selection constraints. Keep the current parent model and reasoning settings.
+- Default non-visual work to the configured Luna worker; use the model actually configured for that role rather than a hard-coded model version.
 - Frontend visual, layout, and styling work, including visual acceptance, must not go to Luna. Split visual and non-visual portions and use an eligible non-Luna worker for the visual portion. Non-visual frontend logic can still go to Luna.
-- Resolve the effective worker configuration before spawning; a role name alone does not prove which model runs. Report unavailable models, unsupported settings, or a requested Luna/visual conflict. Do not silently substitute models, inherit the parent's expensive model, or invent model IDs.
 
-Read [Codex runtime notes](references/codex-runtime.md) only when migrating configuration or diagnosing model, concurrency, or context-isolation behavior.
+Resolve the effective model and reasoning effort once for each selected role/configuration; recheck after a configuration change or conflicting spawn result. Explicit `model` and `model_reasoning_effort` values in a custom agent file take precedence; otherwise, explicit spawn settings precede `[agents]` defaults, then parent settings. A model selected by spawn/default without an effort uses that model's default effort; a role that sets only `model` preserves the previously resolved effort. Confirm the result honors the user's constraints and the model supports the effort. Report mismatches, unavailable models, or a Luna/visual conflict instead of silently falling back or inventing model IDs. See the official [Subagents documentation](https://developers.openai.com/codex/subagents/) for configuration semantics.
 
 ## 2. Split by Small, Verifiable Outcomes
 
@@ -50,7 +49,7 @@ Keep only the objective, active decisions, ledger location, active task IDs/owne
 
 ## 4. Parallel Scheduling and Exclusive Ownership
 
-There is no skill-level single-worker limit. Run independent, dependency-ready assignments in parallel within the user's constraints and actual runtime capacity. Do not increase concurrency by weakening task boundaries or launching dependent work early. If independence cannot be established, split further or serialize only the conflicting assignments.
+There is no skill-level single-worker limit. Run independent, dependency-ready assignments in parallel within the user's constraints and configured concurrent-thread capacity (`agents.max_concurrent_threads_per_session`; see the [Configuration Reference](https://developers.openai.com/codex/config-reference/)). Do not change local configuration to enable delegation. Do not increase concurrency by weakening task boundaries or launching dependent work early. If independence cannot be established, split further or serialize only the conflicting assignments.
 
 - **One active writer per path:** reserve write sets before dispatch. No two workers may modify the same repository-relative file concurrently, even in different line ranges or worktrees. Count create/delete/rename paths, tests, snapshots, generated files, formatting, and dependency-install effects. Shared files get one owner or a separate bounded prerequisite/integration assignment. The parent must not edit a worker-owned file concurrently.
 - **Stable inputs and contracts:** read-only tasks may overlap on stable inputs, but never consume another worker's in-progress files. Wait for the required output to be locally validated and available in the consumer workspace, or use a recorded immutable input snapshot with a planned integration check. Establish shared contracts before parallel producer/consumer implementation; a contract change pauses affected consumers and invalidates affected evidence.
@@ -64,7 +63,7 @@ These are scheduling rules, not a claim that prompts create filesystem locks or 
 
 Create a **new worker thread for every assignment**, even when the model and agent role stay unchanged. Never resume a completed worker for a different assignment or for findings from the final review. Reuse role configuration, not conversation history. Close each worker after completion or a safe checkpoint and a recorded handoff; independent workers need not wait for that closure to start.
 
-Use the current runtime's supported fresh/no-history creation mode; disable conversation-history inheritance when that control exists. Do not fork the full parent transcript, replay old worker chats, or describe a resumed thread as fresh. A new thread ID alone does not establish a clean context. If clean-history creation cannot be confirmed or is unsupported, report the exact limitation before proceeding; do not invent a parameter, claim isolation, or silently substitute a history-inheriting run. A skill instruction cannot manufacture a runtime capability.
+Use only fresh-thread/history controls exposed by the active tools. Disable parent-history inheritance when supported, and pass a self-contained assignment instead of a parent transcript or old worker chat. A new thread ID is not proof of clean history. When clean-history creation is unsupported or cannot be verified, report that limitation before dispatch rather than inventing flags, claiming isolation, or silently using inherited history.
 
 A worker may finish the small local implementation/test/repair loop inside its current assignment, but must stop at its stated completion condition or checkpoint boundary. No worker may pull the next task from the queue itself.
 
