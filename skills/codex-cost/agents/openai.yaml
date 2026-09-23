@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Cost"
-  short_description: "Role-based delegation with user-selected models"
-  default_prompt: "Use $codex-cost to decide whether delegation is worthwhile, using the user's specified models or configured agent roles and reasoning settings. Keep simple tasks with the parent. The parent owns scope, key decisions, risk judgment, mandatory final review, and acceptance; reuse one implementation worker for implementation, self-review, tests, validation, and fixes by default. Minimize total token usage, model-call cost, and duplicated work without reducing reliability. Report configuration blockers instead of changing models or applying automatic fallback."
+  short_description: "Fresh-context parallel tasks with one final review"
+  default_prompt: "Use $codex-cost to delegate substantial work. Honor configured models; default non-visual work to Luna and keep visuals, layout, and styling off Luna. Use small, conflict-free assignments with fresh contexts, persistent handoffs, and parallel execution where safe. Collect compact status without per-task parent review; review the integrated result once the task set is ready."

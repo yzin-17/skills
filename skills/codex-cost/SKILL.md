@@ -1,166 +1,111 @@
 ---
 name: codex-cost
-description: Use only when the active parent/orchestrator model is not Luna, for coding tasks involving substantial code reading, cross-file implementation, testing, debugging, log analysis, or browser validation. Do not trigger this skill when the active model is Luna, including when Luna is running as a delegated worker. Delegate only when the overall benefit justifies it; when no worker is specified, default non-UI work to Luna, while frontend visual, layout, or styling work must not be assigned to Luna. Only one worker may execute at a time. The parent always owns scope, key decisions, and final review.
+description: Delegate substantial coding, code reading, testing, debugging, or browser validation through small, bounded assignments. Not for trivial work.
 ---
 
-# Role-Based Delegation and Cost Control
+# Fresh-Context Delegation and Cost Control
 
-**Applicability gate:** If the active model is Luna, do not use this skill. This applies both when Luna is the current parent model and when Luna is running as a delegated worker. Luna should execute its assigned work directly rather than invoking `codex-cost` or starting another delegation cycle.
+Optimize for reliable completion and a small parent context. Treat Luna's model-call cost as negligible for this workflow: do not preserve a long worker conversation merely to save tokens or agent startups. The parent owns requirements, scope, key decisions, scheduling, and final acceptance; workers own bounded execution and local validation.
 
-Reduce total token usage, model-call cost, and duplicated work without weakening task reliability.
+## 1. Choose Delegation and Models
 
-Core principle: the parent orchestrator owns decisions and acceptance; workers own bounded execution. Whether to delegate depends on overall benefit, not on model names or roles themselves.
+Judge delegation benefit once for the overall task. Substantial exploration, cross-file work, tests, debugging, logs, or browser evidence normally belong in workers. Trivial local edits and small analysis/documentation tasks can stay with the parent. Naming a worker constrains model selection, but does not force delegation of an otherwise trivial task.
 
-## 1. Decide Whether Delegation Is Worthwhile
+Once delegation is worthwhile, actually delegate. Do not repeat the benefit calculation for every small assignment or pull those assignments back into the parent simply because each is now small.
 
-Delegate only when the expected benefit clearly exceeds worker startup, context transfer, coordination, and final-review overhead. A user explicitly naming a sub-agent or model constrains which model to use if delegation happens; it does not make delegation mandatory.
+- Honor explicit user model, agent-role, reasoning, and selection constraints. Keep the current parent model and reasoning settings.
+- Default non-visual work to the configured Luna worker; use the model actually configured for that role rather than a hard-coded model version.
+- Frontend visual, layout, and styling work, including visual acceptance, must not go to Luna. Split visual and non-visual portions and use an eligible non-Luna worker for the visual portion. Non-visual frontend logic can still go to Luna.
 
-Delegation is usually worthwhile for:
+Resolve the effective model and reasoning effort once for each selected role/configuration; recheck after a configuration change or conflicting spawn result. Explicit `model` and `model_reasoning_effort` values in a custom agent file take precedence; otherwise, explicit spawn settings precede `[agents]` defaults, then parent settings. A model selected by spawn/default without an effort uses that model's default effort; a role that sets only `model` preserves the previously resolved effort. Confirm the result honors the user's constraints and the model supports the effort. Report mismatches, unavailable models, or a Luna/visual conflict instead of silently falling back or inventing model IDs. See the official [Subagents documentation](https://developers.openai.com/codex/subagents/) for configuration semantics.
 
-- broad or repeated code reading across multiple files;
-- cross-file implementation;
-- implementation followed by testing, debugging, or repeated repair cycles;
-- large search results, logs, traces, build output, or browser evidence;
-- straightforward execution that a configured worker can handle reliably but that would otherwise consume substantial parent context.
+## 2. Split by Small, Verifiable Outcomes
 
-The parent orchestrator should usually handle work directly when it is:
+Each assignment has one concrete deliverable, one primary execution surface, explicit dependencies, a narrow write set, and a local completion check. Keep its necessary reading, implementation, self-review, and focused tests together while they remain small.
 
-- simple, local, and low risk;
-- a small edit requiring little context;
-- pure analysis or a small documentation change;
-- cheaper to complete directly than to delegate and verify.
+Split at changes in objective, runtime, contract, required context, or write ownership. Do not give one worker an entire feature spanning database, queue, runtime, API, client, and end-to-end acceptance. Separate persistence, API behavior, client state logic, visual layout, shared wiring, and integration validation as needed. Do not split mechanically by individual file or tool call, but split further whenever independently verifiable outcomes or overlapping write sets would otherwise remain bundled.
 
-Practical rule: if most of the work is reading, implementing, testing, debugging, or inspecting execution evidence rather than making key decisions, prefer delegation.
+Before marking assignments parallel-ready, list exact writable paths (or demonstrably disjoint narrow globs), stable read-only inputs, upstream outputs, shared resources, and the completion check for each. Include tests and tool-generated changes. Vague scopes such as "finish the backend" or "handle the frontend" are not dispatchable. Shared types, manifests, lockfiles, registries, and export entrypoints need a named owner and explicit dependencies rather than several workers each "fixing the wiring".
 
-Once the overall-benefit judgment confirms that delegation is worthwhile and an appropriate worker is available, actually create and delegate to that worker. Do not merely describe a delegation plan and then continue the delegated workload in the parent.
+When exploration is needed to establish scope, make it a bounded discovery assignment first. When debugging grows into several hypotheses, repeated failed repairs, or unrelated areas, checkpoint the facts and return `needs_split`; do not wait for compaction or loss of earlier constraints. The parent narrows the remaining work into new assignments rather than resuming an unbounded loop.
 
-## 2. Model and Role Constraints
+## 3. Persist the Plan, Not the Conversation
 
-Roles describe responsibilities, not fixed model capability, price, or model names.
+Before the first worker starts, use the existing spec/task document as the authoritative task ledger. If none exists, create one small project-appropriate task file; do not introduce a second competing plan.
 
-- **User:** specifies models, agent roles, reasoning settings, and model-selection constraints.
-- **Parent orchestrator:** owns requirement understanding, scope, task decomposition, necessary architecture decisions, risk judgment, and final acceptance.
-- **Worker:** owns permitted implementation-detail exploration, implementation, self-review, tests, debugging, necessary browser validation, and repairs within the delegated scope.
-
-First decide whether delegation is worthwhile, then choose the worker. If the user explicitly specifies a model, agent role, or model-selection constraint, follow it strictly only after delegation has already been judged worthwhile. Do not skip the delegation-benefit check merely because the user named a sub-agent.
-
-When the user does not specify a worker:
-
-- **Default non-UI work to Luna.** Luna's model-call cost is not a reason to avoid delegation or switching to Luna; whether delegation is worthwhile should still be judged only by real overhead such as startup, context transfer, coordination, and final review.
-- **Frontend visual, layout, or styling work must not be assigned to Luna;** use another available worker.
-- If the same task contains both UI and non-UI work, workers may switch at that boundary: assign the non-UI portion to Luna and the UI portion to a non-Luna worker. This is not considered unnecessary mechanical splitting.
-
-If the user explicitly assigns Luna to frontend visual, layout, or styling work, report the constraint conflict rather than silently substituting another model. If a user-specified worker is missing or unavailable, report the exact blocker. If a worker chosen by the parent cannot reliably complete the work, reassess how the remaining scope should be delegated.
-
-When operating as a worker, do not create additional sub-agents unless the user explicitly authorizes nested delegation.
-
-## 3. Worker Concurrency
-
-Only one worker may execute at a time within a task. Do not run multiple sub-agents in parallel, even when their assignments appear independent.
-
-When work requires a different worker, the current worker must finish or return control to the parent before the next worker starts. UI / non-UI boundaries may justify switching workers, but never parallel execution.
-
-This limits concurrency, not the total number of workers used over the task lifecycle. A task may use Luna for non-UI work, then switch to a non-Luna worker for frontend visual, layout, or styling work, and switch again later if needed.
-
-## 4. Delegation Contract
-
-Before delegating, provide a concise, self-contained assignment. Do not make the worker depend on the full parent conversation or rediscover decisions that are already settled.
-
-The assignment should include at least:
-
-- **Objective:** the concrete result to produce;
-- **Scope:** files, components, behaviors, or boundaries that may be inspected or changed;
-- **Exclusions:** what must not be changed or expanded into;
-- **Decisions and constraints:** settled architecture, compatibility requirements, user requirements, and project rules;
-- **Permissions:** what may be edited and which tools or commands may be used;
-- **Validation:** required tests, checks, or browser paths;
-- **Return:** the change summary, key diff, validation, risks, and blockers needed for final review;
-- **Stopping condition:** what counts as complete and when the worker should stop and return control to the parent.
-
-Use this compact contract when helpful:
+Record the overall objective and acceptance criteria, settled decisions and exclusions, change baseline, and a compact task table:
 
 ```text
-Role: implementation worker
-Objective: <concrete outcome>
-Scope: <allowed files / components / behaviors>
-Do not: <explicit exclusions>
-Decisions / constraints: <settled requirements>
-Permissions: <allowed edits / tools / commands>
-Validation: <required checks / tests / browser paths>
-Return: <changed areas, key diff, validation, risks, blockers>
-Stop when: <completion condition or blocker>
+ID | Outcome | Dependencies | Write set / resources | Owner / workspace | Status | Output / checks / blocker
 ```
 
-Once the parent has enough information to define the objective, boundaries, key decisions, and validation requirements, stop digging further into implementation details. Avoid making the parent and worker explore the same material twice.
+Use `pending`, `running`, `worker_done`, `blocked`, and `needs_split`. `worker_done` means execution and required local checks were reported complete, not that the parent accepted the result. Track integration readiness and final acceptance separately.
 
-## 5. Execution Lifecycle and Context Control
+The parent alone updates the shared ledger and planning decisions during execution. Workers return compact status and persist evidence only to their assigned task-specific artifact paths, not a common report file. Before closing a worker, record its changed paths, dependency contracts, validation commands/results, output revision or patch, and unresolved issues. Preserve existing user edits and distinguish them from task changes. A fresh conversation must not reset the working tree.
 
-Reuse the original worker within the same execution type by default: continue using Luna for non-UI work, and continue using the corresponding non-Luna worker for frontend visual, layout, or styling work. When the task moves between UI and non-UI work, switch workers sequentially according to Section 3.
+Keep only the objective, active decisions, ledger location, active task IDs/ownership, and short status in the parent conversation. Before final review or after parent compaction, reload the authoritative criteria, ledger, and live worker state; reconcile ownership before dispatching again. Give workers their assignment and relevant decision/dependency excerpts, not the whole ledger history or previous transcripts.
 
-Within its scope, the same worker should continue through:
+## 4. Parallel Scheduling and Exclusive Ownership
 
-1. necessary code reading and implementation-detail exploration;
-2. implementation and self-review;
-3. testing, debugging, and repair;
-4. browser validation when needed;
-5. repairs resulting from the parent's final review.
+There is no skill-level single-worker limit. Run independent, dependency-ready assignments in parallel within the user's constraints and configured concurrent-thread capacity (`agents.max_concurrent_threads_per_session`; see the [Configuration Reference](https://developers.openai.com/codex/config-reference/)). Do not change local configuration to enable delegation. Do not increase concurrency by weakening task boundaries or launching dependent work early. If independence cannot be established, split further or serialize only the conflicting assignments.
 
-After delegation, the parent orchestrator should not duplicate the delegated implementation, testing, or routine validation work. Do not start another worker while the current worker is still executing. When a problem is found, return the concrete finding to the original worker responsible for that scope rather than creating another worker of the same type.
+- **One active writer per path:** reserve write sets before dispatch. No two workers may modify the same repository-relative file concurrently, even in different line ranges or worktrees. Count create/delete/rename paths, tests, snapshots, generated files, formatting, and dependency-install effects. Shared files get one owner or a separate bounded prerequisite/integration assignment. The parent must not edit a worker-owned file concurrently.
+- **Stable inputs and contracts:** read-only tasks may overlap on stable inputs, but never consume another worker's in-progress files. Wait for the required output to be locally validated and available in the consumer workspace, or use a recorded immutable input snapshot with a planned integration check. Establish shared contracts before parallel producer/consumer implementation; a contract change pauses affected consumers and invalidates affected evidence.
+- **Shared resources count too:** reserve or isolate build output directories, test databases/fixtures, ports, browser profiles, and other mutable resources. Commands that touch unowned files or shared state are not allowed merely because the intended code edits are disjoint. Scope them narrowly, isolate their effects, or schedule them without conflicting work.
+- **Respect workspace boundaries:** use isolated worktrees when available and useful; otherwise enforce disjoint writes in the shared workspace. Worktrees do not replace ownership or dependency checks. Only the designated integrator may mutate the shared integration branch/index; workers must not run broad Git staging, reset, clean, or merge operations that could capture or discard others' changes. Transfer task-specific output through bounded integration assignments with one writer to the target at a time. Downstream tasks wait for the integrated output they require.
+- **Stop before expanding scope:** an unowned edit, unexpected concurrent change, or resource collision returns `blocked` or `needs_split` before further writes. Preserve all parties' changes; never resolve this by overwriting, reverting another worker, or choosing the last result. The parent pauses affected work, reassigns ownership or schedules a fresh repair, and releases a reservation only after confirming its worker and any mutating processes have stopped and the handoff is recorded. Unrelated ready work may continue.
 
-Workers should absorb high-volume execution context such as broad code searches, long logs, build output, traces, DOM, Console, Network output, and repeated debugging evidence, then return only the concise information needed for final review.
+These are scheduling rules, not a claim that prompts create filesystem locks or guarantee isolation. Unverifiable isolation requires serialization of the affected work, not optimistic concurrent writes.
 
-Worker returns should focus on:
+## 5. One Assignment, One Fresh Worker
 
-- changed files or affected areas;
-- change summary and high-risk diff details;
-- validation performed and results;
-- browser-validation conclusion when applicable;
-- unresolved issues, blockers, and material risks.
+Create a **new worker thread for every assignment**, even when the model and agent role stay unchanged. Never resume a completed worker for a different assignment or for findings from the final review. Reuse role configuration, not conversation history. Close each worker after completion or a safe checkpoint and a recorded handoff; independent workers need not wait for that closure to start.
 
-Unless the parent explicitly needs them to resolve a specific doubt, do not return complete source files, complete logs, large DOM dumps, repeated screenshots, or long chronological process records.
+Use only fresh-thread/history controls exposed by the active tools. Disable parent-history inheritance when supported, and pass a self-contained assignment instead of a parent transcript or old worker chat. A new thread ID is not proof of clean history. When clean-history creation is unsupported or cannot be verified, report that limitation before dispatch rather than inventing flags, claiming isolation, or silently using inherited history.
 
-Stable decisions or long-lived task state should be recorded in the applicable spec, task, or project documentation rather than relying on conversation history for persistence.
+A worker executes its assigned work directly, without creating further sub-agents. It may finish the small local implementation/test/repair loop, but must stop at its stated completion condition or checkpoint boundary. No worker may pull the next task from the queue itself.
 
-## 6. Browser Validation
+## 6. Self-Contained Assignment and Compact Return
 
-Perform browser validation only when a change affects visible UI, interaction, or browser behavior.
+Give each worker a short contract containing everything necessary to act without the parent transcript:
 
-Normally the worker owns browser validation and should keep it minimal:
+```text
+Task: <ID and one concrete outcome>
+Workspace / baseline: <directory, revision/current state, existing edits to preserve>
+Inputs / dependencies: <stable read-only inputs, settled contract, available upstream output>
+Exclusive write set: <owned paths, including tests/generated files; everything else read-only>
+Resources / integration: <isolated or reserved mutable resources, output transfer owner>
+Constraints / permissions: <exclusions, invariants, compatibility, allowed tools/actions>
+Validation: <focused checks, required evidence, completion condition>
+State / handoff: <read-only ledger path, task-specific artifact destination>
+Stop: <complete, blocked, or needs_split; no scope expansion or sub-agents>
+Return: <ID, status, changed paths, output revision/patch, checks/results, evidence, risks>
+```
 
-- cover only directly affected critical paths and necessary states;
-- perform only the interactions needed to establish correctness;
-- do not inspect the whole site by default;
-- do not repeatedly collect screenshots, DOM, Console, or Network data without a concrete need.
+Once the parent can define this contract, stop duplicating implementation exploration. Workers absorb source searches, logs, traces, build output, DOM, Console, and Network evidence. Save detailed evidence to assigned artifacts when necessary; return a compact status packet, not source dumps, full logs, screenshots, or a chronological narrative. Include reproduction details for blockers without flooding the parent.
 
-The parent orchestrator should perform an additional small independent check only when the result is doubtful, evidence conflicts, or the change is high risk.
+## 7. Dispatch Without Per-Assignment Parent Review
 
-## 7. Final Review and Completion Gate
+During execution, the parent receives compact status, updates the ledger and ownership, and schedules dependency-ready, conflict-free assignments. Check reported status, changed-path ownership, required evidence presence, output availability, and blockers; **do not routinely read each diff, review the worker's reasoning, rerun its checks, or accept/reject its code after every return**. Scheduling and integration bookkeeping are not intermediate code-review gates.
 
-**Every delegated task must receive a final review by the parent orchestrator before acceptance. Worker self-review never replaces the parent's final review.**
+Local validation is not deferred. Each worker self-reviews and runs its assigned checks before reporting `worker_done`. Validate producer/consumer contracts and add small integration checks at dependency boundaries so downstream work does not build on known failures. Dependent workers verify the particular inputs they consume, not review the whole upstream implementation.
 
-At minimum, the parent must:
+A failed required check, missing dependency, contract conflict, write/resource collision, scope expansion, or action requiring new authorization pauses affected dependents immediately. The parent resolves only the blocking decision or schedules a fresh bounded investigation/repair; unrelated ready work may continue in parallel. Never reinterpret failed or missing validation as success to keep dispatch moving.
 
-- confirm against the original objective and scope that the task is actually complete;
-- inspect the final key diff or affected area;
-- confirm that settled architecture, compatibility constraints, and exclusions were preserved;
-- review the required test, check, and browser-validation results;
-- confirm that no obvious regression, incomplete path, or undisclosed high-risk issue remains.
+Browser validation belongs to the eligible worker and covers directly affected UI, interaction, or browser behavior only. Apply the same resource-ownership rules to browser sessions. Do not inspect the whole site or repeatedly collect browser output without a specific need. The parent does not repeat routine browser validation mid-workflow.
 
-Review depth should increase with risk:
+## 8. One Consolidated Final Review Phase
 
-- **Low risk:** verify the objective, scope, validation evidence, and relevant final diff;
-- **Medium risk:** additionally inspect important surrounding code or call sites;
-- **High risk or doubtful result:** independently run the minimum validation needed to resolve the specific risk.
+Once the planned implementation assignments are `worker_done` and their outputs are integrated, use fresh, bounded validation assignments for required integration/regression checks against a recorded, stable final state. Pause mutations to that state during validation/review or validate an immutable snapshot; later changes require affected checks to be rerun. Validation tasks may run in parallel only with independent resources. Do not infer integration success from isolated unit tests. Keep substantial validation out of the parent context.
 
-If final review finds a defect, missing evidence, or failed acceptance condition, the task is not complete. Return the specific finding to the original worker for repair, then review the result again.
+When the entire task set, including required validation, is ready, the parent performs one consolidated review phase:
 
-Report completion only when all of the following are true:
+- Compare the actual final changes against the original objective, acceptance criteria, exclusions, and recorded baseline. Inspect the relevant final diffs and important call sites rather than trusting completion summaries.
+- Check cross-task contracts, integration, compatibility, and regressions; confirm required test and browser evidence applies to the latest state. Inspect evidence selectively and independently check doubtful or high-risk areas as needed.
+- Confirm all required outcomes are covered and no blocking defect, missing validation, or unresolved required task remains.
 
-- the objective and scope are satisfied;
-- required validation passed;
-- required browser validation passed when applicable;
-- material unresolved issues and risks are known;
-- the parent's final review passed;
-- issues found during review were repaired and rechecked.
+For a large diff, review bounded sections with a coverage checklist inside this final phase instead of loading everything into one prompt. This is a single acceptance phase, not a requirement to use one tool call or skip any task's coverage.
 
-If validation cannot be completed because of a blocker, report the task as blocked or partially complete and include the completed work, remaining work, and known risks.
+If review finds defects or missing evidence, create small repair/validation assignments with **fresh workers** under the same ownership and dependency rules. After that repair batch finishes, re-review the changed and affected areas and updated integration evidence. Do not reopen the original workers or reinstate per-assignment review.
+
+Report completion only after required checks and the parent's final review pass. Otherwise report completed work, remaining work, the exact blocker, and known risks as blocked or partially complete; `worker_done` alone never means overall completion.
