@@ -133,7 +133,7 @@ Yzin 的个人 skill 库，供 Codex 及其他支持 `SKILL.md` 的 agent 使用
 
    review 项未关闭、输出计划未确认、OpenAPI hash 变化、检测到不支持的输入或路径越界时都会停下。
 
-> **共享约束**：`mockoon-gen` 与 `api-code-gen` 只共享已 review 的 OpenAPI 输入。`mock-artifact.json` 与 `api-code-gen/api-code-artifact.json` 相互独立，互不为反向输入；生成文件是派生物，不做反向同步。
+> **共享约束**：`mockoon-gen` 与 `api-code-gen` 只共享已 review 的 OpenAPI 输入。`mock-artifact.json` 与 `api-code-artifact.json` 相互独立，互不为反向输入；生成文件是派生物，不做反向同步。
 
 #### to-chatgpt
 
@@ -176,7 +176,7 @@ Yzin 的个人 skill 库，供 Codex 及其他支持 `SKILL.md` 的 agent 使用
 - 对外发布的中文技术文章、博客、教程、案例复盘。
 - 内部文档和普通对话回复不需要触发。
 
-**教程**（完整流程见 [SKILL.md](skills/writing-style-yzin/SKILL.md)）：
+**教程**（完整规则见 [SKILL.md](skills/writing-style-yzin/SKILL.md)）：
 
 1. 在写作请求中显式引用 `$writing-style-yzin`，agent 即按以下风格约束产出。
 2. 默认中文写作；API 名、代码、配置键等技术术语保留原文。
