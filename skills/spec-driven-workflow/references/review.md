@@ -8,13 +8,15 @@ Run after authoring or revising Specs/Tasks. Document-only work is not complete 
 
 ### 1.1 Coverage and ownership
 
-Check that every material requirement and AC assertion has concrete implementation and sufficient verification ownership. Every task must reference real ACs, and no task may introduce an unauthorized non-goal.
+Check that every material requirement and AC assertion has concrete implementation and sufficient verification ownership. Each task references real ACs it proves or supports; a discovery prerequisite does not count as product-behavior evidence. No task may introduce an unauthorized non-goal.
 
 For ACs spanning components, distinguish the assertions each task proves and the product-level gate that checks the combined behavior. Many task IDs against one AC, or a final task claiming all ACs, does not by itself establish coverage.
 
 ### 1.2 Granularity and integration
 
-Check that each task has one primary deliverable, a clear boundary, and evidence achievable for that boundary. Apply the right-sizing triggers in `task-planning.md` without mechanically splitting by layer or file count.
+Apply the mandatory sizing gate in `task-planning.md` to each executable leaf. A fresh-context executor must be able to complete its focused reading, implementation, self-review, and validation from the packet, not merely understand a large objective. Verify one outcome, one primary execution surface, bounded inputs/writes, local proof, and a stopping point. Missing boundaries require discovery or splitting before `Ready`; more Steps, workers, or context capacity are not remedies.
+
+Check that the packet names applicable Spec assertions/invariants, exclusions, ready contracts, and code/test entry points without requiring a prior transcript. Long investigation, repeated repair loops, or a broad runtime matrix hidden inside a leaf fails this check. Do not reject a small coherent synchronous edit solely because it touches several files.
 
 Look for both failure modes:
 
@@ -29,7 +31,7 @@ Check that start dependencies truly block safe execution; no necessary prerequis
 
 Check acceptance dependencies separately when present. Detect cycles, especially between a task's completion and a gate that requires that task to be complete.
 
-For parallel work, verify authoritative contracts, readiness evidence, consumer consistency, write ownership, and integration responsibility. Matching type names are not enough when state, timing, errors, or side effects remain undefined. A reusable helper recorded in implementation evidence must agree with the declared dependency boundary.
+For parallel work, verify authoritative contracts, readiness evidence, consumer consistency, exclusive paths/resources, and output transfer ownership. Include tests, generated output, lockfiles, and shared ledger writes; worktree isolation alone does not prove independence. Confirm consumers use available validated output, not in-progress sibling files. Matching type names are insufficient when state, timing, errors, or side effects remain undefined; implementation helpers must agree with declared dependencies.
 
 ### 1.4 Decisions, migration, and environments
 
@@ -59,9 +61,11 @@ State the reviewed scope and separate planning readiness from outstanding runtim
 
 ## 2. Final consistency review
 
-The orchestrating agent owns this review. Inspect relevant code changes and inspectable evidence, not only task checkboxes or worker conclusions. Use risk-based targeted verification rather than automatically duplicating every test.
+The orchestrating agent owns one consolidated final review phase, not a required parent review after every worker return. Inspect actual changes and evidence, not only checkboxes or worker conclusions. Use risk-based targeted verification rather than automatically duplicating every test.
 
-The review may inspect partial progress, but must not issue a full pass until every required assertion and gate for the claimed scope is satisfied.
+Reload the original acceptance criteria, exclusions, current ledger, and integrated baseline before review or after a context reset. For a large result, review bounded sections and record coverage of all required assertions and cross-task seams. Keep the reviewed state stable or use an immutable snapshot; later changes require affected checks/review to be repeated. One review phase does not mean one oversized prompt.
+
+Partial review is valid, but a full pass requires every assertion and gate for the claimed scope. Findings become bounded repair/validation tasks; re-review the changed and affected areas when their evidence is ready.
 
 Check implementation against goals, ACs, non-goals, shared contracts, state/data/permission semantics, and compatibility. Verify that evidence supports the specific claimed behavior and still applies to the relevant source/configuration/environment. Distinguish implementation milestones from feature acceptance.
 
@@ -75,7 +79,9 @@ Maintain one final-review section in the task document:
 ## 最终一致性 Review
 
 - [ ] Spec 的全部验收断言均有明确实现与适当验证
-- [ ] 所有已勾选任务满足自身完成条件且证据仍有效
+- [ ] 所有已勾选任务满足自身完成条件且证据仍有效，未把 worker_done 当作整体验收
+- [ ] 中断或重拆分后的义务、输出、依赖与现场已对账，没有遗漏或重复执行
+- [ ] 分段 Review 覆盖完整，证据适用于同一稳定集成基线或已重验受影响范围
 - [ ] 必要集成、真实运行态与条件性门禁均已通过或有合法不适用依据
 - [ ] 启动依赖、验收依赖与契约就绪证据正确且无循环
 - [ ] 跨任务接口、类型、状态、时间、错误与副作用语义一致（如适用）

@@ -4,7 +4,7 @@ Apply only when the current request includes implementation. Document-only work 
 
 ## 1. Implementation gate
 
-Before editing code, read the relevant Spec, task, prerequisite contracts, and current worktree state. The affected plan must pass preflight and have no unresolved Blocking Question that materially changes its implementation or acceptance.
+Before editing, load the assigned leaf's execution packet, applicable Spec assertions/invariants, ready contracts, and current worktree state. Check its inputs, exclusions, write ownership, local validation, and stopping point against the sizing gate in `task-planning.md`. Read named sections and entry points first, not all sibling tasks or historical logs. The affected plan must pass preflight and have no unresolved Blocking Question that materially changes implementation or acceptance.
 
 Work only on the verified dependency frontier described in `task-planning.md`: required tasks are complete, or an explicitly named contract milestone has sufficient readiness evidence. Do not treat an unchecked prerequisite as satisfied because parallel work is desirable.
 
@@ -14,9 +14,9 @@ Preserve user changes. Avoid speculative refactoring and unrequested external mu
 
 ## 2. Execution-time granularity review
 
-Recheck granularity before starting a substantial task, delegating parallel work, or continuing after material scope growth. Use the triggers and acceptance test in `task-planning.md`.
+Recheck the sizing gate before each leaf and whenever its objective, required context, runtime, or write/verification boundary changes. Stop expansion and report `needs_split` when independent deliveries emerge, debugging branches into unrelated hypotheses, repeated repairs produce no new evidence, or broad re-exploration is needed to recover constraints. Do not wait for compaction or an exhausted context window. A missing dependency, environment, permission, or contract decision is `blocked`, not a reason to keep guessing.
 
-Re-plan when a task has accumulated independent deliveries, hidden integration, distinct unowned verification environments, or acceptance that depends on several unspecified unfinished components. Adding Steps, workers, or a bigger context window does not repair an invalid task boundary.
+Record the checkpoint below before re-planning. Adding Steps, workers, or a bigger context window does not repair an invalid task boundary; a long-running test alone does not require splitting when its scope is still bounded.
 
 When splitting is necessary:
 
@@ -29,11 +29,29 @@ When splitting is necessary:
 
 Update only Tasks when the change is sequencing or acceptance ownership with unchanged feature obligations. Update the Spec first when behavior, interfaces, state/data/permission semantics, compatibility, or acceptance standards change.
 
-Re-scoping is not a reason to restart completed work, allocate new agents, open new conversations, create extra commits, or rerun unaffected tests.
+Re-scoping preserves completed work and unaffected evidence; it does not justify redoing them or creating extra commits. Remaining child tasks are separate execution packets. Follow the active delegation policy for fresh-thread creation and do not send the whole remaining group back as one assignment.
+
+### Durable checkpoint and fresh-context continuation
+
+At task completion, blockage, scope growth, or before a planned context switch, persist a compact record in the existing task ledger. During delegation, its designated owner updates the ledger; workers return the record and write detailed evidence only to their assigned artifact paths.
+
+```text
+Task / state: <ID; running, worker_done, blocked, or needs_split as applicable>
+Output / baseline: <changed paths; revision or preserved uncommitted patch/workspace>
+Evidence: <checks and results; relevant environment; durable report references>
+Decisions / remaining: <settled constraints; unfinished assertion; exact blocker or next action>
+Ownership / live work: <worker/workspace and any still-running process or reserved resource>
+```
+
+These are execution states, not substitutes for acceptance: `worker_done` reports local completion and never proves feature acceptance. Keep original requirements in the Spec/Task, not solely in a summary. Store logs outside the active ledger; return decisions and evidence pointers rather than transcripts.
+
+For a new leaf, prefer fresh task context and pass only its packet and relevant settled facts. When delegation is selected, use the fresh-worker rules of the existing policy (for example `codex-cost`); do not resume an old worker for unrelated work. Use only history controls actually exposed by the active tools, and report when clean history cannot be established. A new thread ID, model switch, or worktree is not proof of a clean conversation. Without delegation, keep one bounded leaf active and checkpoint for the next available fresh-context continuation; do not pretend a Markdown instruction reset the current session.
+
+After interruption or compaction, reload the applicable criteria and ledger, inspect actual changes, and reconcile live workers/processes and ownership before dispatching again. Confirm the necessary outputs are present in the current workspace. Do not duplicate still-running work, reset the worktree, or rerun valid completed tasks. Compaction is a continuity mechanism, not a substitute for task sizing or durable state.
 
 ## 3. Task and Step execution
 
-A Step is a meaningful implementation-and-validation unit inside one task, not an independent task or mandatory commit boundary. Keep failures understandable and corrections bounded.
+A Step is a meaningful implementation-and-validation unit inside one small task, not an independent task or mandatory commit boundary. Expand only the active dependency-ready leaf into detailed Steps. If a Step has a different independently verifiable outcome or context boundary, promote it to a child task rather than growing the leaf.
 
 A Step should have a concrete result and suitable validation. Combine related mechanical edits; do not create isolated import, formatting, rename, or unvalidated half-change Steps merely to inflate progress.
 
@@ -82,13 +100,13 @@ A required package check blocked by another parallel change must be isolated and
 
 ## 5. Parallel execution and review ownership
 
-Delegate only when the applicable delegation policy finds it useful. Task count does not dictate agent count. Give each selected worker a bounded deliverable, allowed write scope, ready contract references, required validation, and a handoff containing changes, evidence, blockers, and risks.
+Apply the existing delegation policy without adding model choices or a single-worker limit here. When delegation is selected, give each worker one executable leaf, not a feature/group or open-ended task queue. Use the task packet and checkpoint contract above; workers own local self-review and focused checks before returning.
 
-Do not let agents independently change shared contracts, migrations, exports, generated output, or lockfiles without coordinated ownership. Prefer isolated execution when available; in a shared worktree, identify contamination from unfinished sibling tasks before attributing test failures or passes.
+Reserve writable paths and mutable resources before dispatch, including tool-generated changes. Shared contracts, migrations, exports, lockfiles, and the authoritative ledger have one designated writer. The parent must not edit worker-owned files concurrently. Use isolated workspaces where useful, but transfer validated outputs through an owned integration step and verify availability before consumers start. If a write/resource conflict or contract change appears, pause affected dependents before further writes; unrelated ready work may continue.
 
-The orchestrating agent remains responsible for acceptance and final consistency review. Inspect relevant changes and evidence, with extra attention to cross-task seams, data safety, lifecycle races, and other high-risk assertions. A worker's "done" message is not sufficient acceptance evidence.
+During execution, the orchestrator checks status, ownership, output availability, evidence presence, and blockers to schedule work. Do not turn every worker return into a mandatory parent diff review or repeated full test run. Missing/failed checks still block the affected dependency frontier; scheduling is not permission to ignore them.
 
-Reuse credible, inspectable worker evidence instead of mechanically re-executing every command. Rerun critical or affected checks when evidence is missing, stale, ambiguous, or contaminated. Do not require another model or duplicate full review solely because delegation occurred.
+The orchestrator owns the final consistency review of actual changes and evidence, especially cross-task seams, data safety, lifecycle races, and high-risk assertions. Reuse credible evidence; rerun affected or doubtful checks when stale, missing, ambiguous, or contaminated. A worker's “done” message is not acceptance, and delegation does not require a second model or duplicate review.
 
 ## 6. Task and feature status
 
@@ -114,4 +132,14 @@ Without authorization, leave changes uncommitted, preserve evidence, and report 
 
 When implementation contradicts the documents, update the affected plan rather than silently diverging. Apply the Spec-first rule for stable contract changes and the re-planning procedure for execution-only changes.
 
-Run the final consistency review in `review.md` before claiming the requested implementation or feature complete. Report outstanding local tasks, integration/runtime gates, actual validations, scope limits, final-review conclusion, and relevant commit status. An implementation-only milestone is valid when clearly named; do not present it as full feature acceptance.
+Run the final consistency review in `review.md` before claiming completion. Review large changes in bounded sections with coverage tracking against a stable integrated baseline; later mutations invalidate affected evidence. Findings become small repair/validation tasks, followed by review of the changed and affected scope, not a revived unbounded worker conversation. Report outstanding tasks/gates, actual validations, scope limits, review conclusion, and authorized commit status. An implementation milestone is not full feature acceptance.
+
+## Codex documentation basis
+
+Checked against the official documentation on 2026-09-24:
+
+- [Subagents](https://developers.openai.com/codex/subagents/): bounded delegation, concise returned results, and caution with concurrent writers.
+- [Developer commands](https://developers.openai.com/codex/cli/slash-commands/): in the CLI, `/new` starts a fresh chat, `/fork` copies the current conversation, and `/compact` summarizes it. These are client commands, not assumed agent-callable tools.
+- [ExecPlans](https://developers.openai.com/cookbook/articles/codex_exec_plans): durable, self-contained plans and observable progress. Reuse the existing Spec/Task ledger; do not require an additional `PLANS.md`.
+
+The sizing gate and checkpoint rules are this workflow's policy, not vendor-enforced limits. Runtime capabilities must still be checked in the active client.
