@@ -2,13 +2,13 @@
 
 Turn a Spec into bounded, independently reviewable deliverables without over-fragmentation or hidden final integration.
 
-## 1. Task document contract
+## 1. Task document and execution packet
 
-Link the Spec and retain stable Task IDs. Follow repository paths; otherwise use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`. Keep the Spec's first-creation date stable.
+Link the Spec and retain stable Task IDs. Follow repository paths; otherwise use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`. Keep the Spec's first-creation date stable. Use this task document as the authoritative execution ledger, not a second plan or conversation transcript.
 
-Every executable task must state its AC coverage, dependencies, scope, completion conditions, and validation method. Its primary outcome and acceptance boundary must be unambiguous. Include the configuration, scaffolding, tests, and documentation needed for that outcome.
+Each executable leaf must carry enough information for a fresh-context executor to start, finish its bounded outcome, and report evidence without replaying prior chats. State its AC assertion, ready dependencies, focused context entry points, primary execution surface, allowed writes/exclusions, completion conditions, and validation. Include necessary tests, configuration, and documentation within that same outcome.
 
-A fresh-context agent should be able to identify what to deliver, what not to change, and what proves completion without reading the entire execution history. Name concrete modules or paths when useful; do not turn file lists into acceptance criteria.
+Store shared baseline, invariants, and environment defaults once and reference them. Link precise Spec sections, contracts, paths, or symbols; do not copy the whole Spec or repository into every task. Record task-specific exceptions explicitly. File ownership limits writes; it is not a substitute for behavioral acceptance.
 
 ### Compact template
 
@@ -16,17 +16,19 @@ A fresh-context agent should be able to identify what to deliver, what not to ch
 # <任务名称>实施任务
 
 对应 Spec：<相对链接>
-> 状态：<实现进度；未通过的必要门禁>
+> 状态：<本地实施进度；尚未通过的必要门禁>
+> 共享执行约束：<工作区/基线；必须保留的修改；适用约束与环境入口>
 
 ## 任务
 
-- [ ] T1：<一个主要交付目标>
-  - 覆盖验收标准：AC1（<本任务证明的断言>）
-  - 依赖：无
-  - 涉及范围：<责任边界；必要时说明不包含的内容>
-  - 完成条件：<可独立接受或拒绝的结果>
-  - 验证方式：<入口、环境与关键断言>
-  - 验证证据：<实施后记录；规划时可省略>
+- [ ] T1：<一个具体、可验证的交付结果>
+  - 覆盖验收标准：AC1（<本任务证明的具体断言>）
+  - 启动依赖：<无，或已验证的任务/契约里程碑>
+  - 上下文入口：<必要 Spec 小节、只读契约、代码/测试入口>
+  - 执行边界：<主要执行面；可写路径，含测试/生成文件；不包含的范围>
+  - 完成条件：<本任务可独立证明的结果，不依赖未完成的后续实现>
+  - 验证方式：<具体命令/过程、环境、关键断言>
+  - 执行记录：<执行后填写：状态、输出/基线、证据、阻塞或下一步>
 
 ## 验收映射（多个任务共同覆盖同一 AC 时使用）
 | AC / 断言 | 实现责任任务 | 验证责任任务或门禁 |
@@ -37,44 +39,49 @@ A fresh-context agent should be able to identify what to deliver, what not to ch
 <采用 references/review.md 中的单一检查清单与结论结构>
 ```
 
-Add fields only when they resolve real coordination ambiguity: `接口契约`, `验收依赖`, `关联门禁`, `环境前提`, `责任方`, or a reference to existing evidence. Do not require a large schema for every small task.
+The default stop condition for every leaf is: its checks pass, a prerequisite/authorization is missing, or its declared scope can no longer contain the remaining work. Add a narrower stop condition when needed. The executor must not silently take the next task or expand its write set.
 
-Do not leave implementation instructions such as `TBD`, `TODO`, `later`, `处理细节`, `适当处理错误`, `补相关测试`, or `类似 T1`. Put unresolved requirements in the Spec's open questions. Template placeholders are not instructions to retain placeholders in a finished plan.
+Add `验收依赖`, `关联门禁`, or specific environment details only where needed. Before parallel dispatch, also name the owner/workspace, disjoint writable paths or narrow globs, shared mutable resources, and output transfer owner. Keep the task packet short; do not require empty coordination fields for serial local work.
 
-## 2. Right-size by acceptance, not file count
+Do not leave implementation instructions such as `TBD`, `TODO`, `later`, `处理细节`, `适当处理错误`, `补相关测试`, or `类似 T1`. Put unresolved requirements in the Spec's open questions. Template placeholders must be resolved or omitted in executable plans; evidence is recorded only after actual execution.
 
-A Task is the smallest implementation unit that carries its own complete validation cycle and warrants an independent Review decision. This does not require a separate reviewer agent or commit.
+## 2. Mandatory sizing gate
 
-Split when distinct deliverables can reasonably receive different acceptance decisions, especially when they have different ownership, completion conditions, failure boundaries, or required environments. Keep related success/error cases together when they establish one coherent behavior.
+A leaf is a small execution unit, not a feature-sized milestone. Before dispatch, verify that it has:
 
-Review granularity when:
+- one concrete result, without independently acceptable deliveries hidden in Steps;
+- one primary execution surface and a narrow write/verification boundary;
+- enough known inputs for a focused read–implement–self-review–validate run, without broad discovery, repeated compaction, or carrying unrelated task history;
+- a local completion check and an explicit stopping point.
 
-- work crosses three or more execution surfaces, such as persistence/migration, a queue/worker, a domain runtime, API, client, or deployment environment;
-- one task changes multiple applications or repositories, many unrelated files, or requires verification across multiple packages;
-- it combines several independently useful outputs or cannot be verified without several unfinished components converging;
-- an implementation task is accumulating migration decisions, lifecycle enhancements, UI work, and final runtime acceptance;
-- adding Steps or parallel agents is expanding the scope rather than resolving a bounded deliverable.
+If any condition fails, split or run bounded discovery before implementation. Do not wait until a task spans three runtimes, consumes most of a context window, or has already run for a long time. A larger context window, more workers, or a longer Step list does not make an oversized leaf ready.
 
-These are review triggers, not automatic split thresholds. Several code layers can be one small synchronous behavior; several failure cases can belong to one acceptance guarantee. Do not equate technical layers with independent runtimes.
+Split at a substantive change in outcome, runtime, required knowledge, write ownership, or verification environment. Even work inside one runtime may need separate tasks for independent behaviors, migrations, recovery semantics, or broad consumer batches. Split wide repetitive changes into independently validated batches.
 
-After review, split if the task still contains independently acceptable deliveries, hides an integration responsibility, or has no bounded acceptance loop. Otherwise retain it with a brief boundary explanation. Aim for a task that can be understood in a fresh context, not a specific line count or context-window percentage.
+Do not split mechanically by file or technical layer. A small synchronous behavior may touch adjacent local layers when its context and validation remain bounded; retain it with a concrete boundary explanation. Keep its necessary success/error coverage and safety invariants together. No fixed duration, file count, or token threshold proves that a task is small.
 
-## 3. Bounded vertical slices and enabling deliverables
+When uncertainty prevents a bounded implementation packet, first create a discovery task with a precise question, read scope, and observable output such as a reproduction, verified contract, or code-path map plus proposed child boundaries. It supports named ACs but does not itself prove their product behavior. Resolve its findings into the affected Spec/Tasks before dependent implementation; do not combine open-ended investigation and an unknown repair into one leaf.
 
-Prefer a bounded vertical slice for one behavior. Include only the layers needed to prove that behavior, not every eventual consumer or release concern.
+## 3. Small slices, enabling tasks, and task groups
 
-A vertical slice may span Schema, Domain, API, UI, and tests when that remains one small acceptance loop. It must not become the default justification for combining all persistence, runtime, lifecycle, client, and deployment work.
+Prefer a small behavior or contract slice. Independently acceptable enabling tasks are valid: a tested producer/consumer contract, a migration with compatibility invariants, a bounded persistence/runtime capability, or a client interaction against a ready contract. Tests stay with the implementation they validate, not in a final “补测试” task.
 
-Independently acceptable enabling tasks are valid, including:
+A complete product journey is usually a task group plus explicit integration gates, not permission to bundle Schema, runtime, API, client, lifecycle, and deployment into one checkbox. A task must prove its **own declared result** without later implementation. A named gate can separately prove the **combined feature**; do not redefine missing local acceptance as gate work after the fact.
 
-- a stable, testable Schema or producer/consumer contract;
-- a migration with verifiable data and compatibility invariants;
-- a storage, snapshot, or runtime capability with a bounded behavioral test;
-- a client interaction proven against a ready contract, with deployed interoperability assigned to an explicit gate.
+Illustrative decomposition, only for capabilities actually required by the Spec:
 
-These are behavior or contract boundaries, not mechanical `修改 Schema → 修改 Server → 修改 UI → 补测试` slices. Tests remain with the implementation they validate.
+```text
+T12  异步执行能力（分组，不直接派发）
+  T12.1 输入/终态契约 + 非法输入与状态约束测试
+  T12.2 持久化能力 + 原子写入/按标识读取测试
+  T12.3 最小真实领域执行 + 必需安全约束与失败路径测试
+  T12.4 创建/查询 API 行为 + 契约测试
+  I1    前述必要产物就绪后的早期真实语义联通验证
+  T12.5 客户端交互 + 定向状态/交互验证
+  I2    Spec 要求的目标环境用户路径验证
+```
 
-A task must not need a later task to prove its **own declared result**. It may precede a separate gate that proves the **combined feature**. Name that gate and keep the distinction explicit; do not retrospectively redefine incomplete work as complete without re-planning its acceptance ownership.
+Assign actual dependencies and owned paths before using this outline; the numbering is not a dependency graph. API/client work may start against a verified contract, while I1 requires the real connected implementations. Add separate migration, visual, cancellation, or recovery tasks only when required and independently verifiable; safety needed by the minimum path cannot be postponed. Split any leaf or gate further if it fails the sizing gate. Groups organize scope, not a queue for one executor to consume indefinitely.
 
 ## 4. Early integration and explicit gates
 
@@ -117,7 +124,7 @@ Consumers may implement against a ready shared contract or fixture before the pr
 
 Check start and acceptance relationships for cycles. In particular, do not make task completion depend on a gate that itself requires that task to be complete; reassign the assertions to remove the cycle.
 
-Parallel tasks must have ready prerequisites, distinct deliverables, and non-conflicting write ownership. When sharing a worktree, coordinate shared schemas, package exports, migrations, generated files, lockfiles, and package-wide checks. Without isolation, an unrelated unfinished change can contaminate evidence.
+Parallel tasks need ready prerequisites and exclusive write ownership, including tests, snapshots, generated output, formatting, and lockfile effects. Assign one owner for shared contracts/exports and the shared task ledger; workers return evidence rather than concurrently editing that ledger. Reserve or isolate mutable resources such as test databases, ports, browser profiles, and build directories. Worktrees do not replace ownership checks. If independence is unproven, serialize only the conflicting work; unvalidated sibling output is not a stable input.
 
 If an implementation uses a helper from a task absent from its dependency record, check whether the helper is already a verified shared prerequisite or whether the graph is stale. Update the real dependency; do not infer safety from the original table.
 
@@ -170,4 +177,4 @@ A task is checked only when its own required implementation and validation pass.
 
 Report implementation progress separately from outstanding feature acceptance. A count such as `13/14` is a task count, not an estimate of remaining effort or proof of release readiness. After splitting, state the changed counting basis rather than implying progress increased through relabeling.
 
-Keep stable IDs and original AC obligations when splitting. Use child IDs such as `T12.1`; map existing work and still-valid evidence without automatically repeating it. Follow `implementation.md` for execution-time re-planning. Do not reopen all completed work or create new agents, conversations, commits, or tests merely because the plan was split.
+Keep stable IDs and original AC obligations when splitting. Use child IDs such as `T12.1`; map existing work and still-valid evidence without repeating completed work or unaffected tests. Follow `implementation.md` for checkpoints and re-planning. Treat unfinished children as separate execution packets; apply the existing delegation policy for fresh workers rather than preserving a long conversation to avoid a new thread. Splitting does not require extra commits or reopening accepted work.

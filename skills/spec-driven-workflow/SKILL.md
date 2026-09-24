@@ -1,57 +1,49 @@
 ---
 name: spec-driven-workflow
-description: Use when creating, updating, reviewing, implementing, or closing software Specs and linked task documents, including re-scoping tasks that become difficult to verify during execution, tracking confirmed follow-up implementation in a repository TODO index, and archiving completed task documents without losing historical traceability. Also use for non-trivial changes, refactors, or migrations that need stable acceptance criteria, bounded deliverables, verification evidence, consistency review, and document lifecycle handling. Do not use for general documentation, simple questions, routine low-risk edits, one-line changes, or explicitly plan-free work.
+description: Plan, review, or implement non-trivial software changes, refactors, and migrations through Specs and small verifiable tasks. Re-split oversized work, preserve task handoffs, track confirmed TODOs, and archive completed work. Not for simple questions, routine low-risk edits, general documentation, or explicitly plan-free work.
 ---
 
 # Spec-Driven Workflow
 
-Maintain durable Spec and task-document contracts. Implementation begins only when the current request includes it.
+Maintain durable Spec and task contracts. Each executable leaf must fit a focused read–implement–validate run, not merely be understandable in a fresh context. Implementation begins only when the current request includes it.
 
 ## Reference routing
 
-Read only the references required for the current phase:
+Load only the references needed for the current phase:
 
 - Spec authoring or stable-contract changes: [references/spec-authoring.md](references/spec-authoring.md)
-- Task planning, dependencies, acceptance boundaries, or re-scoping: [references/task-planning.md](references/task-planning.md)
-- Confirmed follow-up implementation, TODO index synchronization, or resuming TODO work: [references/todo-tracking.md](references/todo-tracking.md)
-- Completed-task archival and post-completion document lifecycle: [references/archive-handling.md](references/archive-handling.md)
+- Task sizing, execution packets, dependencies, or re-scoping: [references/task-planning.md](references/task-planning.md)
+- Implementation, checkpoints, evidence, or delegation handoffs: [references/implementation.md](references/implementation.md)
 - Planning preflight or final consistency review: [references/review.md](references/review.md)
-- Implementation, evidence, delegation handoff, or execution-time re-planning: [references/implementation.md](references/implementation.md)
+- Confirmed follow-up implementation and TODO synchronization: [references/todo-tracking.md](references/todo-tracking.md)
+- Completed-task archival: [references/archive-handling.md](references/archive-handling.md)
 
-Load references progressively. For document-only work, read implementation guidance only when needed to assess executability. When re-scoping during implementation, consult the affected planning and review sections rather than restarting the entire workflow.
+An assigned executor reads its task, applicable Spec assertions/invariants, ready contracts, and relevant implementation guidance; it does not restart Spec authoring or load every reference, sibling task, and historical log. During re-planning, read only affected planning/review sections. Never omit an applicable constraint merely to shorten context.
 
 ## Operating contract
 
-- Follow the current request, applicable project rules, and confirmed context. These instructions do not authorize scope expansion, external mutations, deployment, destructive migration, or commits.
-- Respect the requested source boundary. Distinguish confirmed requirements, source-reported facts, directly verified facts, assumptions, and unresolved decisions. Do not claim to have inspected unavailable code or environments.
-- Preserve existing worktree changes. Reuse project terminology, interfaces, document locations, and test entry points.
-- Without a repository convention, use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`. Keep the Spec's first-creation date and filename stable on later revisions.
-- The Spec owns stable intent, domain boundaries, behavior, and acceptance. Tasks own implementation scope, dependencies, local completion conditions, evidence, and status.
-- A formal TODO document is only an index of confirmed follow-up implementation. While its source Spec/Task is active, that source remains authoritative. An archived source is provenance only and must not become the current implementation contract.
-- Never move a current-scope acceptance obligation into TODO or archive to make the current scope appear complete.
-- Prefer separate Spec units for independently deliverable subsystems. Multiple runtimes or many tasks alone do not justify separate Specs; a cohesive Spec may contain several bounded tasks and explicit gates.
-- A task completes its own declared acceptance loop. The feature completes only after all required integration and runtime gates pass. Neither an oversized task nor a catch-all final gate may hide independent deliverables.
-- Archive a task document only after its entire claimed scope is complete and the final consistency review passes. A completed child task, partial milestone, blocked gate, or unavailable runtime does not make the task document archival-ready.
-- A Task document must not be archived while it still owns unresolved implementation work. Valid future work must first transfer to the repository TODO index or an active successor Spec/Task; a historical reference to transferred work does not itself block archival.
-- Do not choose models, require subagents, or impose fixed file, token, task, or commit counts through this skill. Apply the existing delegation policy separately.
+- Follow the request, project rules, and confirmed context. This skill does not authorize scope expansion, external mutations, deployment, destructive migration, or commits.
+- Respect source boundaries. Distinguish requirements, reported facts, directly verified facts, assumptions, and unresolved decisions; do not claim unavailable code or environments were inspected.
+- Preserve worktree changes. Reuse project terminology, interfaces, paths, and test entry points. Otherwise use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`; keep the Spec's first-creation date and filename stable.
+- The Spec owns stable intent, boundaries, behavior, and acceptance. The linked task document owns executable scope, dependencies, context entry points, evidence, and status. Reuse it as the execution ledger rather than creating a competing plan.
+- A cohesive Spec may contain many small tasks. Separate Specs only for independently deliverable subsystems, not merely because tasks cross runtimes.
+- A leaf owns one concrete outcome, one primary execution surface, bounded inputs/write scope, and its own validation. Independently verifiable deliveries need separate leaves, not more Steps under a large checkbox. Stop and re-split remaining work when this boundary fails.
+- Local completion and feature acceptance are distinct. All required integration/runtime gates remain mandatory; neither a large task nor a catch-all final gate may hide independent deliveries.
+- TODO indexes confirmed follow-up implementation, not unresolved design, speculative ideas, or incomplete current-scope work. Active source Specs/Tasks remain authoritative; archived sources are provenance only. Never move current acceptance obligations into TODO/archive to claim completion.
+- Archive a task document only after its entire claimed scope and final consistency review pass and it owns no unresolved work. Transfer valid future work to TODO or an active successor first. Transferred historical references do not block archival; still-current Specs remain active.
+- Keep this skill model-neutral. Apply the existing delegation policy for models, fresh worker threads, and concurrency; do not require subagents or fixed file, time, token, task, or commit counts. Small tasks must remain usable without a particular runtime configuration.
 
 ## Workflow
 
-1. Determine whether the request is document-only or includes implementation.
-2. Inspect the relevant permitted sources and current-state constraints. Identify inventories, environment checks, or decisions that must precede dependent implementation or irreversible changes.
-3. Choose Spec boundaries; create or update each dated Spec and its linked task document.
-4. Give acceptance criteria stable IDs. Map each material assertion to an implementation owner and sufficient verification; name product-level gates where local evidence is insufficient.
-5. Plan bounded deliverables, real dependencies, contract-ready parallelism, and an early real-semantic integration path where multiple components must connect.
-6. When a concrete implementation item is explicitly confirmed for later follow-up, preserve it in the authoritative Spec/Task and synchronize the repository TODO index through `references/todo-tracking.md`. Do not use TODO for unresolved design questions, speculative ideas, or current-scope work that is merely incomplete.
-7. Run the planning preflight in `references/review.md`. Resolve document defects and report any genuine blockers.
-8. For document-only work, stop after the planning review unless the request specifically includes lifecycle cleanup or archival of already-completed documents.
-9. For implementation, follow `references/implementation.md` on the verified dependency frontier. Unresolved Blocking Questions stop affected work; unrelated dependency-ready work need not stop.
-10. If the acceptance boundary drifts, re-plan affected tasks before extending them or adding parallel workers. Preserve requirements, existing changes, and still-valid evidence. Update the Spec first when the stable contract changes. Synchronize affected TODO references when confirmed follow-up scope changes.
-11. Before claiming the requested feature or implementation scope complete, synchronize affected TODO entries with the authoritative Spec/Task state, then complete the final consistency review.
-12. When a task document's entire claimed scope is complete and the final consistency review passes, first ensure it owns no unresolved work by transferring valid future items to TODO or an active successor, then apply `references/archive-handling.md`: preserve historical evidence, keep still-current Specs active, update affected TODO/source links, and remove completed execution documents from active task entry points according to repository convention.
+1. Identify document-only versus implementation scope and inspect the relevant permitted sources. Resolve prerequisite inventories, environment checks, and contract decisions before dependent work; use bounded discovery when the implementation boundary is unknown.
+2. Create/update the Spec and linked task document. Give ACs stable IDs and map each material assertion to an implementation owner and sufficient verification.
+3. Plan fresh-context executable leaves using `task-planning.md`: precise inputs, exclusions, write ownership, local checks, and stop conditions. Record real dependencies and an early real-semantic integration path. Expand only a dependency-ready leaf into detailed Steps, not the whole feature into a long execution script.
+4. Run planning preflight. Re-split oversized leaves before dispatch. Document-only work stops here unless lifecycle cleanup was requested; unresolved Blocking Questions stop affected implementation, not unrelated ready work.
+5. Execute on the verified dependency frontier. Keep local implementation, self-review, and focused checks together. Checkpoint at completion, interruption, blockage, or scope growth; re-plan only remaining affected work while preserving valid evidence and original AC obligations. Change the Spec first when its stable contract changes.
+6. Synchronize confirmed follow-up items through `todo-tracking.md` when they arise or change. Keep execution failures and current-scope checkpoints in the active task document, not TODO.
+7. Before claiming completion, reconcile the ledger with actual changes and evidence, synchronize affected TODO entries, and run the single final consistency review. Review large results in bounded sections against a stable baseline, not by loading the whole execution history.
+8. Apply `archive-handling.md` only when the operating contract's archival conditions pass. Preserve evidence and source links and update active entry points.
 
 ## Handoff
 
-For document-only work, report the generated, revised, or archived paths, planning-review conclusion, Blocking Questions, residual planning risks, and any TODO index changes. State when only files were generated or reorganized and nothing was installed or applied.
-
-For implementation, also report completed and incomplete deliverables, outstanding integration/runtime gates, actual validations and limitations, final-review conclusion, TODO index changes, archival changes when relevant, and commit status when relevant. Do not equate written code, fixture tests, browser layout checks, and real-runtime acceptance.
+Report affected paths, planning/final-review conclusion appropriate to the phase, completed and incomplete scope, blockers, actual validations and limitations, TODO/archive changes, and authorized commit status when relevant. State when only files were generated and nothing was installed or applied. Do not equate written code, fixture tests, browser layout checks, or worker completion reports with feature acceptance.
