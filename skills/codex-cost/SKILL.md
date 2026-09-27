@@ -5,7 +5,7 @@ description: Delegate substantial coding, code reading, testing, debugging, or b
 
 # Fresh-Context Delegation and Cost Control
 
-Optimize for reliable completion and a small parent context. Treat Luna's model-call cost as negligible for this workflow: do not preserve a long worker conversation merely to save tokens or agent startups. The parent owns requirements, scope, key decisions, scheduling, and final acceptance; workers own bounded execution and local validation.
+Optimize for reliable completion and a small parent context. Treat Luna's model-call cost as negligible for this workflow: do not preserve a long worker conversation merely to save tokens or agent startups. Handoff latency and repeated context loading still matter; keep a bounded implementation, its checks, and repairs within the same unfinished assignment when ownership and scope permit. The parent owns requirements, scope, key decisions, scheduling, and final acceptance; workers own bounded execution and local validation.
 
 ## 1. Choose Delegation and Models
 
@@ -51,11 +51,13 @@ There is no skill-level single-worker limit. Run independent, dependency-ready a
 
 - **One active writer per path:** reserve write sets before dispatch. No two workers may modify the same repository-relative file concurrently, even in different line ranges or worktrees. Count create/delete/rename paths, tests, snapshots, generated files, formatting, and dependency-install effects. Shared files get one owner or a separate bounded prerequisite/integration assignment. The parent must not edit a worker-owned file concurrently.
 - **Stable inputs and contracts:** read-only tasks may overlap on stable inputs, but never consume another worker's in-progress files. Wait for the required output to be locally validated and available in the consumer workspace, or use a recorded immutable input snapshot with a planned integration check. Establish shared contracts before parallel producer/consumer implementation; a contract change pauses affected consumers and invalidates affected evidence.
-- **Shared resources count too:** reserve or isolate build output directories, test databases/fixtures, ports, browser profiles, and other mutable resources. Commands that touch unowned files or shared state are not allowed merely because the intended code edits are disjoint. Scope them narrowly, isolate their effects, or schedule them without conflicting work.
+- **Shared resources count too:** reserve or isolate build output directories, test databases/fixtures, ports, browser profiles, and other mutable resources. Commands that touch unowned files or shared state are not allowed merely because the intended code edits are disjoint. Scope them narrowly, isolate their effects, or schedule them without conflicting work. For shared builds or checks, name the producer, check owner, readiness signal, and consumers released by success; check that this order has no circular waits. The parent settles this order before dispatch rather than leaving workers to infer it from each other.
 - **Respect workspace boundaries:** use isolated worktrees when available and useful; otherwise enforce disjoint writes in the shared workspace. Worktrees do not replace ownership or dependency checks. Only the designated integrator may mutate the shared integration branch/index; workers must not run broad Git staging, reset, clean, or merge operations that could capture or discard others' changes. Transfer task-specific output through bounded integration assignments with one writer to the target at a time. Downstream tasks wait for the integrated output they require.
 - **Stop before expanding scope:** an unowned edit, unexpected concurrent change, or resource collision returns `blocked` or `needs_split` before further writes. Preserve all parties' changes; never resolve this by overwriting, reverting another worker, or choosing the last result. The parent pauses affected work, reassigns ownership or schedules a fresh repair, and releases a reservation only after confirming its worker and any mutating processes have stopped and the handoff is recorded. Unrelated ready work may continue.
 
 These are scheduling rules, not a claim that prompts create filesystem locks or guarantee isolation. Unverifiable isolation requires serialization of the affected work, not optimistic concurrent writes.
+
+While workers run, advance independent work whose inputs are stable. When none is ready, use completion notifications or a bounded wait within tool and communication limits. Request status when it can resolve a dependency ambiguity, blocker, or scope change; avoid repeated unchanged-state queries or progress-only messages. A wait that overlaps useful worker execution is not itself wasted time. When reporting efficiency, distinguish execution, rework, and handoff gaps using observed timings rather than adding overlapping waits and worker time.
 
 ## 5. One Assignment, One Fresh Worker
 
@@ -76,7 +78,8 @@ Inputs / dependencies: <stable read-only inputs, settled contract, available ups
 Exclusive write set: <owned paths, including tests/generated files; everything else read-only>
 Resources / integration: <isolated or reserved mutable resources, output transfer owner>
 Constraints / permissions: <exclusions, invariants, compatibility, allowed tools/actions>
-Validation: <focused checks, required evidence, completion condition>
+Validation: <exact scoped commands/procedures, required evidence, completion condition>
+Shared checks (when needed): <check owner, input readiness, resource order, consumers blocked until success>
 State / handoff: <read-only ledger path, task-specific artifact destination>
 Stop: <complete, blocked, or needs_split; no scope expansion or sub-agents>
 Return: <ID, status, changed paths, output revision/patch, checks/results, evidence, risks>
@@ -89,6 +92,10 @@ Once the parent can define this contract, stop duplicating implementation explor
 During execution, the parent receives compact status, updates the ledger and ownership, and schedules dependency-ready, conflict-free assignments. Check reported status, changed-path ownership, required evidence presence, output availability, and blockers; **do not routinely read each diff, review the worker's reasoning, rerun its checks, or accept/reject its code after every return**. Scheduling and integration bookkeeping are not intermediate code-review gates.
 
 Local validation is not deferred. Each worker self-reviews and runs its assigned checks before reporting `worker_done`. Validate producer/consumer contracts and add small integration checks at dependency boundaries so downstream work does not build on known failures. Dependent workers verify the particular inputs they consume, not review the whole upstream implementation.
+
+When shared types, schemas, or exports change, include a focused consumer compatibility check in the handoff requirements. A required package check delayed by concurrent work needs a named owner and readiness condition; it remains outstanding and blocks any completion or consumer that requires it. Keep bounded repairs within the unfinished assignment when they fit its write set. Do not close an assignment with missing required local evidence merely to create another repair task; once it is closed, use the fresh-worker rule for subsequent findings.
+
+Supply scoped validation commands so an intended focused run does not accidentally invoke a whole suite. Run shared checks against stable inputs at the earliest useful dependency boundary. Record the tested input scope and reuse valid results; repeat expensive checks when relevant inputs change or new failures or evidence gaps justify them, not merely because another worker takes ownership.
 
 A failed required check, missing dependency, contract conflict, write/resource collision, scope expansion, or action requiring new authorization pauses affected dependents immediately. The parent resolves only the blocking decision or schedules a fresh bounded investigation/repair; unrelated ready work may continue in parallel. Never reinterpret failed or missing validation as success to keep dispatch moving.
 
