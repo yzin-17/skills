@@ -11,7 +11,7 @@ Optimize for reliable completion and a small parent context. Treat Luna's model-
 
 Judge delegation benefit once for the overall task. Substantial exploration, cross-file work, tests, debugging, logs, or browser evidence normally belong in workers. Trivial local edits and small analysis/documentation tasks can stay with the parent. Naming a worker constrains model selection, but does not force delegation of an otherwise trivial task.
 
-Once delegation is worthwhile, actually delegate. Do not repeat the benefit calculation for every small assignment or pull those assignments back into the parent simply because each is now small.
+Once delegation is worthwhile, actually delegate. Do not repeat the benefit calculation for every small assignment or pull those assignments back into the parent simply because each is now small. During routine integration, the designated integrator may directly make a trivial local type or import repair when it owns the affected paths/resources, the repair preserves runtime behavior and contracts, and the scoped checks are known. Record the change and invalidate affected evidence; broader or uncertain repairs remain worker assignments. Findings from the final review follow Section 8.
 
 - Honor explicit user model, agent-role, reasoning, and selection constraints. Keep the current parent model and reasoning settings.
 - Default non-visual work to the configured Luna worker; use the model actually configured for that role rather than a hard-coded model version.
@@ -61,7 +61,7 @@ While workers run, advance independent work whose inputs are stable. When none i
 
 ## 5. One Assignment, One Fresh Worker
 
-Create a **new worker thread for every assignment**, even when the model and agent role stay unchanged. Never resume a completed worker for a different assignment or for findings from the final review. Reuse role configuration, not conversation history. Close each worker after completion or a safe checkpoint and a recorded handoff; independent workers need not wait for that closure to start.
+Create a **new worker thread for every assignment**, even when the model and agent role stay unchanged. Never resume a completed worker for a different assignment or for findings from the final review. Reuse role configuration, not conversation history. Close each worker after completion or a safe checkpoint and a recorded handoff when the tool is available; otherwise record in the ledger that its session is no longer reusable and leave it unused. Do not invent a close operation. Independent workers need not wait for that closure to start.
 
 Use only fresh-thread/history controls exposed by the active tools. Disable parent-history inheritance when supported, and pass a self-contained assignment instead of a parent transcript or old worker chat. A new thread ID is not proof of clean history. When clean-history creation is unsupported or cannot be verified, report that limitation before dispatch rather than inventing flags, claiming isolation, or silently using inherited history.
 
@@ -78,7 +78,8 @@ Inputs / dependencies: <stable read-only inputs, settled contract, available ups
 Exclusive write set: <owned paths, including tests/generated files; everything else read-only>
 Resources / integration: <isolated or reserved mutable resources, output transfer owner>
 Constraints / permissions: <exclusions, invariants, compatibility, allowed tools/actions>
-Validation: <exact scoped commands/procedures, required evidence, completion condition>
+Validation: <exact commands/procedures, expected scope, required checks ordered by cost, completion condition>
+Check evidence: <command/procedure, tested scope, input state, result, invalidation inputs>
 Shared checks (when needed): <check owner, input readiness, resource order, consumers blocked until success>
 State / handoff: <read-only ledger path, task-specific artifact destination>
 Stop: <complete, blocked, or needs_split; no scope expansion or sub-agents>
@@ -93,9 +94,13 @@ During execution, the parent receives compact status, updates the ledger and own
 
 Local validation is not deferred. Each worker self-reviews and runs its assigned checks before reporting `worker_done`. Validate producer/consumer contracts and add small integration checks at dependency boundaries so downstream work does not build on known failures. Dependent workers verify the particular inputs they consume, not review the whole upstream implementation.
 
+Select validation for the changed surface and follow repository-required gates: focused behavior checks and affected static/type checks, then package-wide tests/builds, then repository gates and live runtime checks when required. Complete required lower-cost checks before starting more expensive tiers; a failed required check blocks escalation. Do not add checks that do not validate the change.
+
 When shared types, schemas, or exports change, include a focused consumer compatibility check in the handoff requirements. A required package check delayed by concurrent work needs a named owner and readiness condition; it remains outstanding and blocks any completion or consumer that requires it. Keep bounded repairs within the unfinished assignment when they fit its write set. Do not close an assignment with missing required local evidence merely to create another repair task; once it is closed, use the fresh-worker rule for subsequent findings.
 
-Supply scoped validation commands so an intended focused run does not accidentally invoke a whole suite. Run shared checks against stable inputs at the earliest useful dependency boundary. Record the tested input scope and reuse valid results; repeat expensive checks when relevant inputs change or new failures or evidence gaps justify them, not merely because another worker takes ownership.
+For a focused test run, confirm the chosen package script forwards filters to the installed runner, or invoke that runner directly. Compare observed test discovery with the intended files/tests; stop an unexpectedly broad run when feasible and correct the command before retrying. If it already completed, retain its actual coverage as reusable evidence.
+
+Run shared checks against stable inputs at the earliest useful dependency boundary. Return compact check records for the parent to retain in the ledger: command/procedure, tested scope, input state, result, and invalidation inputs. Record a revision plus enough relevant working-tree state to distinguish uncommitted inputs; whole-repository hashing is unnecessary. Reuse valid results whose coverage meets the required check. Repeat expensive checks only when their relevant source, contracts, configuration, or dependencies change, or when new failures or evidence gaps justify them; a new owner or unrelated revision alone does not invalidate evidence.
 
 A failed required check, missing dependency, contract conflict, write/resource collision, scope expansion, or action requiring new authorization pauses affected dependents immediately. The parent resolves only the blocking decision or schedules a fresh bounded investigation/repair; unrelated ready work may continue in parallel. Never reinterpret failed or missing validation as success to keep dispatch moving.
 
@@ -103,7 +108,7 @@ Browser validation belongs to the eligible worker and covers directly affected U
 
 ## 8. One Consolidated Final Review Phase
 
-Once the planned implementation assignments are `worker_done` and their outputs are integrated, use fresh, bounded validation assignments for required integration/regression checks against a recorded, stable final state. Pause mutations to that state during validation/review or validate an immutable snapshot; later changes require affected checks to be rerun. Validation tasks may run in parallel only with independent resources. Do not infer integration success from isolated unit tests. Keep substantial validation out of the parent context.
+Once the planned implementation assignments are `worker_done` and their outputs are integrated, reconcile existing check evidence with a recorded, stable final state. Use fresh, bounded validation assignments for required integration/regression checks without valid evidence. Pause mutations to that state during validation/review or validate an immutable snapshot; later changes require affected checks to be rerun. Validation tasks may run in parallel only with independent resources. Do not infer integration success from isolated unit tests. Keep substantial validation out of the parent context.
 
 When the entire task set, including required validation, is ready, the parent performs one consolidated review phase:
 
