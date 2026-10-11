@@ -4,7 +4,7 @@ Turn a Spec into bounded, independently reviewable deliverables without over-fra
 
 ## 1. Task document and execution packet
 
-Link the Spec and retain stable Task IDs. Follow repository paths; otherwise use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`. Keep the Spec's first-creation date stable. Use this task document as the authoritative execution ledger, not a second plan or conversation transcript.
+Link the Spec and retain stable Task IDs. Follow repository paths; otherwise use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`. Keep the Spec's first-creation date stable. Use this Task as the authoritative current plan and status entry, not a conversation transcript or chronological execution ledger. Follow [documentation-structure.md](documentation-structure.md) for supporting logs/evidence and lossless extraction of existing mixed documents.
 
 Each executable leaf must carry enough information for a fresh-context executor to start, finish its bounded outcome, and report evidence without replaying prior chats. State its AC assertion, ready dependencies, focused context entry points, primary execution surface, allowed writes/exclusions, completion conditions, and validation. Include necessary tests, configuration, and documentation within that same outcome.
 
@@ -16,8 +16,13 @@ Store shared baseline, invariants, and environment defaults once and reference t
 # <任务名称>实施任务
 
 对应 Spec：<相对链接>
-> 状态：<本地实施进度；尚未通过的必要门禁>
-> 共享执行约束：<工作区/基线；必须保留的修改；适用约束与环境入口>
+> 状态核对：<最近核对时间；本地实施进度；尚未通过的必要门禁>
+> 共享执行约束：<当前工作区/基线；必须保留的修改；适用约束与环境入口>
+> 实施记录与证据：<已有日志/报告链接；未产生时省略>
+
+## 当前执行摘要
+
+<当前执行叶、精确阻塞或下一可执行叶；涉及授权或并行资源时写当前边界。更新时替换本段，不追加历次阶段汇报。>
 
 ## 任务
 
@@ -28,7 +33,8 @@ Store shared baseline, invariants, and environment defaults once and reference t
   - 执行边界：<主要执行面；可写路径，含测试/生成文件；不包含的范围>
   - 完成条件：<本任务可独立证明的结果，不依赖未完成的后续实现>
   - 验证方式：<具体命令/过程、环境、关键断言>
-  - 执行记录：<执行后填写：状态、输出/基线、证据、阻塞或下一步>
+  - 当前结果：<最新实现/验证状态、剩余条件；关联门禁只引用其权威条目>
+  - 证据：<最近适用的日志/验证报告锚点；完整命令、写集及尝试过程放到链接正文>
 
 ## 验收映射（多个任务共同覆盖同一 AC 时使用）
 | AC / 断言 | 实现责任任务 | 验证责任任务或门禁 |
@@ -124,7 +130,7 @@ Consumers may implement against a ready shared contract or fixture before the pr
 
 Check start and acceptance relationships for cycles. In particular, do not make task completion depend on a gate that itself requires that task to be complete; reassign the assertions to remove the cycle.
 
-Parallel tasks need ready prerequisites and exclusive write ownership, including tests, snapshots, generated output, formatting, and lockfile effects. Assign one owner for shared contracts/exports and the shared task ledger; workers return evidence rather than concurrently editing that ledger. Reserve or isolate mutable resources such as test databases, ports, browser profiles, and build directories. Worktrees do not replace ownership checks. If independence is unproven, serialize only the conflicting work; unvalidated sibling output is not a stable input.
+Parallel tasks need ready prerequisites and exclusive write ownership, including tests, snapshots, generated output, formatting, and lockfile effects. Assign one owner for shared contracts/exports and the shared Task; workers return evidence rather than concurrently editing that Task. Reserve or isolate mutable resources such as test databases, ports, browser profiles, and build directories. Worktrees do not replace ownership checks. If independence is unproven, serialize only the conflicting work; unvalidated sibling output is not a stable input.
 
 If an implementation uses a helper from a task absent from its dependency record, check whether the helper is already a verified shared prerequisite or whether the graph is stale. Update the real dependency; do not infer safety from the original table.
 
@@ -173,7 +179,9 @@ Performance-dependent infrastructure tasks are conditional. Record the activatio
 
 Use checkboxes for executable tasks and acceptance gates. Use headings or explicit group entries for parents; do not count both the parent and its children as completed work.
 
-A task is checked only when its own required implementation and validation pass. Keep incomplete tasks unchecked with concise implementation, validation, and blocker details. Store shared integration/runtime gate status once and reference it from local tasks.
+A task is checked only when its own required implementation and validation pass. Keep incomplete tasks unchecked with concise current implementation, validation, and blocker details. Replace superseded current results and refresh the top summary in the same checkpoint; preserve the earlier observations in linked history. Store shared integration/runtime gate status once and reference it from local tasks. Logs and evidence reports must not acquire a second live task checklist.
+
+When work is added or split, record its origin once in the implementation log: an existing AC obligation, a discovered prerequisite/defect, or an explicitly authorized scope change. Keep the current scope and ownership in the Spec/Task. More tasks or a longer log alone do not justify shrinking correct work, adding product requirements, or reopening accepted work.
 
 Report implementation progress separately from outstanding feature acceptance. A count such as `13/14` is a task count, not an estimate of remaining effort or proof of release readiness. After splitting, state the changed counting basis rather than implying progress increased through relabeling.
 

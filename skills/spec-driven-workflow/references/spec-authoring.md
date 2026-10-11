@@ -123,6 +123,6 @@ Update the Spec first when confirmed feedback changes stable behavior, business 
 
 Change only the task document for implementation sequencing, task granularity, or internal details that preserve the stable contract. A local task may hand a product-level check to an explicit gate only if the same feature-level obligation remains intact.
 
-Keep current status and linked task IDs synchronized. Preserve historical baseline descriptions with an explicit baseline date; do not present pre-implementation state as current fact after implementation has progressed. Keep detailed execution evidence in Tasks or linked reports, not in the Spec.
+Keep current status and linked task IDs synchronized. Preserve historical baseline descriptions with an explicit baseline date; do not present pre-implementation state as current fact after implementation has progressed. Keep detailed execution history and evidence in linked logs/reports under `documentation-structure.md`, not in the Spec or the current Task body. The Task retains current completion conditions, status, and evidence pointers; a stable design decision discovered during execution must still be reflected here rather than living only in a log.
 
 Use this check: another developer given only the updated Spec should be able to implement the intended behavior without guessing newly confirmed requirements.

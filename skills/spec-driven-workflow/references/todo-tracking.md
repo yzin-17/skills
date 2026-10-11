@@ -10,6 +10,8 @@ Follow an existing repository convention. Otherwise use `docs/TODO.md`.
 
 While the linked Spec/Task is active, it remains authoritative for behavior, acceptance criteria, dependencies, completion conditions, validation, and status. If that source is later archived, the archived document becomes historical provenance only; future implementation must establish an active current contract before code work begins.
 
+Implementation logs and evidence reports preserve dated observations, not current work ownership; use the active Task to decide what remains required. Extracting execution history does not transfer work to TODO or make a current gate complete.
+
 The TODO index must not duplicate a full plan or silently redefine those contracts. Use relative links where practical. Prefer a Task reference with its stable task ID; also link the Spec or AC when it materially improves traceability.
 
 ## 2. Eligibility

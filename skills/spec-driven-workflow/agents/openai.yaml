@@ -1,4 +1,4 @@
 interface:
   display_name: "Spec-Driven Workflow"
-  short_description: "小任务拆分、上下文交接、验证闭环与 Spec/TODO 归档"
-  default_prompt: "使用 $spec-driven-workflow 处理这项需求。按当前授权规划或实施；将任务拆成一次有界执行可完成验证的独立叶子，明确上下文入口、写入范围、依赖和停止条件。发现范围扩张时先记录现场，再拆分剩余工作，保留原验收义务与有效证据；沿用现有委派策略。完成 planning preflight，实施时执行本地验证与统一终审，并按 skill 规则同步 TODO、处理完成归档。"
+  short_description: "有界任务规划、当前计划与实施日志分离、验证闭环及归档"
+  default_prompt: "使用 $spec-driven-workflow 处理这项需求。按当前授权规划或实施；将任务拆成一次有界执行可完成验证的独立叶子，明确上下文入口、写入范围、依赖和停止条件。发现范围扩张时先记录现场，再拆分剩余工作，保留原验收义务与有效证据；沿用现有委派策略。Task 只维护当前计划、状态与证据链接，实施历史和验证明细写入关联日志/报告；每次更新替换当前摘要，不因文档拆分改变范围或验收义务。完成 planning preflight，实施时执行本地验证与统一终审，并按 skill 规则同步 TODO、处理完成归档。"

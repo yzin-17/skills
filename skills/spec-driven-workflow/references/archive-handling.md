@@ -28,7 +28,7 @@ A Task is not archive-eligible while it still owns any unresolved work. Ownershi
 
 Before archival, resolve each remaining item in one of these ways:
 
-- complete it and preserve the validation evidence in the Task;
+- complete it and preserve the validation evidence in linked reports, with the acceptance result and evidence pointers in the Task;
 - keep the Task active if the item still belongs to the current acceptance scope;
 - for explicitly confirmed future work outside the completed scope, transfer ownership to the repository TODO index or an active successor Spec/Task, preserving a source link instead of a second status copy;
 - remove the item only when the authoritative decision explicitly cancels or supersedes it.
@@ -42,7 +42,7 @@ Before moving a completed Task document:
 1. Finalize its status, required evidence, and final Review conclusion. Preserve stable Task/AC IDs and enough evidence to explain why the scope was accepted.
 2. Synchronize confirmed deferred work through `todo-tracking.md`. Current-scope gaps cannot be relabeled as future work during closure. Verify that no unresolved work remains owned by the Task after synchronization.
 3. Decide separately whether the linked Spec remains a current contract. Completion of implementation does not by itself make a Spec historical.
-4. Identify active references that would break or become misleading after the move, especially TODO entries, indexes, READMEs, successor documents, and Review links.
+4. Identify active references that would break or become misleading after the move, especially TODO entries, indexes, READMEs, successor documents, Review links, and linked implementation logs/evidence. Include relative links and historical anchors in both directions.
 5. Update active documentation that owns current architecture, operation, or domain truth when the repository convention requires it. Do not keep a completed Task active merely to serve as current architecture documentation.
 
 ## 3. Move semantics
@@ -63,6 +63,8 @@ A linked Spec is handled independently:
 - when archived without a repository-specific path, move it to `docs/archive/specs/<same-filename>`.
 
 Archive means “historical, not a current implementation source.” It does not mean deletion.
+
+Supporting implementation logs and evidence follow [documentation-structure.md](documentation-structure.md). They may be extracted while the Task is still active; this does not archive or complete that Task. At closure, move task-owned support files with the Task or retain their stable repository locations and update links in both directions. Keep shared evidence in its existing authoritative location. Never concatenate logs back into the Task just to archive them together, or copy reports into a second evidence history.
 
 If concrete inbound links cannot be updated in the same change and the repository already permits compatibility redirects, the old path may temporarily contain only a short pointer to the archive location. Do not duplicate status, acceptance criteria, evidence, or implementation details in the redirect. Remove such redirects after references are repaired when the repository convention expects that cleanup.
 
@@ -88,7 +90,8 @@ After moving documents, verify that:
 - active indexes and TODO links resolve to the intended current or historical source;
 - still-current Specs remain discoverable and are not archived solely because their implementation finished;
 - archived Specs/Tasks are not described as current requirements or current runtime truth;
-- the archive move did not remove required evidence or stable identifiers.
+- the archive move did not remove required evidence or stable identifiers;
+- implementation-log/evidence links, backlinks, and any moved historical anchors still resolve, and no supporting report is presented as the current task-status owner.
 
 Do not create a second completed-work status database. The archived Task itself, Git history, and any repository archive index are sufficient unless project rules require more.
 

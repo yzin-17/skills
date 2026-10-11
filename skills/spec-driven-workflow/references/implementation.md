@@ -33,7 +33,7 @@ Re-scoping preserves completed work and unaffected evidence; it does not justify
 
 ### Durable checkpoint and fresh-context continuation
 
-At task completion, blockage, scope growth, or before a planned context switch, persist a compact record in the existing task ledger. During delegation, its designated owner updates the ledger; workers return the record and write detailed evidence only to their assigned artifact paths.
+At task completion, blockage, scope growth, or before a planned context switch, persist the execution record in the linked implementation log or evidence report, then replace the compact current checkpoint and affected statuses in the Task. Follow [documentation-structure.md](documentation-structure.md); do not append another dated phase report to the Task. During delegation, the designated owner reconciles the current Task; workers return a compact result and write details only to their assigned record/evidence paths.
 
 ```text
 Task / state: <ID; running, worker_done, blocked, or needs_split as applicable>
@@ -43,11 +43,11 @@ Decisions / remaining: <settled constraints; unfinished assertion; exact blocker
 Ownership / live work: <worker/workspace and any still-running process or reserved resource>
 ```
 
-These are execution states, not substitutes for acceptance: `worker_done` reports local completion and never proves feature acceptance. Keep original requirements in the Spec/Task, not solely in a summary. Store logs outside the active ledger; return decisions and evidence pointers rather than transcripts.
+This is the latest continuation packet, not an accumulating history section. These are execution states, not substitutes for acceptance: `worker_done` reports local completion and never proves feature acceptance. Keep requirements, current dependencies, completion conditions, and actionable blockers in the Spec/Task; do not move them solely into a log. Preserve previous checkpoints as dated historical records, and return current decisions and evidence pointers rather than transcripts.
 
 For a new leaf, prefer fresh task context and pass only its packet and relevant settled facts. When delegation is selected, use the fresh-worker rules of the existing policy (for example `codex-cost`); do not resume an old worker for unrelated work. Use only history controls actually exposed by the active tools, and report when clean history cannot be established. A new thread ID, model switch, or worktree is not proof of a clean conversation. Without delegation, keep one bounded leaf active and checkpoint for the next available fresh-context continuation; do not pretend a Markdown instruction reset the current session.
 
-After interruption or compaction, reload the applicable criteria and ledger, inspect actual changes, and reconcile live workers/processes and ownership before dispatching again. Confirm the necessary outputs are present in the current workspace. Do not duplicate still-running work, reset the worktree, or rerun valid completed tasks. Compaction is a continuity mechanism, not a substitute for task sizing or durable state.
+After interruption or compaction, read the Task's current summary, the assigned leaf, applicable criteria, and its latest linked evidence; open older records only for a specific unresolved question. Inspect actual changes and reconcile live workers/processes and ownership before dispatching again. Confirm the necessary outputs are present in the current workspace. Do not duplicate still-running work, reset the worktree, or rerun valid completed tasks. Compaction is a continuity mechanism, not a substitute for task sizing or durable state.
 
 ## 3. Task and Step execution
 
@@ -81,12 +81,13 @@ Do not run the full repository, full browser journey, or the same expensive suit
 
 Evidence should identify the assertion, command or procedure, result, evidence kind, and enough source/environment information to establish applicability. For cross-repository or runtime evidence, identify the relevant source/deployed revisions or image IDs, migration state, selected adapter, and configuration differences. Do not expose secrets.
 
-When changes are uncommitted, say so and identify the tested worktree scope rather than claiming a clean commit was tested. Use references to durable logs or reports for long output; keep task evidence concise.
+When changes are uncommitted, say so and identify the tested worktree scope rather than claiming a clean commit was tested. Put exact commands, complete write sets, failure/retry details, and source/environment evidence in linked logs or reports. Keep only the latest applicable result, evidence boundary, outstanding condition, and link in the Task. Reuse a coherent report for related checks rather than creating one file per command. Temporary logs alone are not durable completion evidence; retain the essential assertion, inputs, procedure, result, and limits in the repository report or an approved durable artifact.
 
 ```md
 - [ ] Tn：<交付目标>
   - 实现状态：已实现
-  - 定向验证：通过；<命令/过程>；<关键断言>；<代码或工作区基线>
+  - 当前验证：通过；<关键断言与当前适用基线>
+  - 证据：<验证报告锚点；实际命令/过程和历次结果见链接正文>
   - 证据边界：<例如：真实领域逻辑 + 固定输入；不证明在线 Provider 可用>
   - 剩余条件：<本任务仍缺的必要检查及阻塞原因>
   - 关联门禁：<仅在有独立产品级门禁时引用>
@@ -102,7 +103,7 @@ A required package check blocked by another parallel change must be isolated and
 
 Apply the existing delegation policy without adding model choices or a single-worker limit here. When delegation is selected, give each worker one executable leaf, not a feature/group or open-ended task queue. Use the task packet and checkpoint contract above; workers own local self-review and focused checks before returning.
 
-Reserve writable paths and mutable resources before dispatch, including tool-generated changes. Shared contracts, migrations, exports, lockfiles, and the authoritative ledger have one designated writer. The parent must not edit worker-owned files concurrently. Use isolated workspaces where useful, but transfer validated outputs through an owned integration step and verify availability before consumers start. If a write/resource conflict or contract change appears, pause affected dependents before further writes; unrelated ready work may continue.
+Reserve writable paths and mutable resources before dispatch, including tool-generated changes. Shared contracts, migrations, exports, lockfiles, and the current Task have one designated writer. The parent must not edit worker-owned files concurrently. Use isolated workspaces where useful, but transfer validated outputs through an owned integration step and verify availability before consumers start. If a write/resource conflict or contract change appears, pause affected dependents before further writes; unrelated ready work may continue.
 
 During execution, the orchestrator checks status, ownership, output availability, evidence presence, and blockers to schedule work. Do not turn every worker return into a mandatory parent diff review or repeated full test run. Missing/failed checks still block the affected dependency frontier; scheduling is not permission to ignore them.
 
@@ -116,9 +117,9 @@ The orchestrator owns the final consistency review of actual changes and evidenc
 - Local tasks may complete before associated product gates, but the feature remains incomplete while any required gate is outstanding.
 - A failed integration gate does not invalidate every local result. Reopen only tasks whose own behavior or evidence was disproved; assign missing behavior explicitly.
 - Update dependencies and consumers when an actual contract or helper dependency changes. Restore affected checked tasks to incomplete when their evidence is invalidated, then revalidate.
-- Keep Spec status, task summaries, AC mapping, and final Review consistent. Treat baseline descriptions as historical when appropriate.
+- Keep Spec status, the Task's top summary, affected task results, AC mapping, and final Review consistent at each checkpoint. Keep a concise outcome and supporting link in navigation/review summaries; do not maintain independent copies of the task state. Earlier observations remain dated history, not competing current claims.
 
-Retain enough historical evidence to explain decisions, but do not grow the active task document into a full command transcript. A completion ratio measures task count, not remaining work or readiness.
+Retain history through linked implementation logs and evidence. When a mixed Task requires readers to scan successive phase reports to discover the current state, extract those records using `documentation-structure.md` without changing accepted scope, stable IDs, or remaining obligations. A completion ratio measures task count, not remaining work or readiness.
 
 ## 7. Commit boundaries
 
@@ -132,7 +133,7 @@ Without authorization, leave changes uncommitted, preserve evidence, and report 
 
 When implementation contradicts the documents, update the affected plan rather than silently diverging. Apply the Spec-first rule for stable contract changes and the re-planning procedure for execution-only changes.
 
-Run the final consistency review in `review.md` before claiming completion. Review large changes in bounded sections with coverage tracking against a stable integrated baseline; later mutations invalidate affected evidence. Findings become small repair/validation tasks, followed by review of the changed and affected scope, not a revived unbounded worker conversation. Report outstanding tasks/gates, actual validations, scope limits, review conclusion, and authorized commit status. An implementation milestone is not full feature acceptance.
+Run the final consistency review in `review.md` before claiming completion. Keep the latest conclusion and unresolved owners in the Task; put substantial findings and per-section review evidence in the linked review/evidence report without adding a second review gate. Review large changes in bounded sections with coverage tracking against a stable integrated baseline; later mutations invalidate affected evidence. Findings become small repair/validation tasks, followed by review of the changed and affected scope, not a revived unbounded worker conversation. Report outstanding tasks/gates, actual validations, scope limits, review conclusion, and authorized commit status. An implementation milestone is not full feature acceptance.
 
 ## Codex documentation basis
 
@@ -140,6 +141,6 @@ Checked against the official documentation on 2026-09-24:
 
 - [Subagents](https://developers.openai.com/codex/subagents/): bounded delegation, concise returned results, and caution with concurrent writers.
 - [Developer commands](https://developers.openai.com/codex/cli/slash-commands/): in the CLI, `/new` starts a fresh chat, `/fork` copies the current conversation, and `/compact` summarizes it. These are client commands, not assumed agent-callable tools.
-- [ExecPlans](https://developers.openai.com/cookbook/articles/codex_exec_plans): durable, self-contained plans and observable progress. Reuse the existing Spec/Task ledger; do not require an additional `PLANS.md`.
+- [ExecPlans](https://developers.openai.com/cookbook/articles/codex_exec_plans): durable, self-contained plans and observable progress. Reuse the existing Spec/Task entry with linked execution records; do not require an additional `PLANS.md`.
 
 The sizing gate and checkpoint rules are this workflow's policy, not vendor-enforced limits. Runtime capabilities must still be checked in the active client.

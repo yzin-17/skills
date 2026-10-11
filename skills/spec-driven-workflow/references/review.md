@@ -31,7 +31,7 @@ Check that start dependencies truly block safe execution; no necessary prerequis
 
 Check acceptance dependencies separately when present. Detect cycles, especially between a task's completion and a gate that requires that task to be complete.
 
-For parallel work, verify authoritative contracts, readiness evidence, consumer consistency, exclusive paths/resources, and output transfer ownership. Include tests, generated output, lockfiles, and shared ledger writes; worktree isolation alone does not prove independence. Confirm consumers use available validated output, not in-progress sibling files. Matching type names are insufficient when state, timing, errors, or side effects remain undefined; implementation helpers must agree with declared dependencies.
+For parallel work, verify authoritative contracts, readiness evidence, consumer consistency, exclusive paths/resources, and output transfer ownership. Include tests, generated output, lockfiles, and shared Task writes; worktree isolation alone does not prove independence. Confirm consumers use available validated output, not in-progress sibling files. Matching type names are insufficient when state, timing, errors, or side effects remain undefined; implementation helpers must agree with declared dependencies.
 
 ### 1.4 Decisions, migration, and environments
 
@@ -49,6 +49,12 @@ Scan for unresolved instructions such as `TBD`, `TODO`, `later`, `处理细节`,
 
 Move material design uncertainty to Spec questions. Blocking Questions stop affected implementation; Non-blocking questions need a default and impact boundary. Missing environmental access must not silently waive required acceptance.
 
+### 1.6 Document ownership and current-state readability
+
+Apply [documentation-structure.md](documentation-structure.md). Verify that the Task is the current plan/status owner, its top summary agrees with its leaves and gates, and a fresh executor can find the current frontier without traversing chronological reports. History, full write sets, command output, and repeated attempts belong in linked records; those records do not own another active checklist.
+
+When extracting existing history, preserve stable Task/AC IDs, required checks, authorization boundaries, unresolved obligations, and still-valid evidence. Check incoming and outgoing links and repair or explicitly redirect moved historical anchors. Separating documents is not cancellation, acceptance, or a reason to re-plan correctly scoped work.
+
 ### Planning-review conclusion
 
 Record one of:
@@ -63,7 +69,7 @@ State the reviewed scope and separate planning readiness from outstanding runtim
 
 The orchestrating agent owns one consolidated final review phase, not a required parent review after every worker return. Inspect actual changes and evidence, not only checkboxes or worker conclusions. Use risk-based targeted verification rather than automatically duplicating every test.
 
-Reload the original acceptance criteria, exclusions, current ledger, and integrated baseline before review or after a context reset. For a large result, review bounded sections and record coverage of all required assertions and cross-task seams. Keep the reviewed state stable or use an immutable snapshot; later changes require affected checks/review to be repeated. One review phase does not mean one oversized prompt.
+Reload the original acceptance criteria, exclusions, current Task, and integrated baseline before review or after a context reset. Follow its evidence links for the assertions under review; do not require loading the complete implementation log. For a large result, review bounded sections and record coverage of all required assertions and cross-task seams. Keep the reviewed state stable or use an immutable snapshot; later changes require affected checks/review to be repeated. One review phase does not mean one oversized prompt.
 
 Partial review is valid, but a full pass requires every assertion and gate for the claimed scope. Findings become bounded repair/validation tasks; re-review the changed and affected areas when their evidence is ready.
 
@@ -73,7 +79,7 @@ Check that all checked tasks are valid; necessary local tests were not deferred 
 
 Confirm synchronized Spec/Task status, current versus historical baseline descriptions, acceptance mappings, tests, configuration, documentation, and authorized commit handling. Reuse prior evidence where still valid; invalidate only the affected scope when later changes disprove it.
 
-Maintain one final-review section in the task document:
+Maintain one final-review section in the Task for the current checklist/conclusion and unresolved owners. Link to a review/evidence report for lengthy findings or verification details; do not duplicate the findings or create another gate. An externally owned review may be referenced by its current conclusion and link instead of copying its checklist. For an inline review, use:
 
 ```md
 ## 最终一致性 Review
@@ -89,6 +95,7 @@ Maintain one final-review section in the task document:
 - [ ] 实现未超出 Spec 范围，未把可选设施变成强制要求
 - [ ] 证据类型、场景覆盖、代码版本与目标环境支持所声明的验收结果
 - [ ] 测试、配置、文档、Spec/Task 状态与实际实现一致
+- [ ] Task 顶部摘要、当前叶与门禁一致；日志/证据独立且链接有效，没有把历史记录当作当前状态
 - [ ] 必要实施 Step 已验证；提交处理符合授权且保留既有用户修改
 - [ ] 未发现未处理的实现、Spec、任务或验收证据不一致
 
@@ -98,7 +105,7 @@ Maintain one final-review section in the task document:
 - 已确认的问题及责任任务：
 - 尚未通过的必要门禁与阻塞原因：
 - 遗留风险或已确认的后续范围：
-- 验证命令/过程、结果与证据引用：
+- 最新验证结论与证据引用：<完整命令/过程、分段发现及历次结果见链接报告>
 ```
 
 Use `不通过` for established nonconformance and `阻塞` for missing required decisions, access, or evidence. Neither permits a full completion claim. Do not check items simply because the workflow reached the final phase.
