@@ -55,6 +55,8 @@ Apply [documentation-structure.md](documentation-structure.md). Verify that the 
 
 When extracting existing history, preserve stable Task/AC IDs, required checks, authorization boundaries, unresolved obligations, and still-valid evidence. Check incoming and outgoing links and repair or explicitly redirect moved historical anchors. Separating documents is not cancellation, acceptance, or a reason to re-plan correctly scoped work.
 
+For documentation layout or archival work, verify the ownership and migration checks in that reference: long-lived design and scoped Specs remain separate, evidence is independent, optional directories reflect actual content, path consumers still work, and repository documents are present in the staged/committed tree when that delivery is authorized.
+
 ### Planning-review conclusion
 
 Record one of:
@@ -110,10 +112,10 @@ Maintain one final-review section in the Task for the current checklist/conclusi
 
 Use `不通过` for established nonconformance and `阻塞` for missing required decisions, access, or evidence. Neither permits a full completion claim. Do not check items simply because the workflow reached the final phase.
 
-Document-only work ends with planning review, not a fabricated implementation-review pass. A file-format or link check proves document integrity, not that future agents will always follow the workflow.
+Requirements/planning-only work ends with planning review, not a fabricated implementation-review pass. Requested documentation maintenance completes its scoped moves and document-consistency review. A file-format or link check proves document integrity, not that future agents will always follow the workflow or that a product's runtime gates passed.
 
 ## 3. Handoff requirements
 
-For document-only work, report paths, planning-review conclusion, source/verification limits, Blocking Questions, and remaining planning risks. Do not imply generated rules were installed or project code was changed.
+For document-only work, report paths, the applicable planning/document-consistency conclusion, source/verification limits, Blocking Questions, and remaining risks. Report installation or synchronization only when it was requested and actually performed; writing or validating rules alone does not install them or prove runtime behavior.
 
 For implementation, also report completed and incomplete deliverables, required outstanding gates and real blockers, actual validation results, final-review conclusion, and relevant commit status. Keep local implementation, integration acceptance, and target-runtime readiness distinguishable without duplicating their authoritative statuses.

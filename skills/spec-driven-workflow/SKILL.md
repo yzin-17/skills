@@ -1,6 +1,6 @@
 ---
 name: spec-driven-workflow
-description: Plan, review, or implement non-trivial software changes, refactors, and migrations through Specs and small verifiable tasks. Re-split oversized work, preserve task handoffs, track confirmed TODOs, and archive completed work. Not for simple questions, routine low-risk edits, general documentation, or explicitly plan-free work.
+description: Plan, review, or implement non-trivial software changes through Specs and bounded tasks; organize project documentation by ownership and lifecycle, and archive completed work. Preserve handoffs, evidence, and confirmed TODOs. Not for simple questions, routine low-risk code edits, ordinary prose editing, or explicitly plan-free implementation.
 ---
 
 # Spec-Driven Workflow
@@ -13,7 +13,7 @@ Load only the references needed for the current phase:
 
 - Spec authoring or stable-contract changes: [references/spec-authoring.md](references/spec-authoring.md)
 - Task sizing, execution packets, dependencies, or re-scoping: [references/task-planning.md](references/task-planning.md)
-- Document ownership, current-status updates, or extracting mixed execution history: [references/documentation-structure.md](references/documentation-structure.md)
+- Documentation layout, ownership, current-status updates, or extracting mixed execution history: [references/documentation-structure.md](references/documentation-structure.md)
 - Implementation, checkpoints, evidence, or delegation handoffs: [references/implementation.md](references/implementation.md)
 - Planning preflight or final consistency review: [references/review.md](references/review.md)
 - Confirmed follow-up implementation and TODO synchronization: [references/todo-tracking.md](references/todo-tracking.md)
@@ -26,6 +26,7 @@ An assigned executor reads its task, applicable Spec assertions/invariants, read
 - Follow the request, project rules, and confirmed context. This skill does not authorize scope expansion, external mutations, deployment, destructive migration, or commits.
 - Respect source boundaries. Distinguish requirements, reported facts, directly verified facts, assumptions, and unresolved decisions; do not claim unavailable code or environments were inspected.
 - Preserve worktree changes. Reuse project terminology, interfaces, paths, and test entry points. Otherwise use `docs/specs/YYYY-MM-DD-<task-id>.md` and `docs/tasks/<task-id>.md`; keep the Spec's first-creation date and filename stable.
+- Keep long-lived architecture, domain models, and ADRs separate from scoped requirements and acceptance contracts. Use the compact, on-demand layout in `documentation-structure.md`; Task and Review documents link to independent evidence rather than owning evidence subdirectories.
 - The Spec owns stable intent, boundaries, behavior, and acceptance. The linked Task owns the current executable plan, dependencies, context entry points, completion conditions, status, and latest evidence pointers. Update current state in place; keep chronological implementation records and detailed evidence in linked supporting files, not appended to the Task. These records are not competing plans or status owners; follow `documentation-structure.md`. Document separation does not change scope, task sizing, or acceptance obligations.
 - A cohesive Spec may contain many small tasks. Separate Specs only for independently deliverable subsystems, not merely because tasks cross runtimes.
 - A leaf owns one concrete outcome, one primary execution surface, bounded inputs/write scope, and its own validation. Independently verifiable deliveries need separate leaves, not more Steps under a large checkbox. Stop and re-split remaining work when this boundary fails.
@@ -36,10 +37,12 @@ An assigned executor reads its task, applicable Spec assertions/invariants, read
 
 ## Workflow
 
+For a request to reorganize documentation or archive completed work, use the documentation and archival references directly: inspect existing obligations, perform the authorized moves, and validate the resulting layout and consumers. Do not invent product Specs or Tasks solely to move documents. Use the planning/implementation workflow below when the request includes those activities.
+
 1. Identify document-only versus implementation scope and inspect the relevant permitted sources. Resolve prerequisite inventories, environment checks, and contract decisions before dependent work; use bounded discovery when the implementation boundary is unknown.
 2. Create/update the Spec and linked Task. Give ACs stable IDs and map each material assertion to an implementation owner and sufficient verification. When establishing or repairing the document layout, use `documentation-structure.md`; create logs/evidence only when there are actual records to retain.
 3. Plan fresh-context executable leaves using `task-planning.md`: precise inputs, exclusions, write ownership, local checks, and stop conditions. Record real dependencies and an early real-semantic integration path. Expand only a dependency-ready leaf into detailed Steps, not the whole feature into a long execution script.
-4. Run planning preflight. Re-split oversized leaves before dispatch. Document-only work stops here unless lifecycle cleanup was requested; unresolved Blocking Questions stop affected implementation, not unrelated ready work.
+4. Run planning preflight. Re-split oversized leaves before dispatch. Requirements/planning-only work stops here; requested documentation maintenance completes its authorized cleanup and consistency checks. Unresolved Blocking Questions stop affected implementation, not unrelated ready work.
 5. Execute on the verified dependency frontier. Keep local implementation, self-review, and focused checks together. At completion, interruption, blockage, or scope growth, record history/evidence in supporting files and replace the Task's current checkpoint and affected statuses. Re-plan only remaining affected work while preserving valid evidence and original AC obligations. Change the Spec first when its stable contract changes.
 6. Synchronize confirmed follow-up items through `todo-tracking.md` when they arise or change. Current-scope work and its latest blockers remain in the active Task; failure history and command details belong in linked logs/evidence, not TODO.
 7. Before claiming completion, reconcile the current Task with actual changes and linked evidence, synchronize affected TODO entries, and run the single final consistency review. Check current summaries and supporting links for stale or contradictory status. Review large results in bounded sections against a stable baseline, not by loading the whole execution history.

@@ -16,6 +16,8 @@ Reuse existing domain names. Propose a prerequisite refactor only when it direct
 
 ## 2. Scope and Spec boundaries
 
+Keep scoped requirements and acceptance in the Spec. Long-lived architecture, domain models, and ADRs have an authoritative home in `docs/design/` under the default layout; link them rather than making feature Specs the permanent design archive. Include the decision rationale and constraints needed to understand this Spec's scope without duplicating the broader design.
+
 Prefer separate Spec units when subsystems deliver independently useful behavior, can be independently accepted, and do not need strong transactional or architectural coupling to land together. Each unit needs its own linked task document and stable ID.
 
 Keep one Spec when the areas jointly define a cohesive domain or product contract. Explain the shared boundary when material. Split its implementation tasks and gates as needed; do not create separate Specs merely for each database, API, runtime, or client.
@@ -123,6 +125,6 @@ Update the Spec first when confirmed feedback changes stable behavior, business 
 
 Change only the task document for implementation sequencing, task granularity, or internal details that preserve the stable contract. A local task may hand a product-level check to an explicit gate only if the same feature-level obligation remains intact.
 
-Keep current status and linked task IDs synchronized. Preserve historical baseline descriptions with an explicit baseline date; do not present pre-implementation state as current fact after implementation has progressed. Keep detailed execution history and evidence in linked logs/reports under `documentation-structure.md`, not in the Spec or the current Task body. The Task retains current completion conditions, status, and evidence pointers; a stable design decision discovered during execution must still be reflected here rather than living only in a log.
+Keep current status and linked task IDs synchronized. Preserve historical baseline descriptions with an explicit baseline date; do not present pre-implementation state as current fact after implementation has progressed. Keep detailed execution history and evidence in linked records under `documentation-structure.md`, not in the Spec or the current Task body. The Task retains current completion conditions, status, and evidence pointers. Reflect decisions that affect this Spec's contract here; maintain longer-lived architecture/domain/ADR truth in its design document and link it, rather than leaving decisions only in a log.
 
 Use this check: another developer given only the updated Spec should be able to implement the intended behavior without guessing newly confirmed requirements.

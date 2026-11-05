@@ -7,7 +7,12 @@ Move completed execution documents out of active task entry points while preserv
 Follow an existing repository lifecycle or archive convention. Otherwise use:
 
 - completed Task documents: `docs/archive/tasks/<same-filename>`;
-- Specs that are no longer current contracts: `docs/archive/specs/<same-filename>`.
+- Specs that are no longer current requirements/acceptance contracts: `docs/archive/specs/<same-filename>`;
+- superseded architecture, domain documents, and ADRs: `docs/archive/design/<same-filename>`;
+- closed Review documents: `docs/archive/reviews/<same-filename>`;
+- evidence owned exclusively by closed work: `docs/archive/evidence/<same-relative-path>`.
+
+Use these categories only when they have content. Long-lived architecture, domain truth, and ADRs belong in `docs/design/`; scoped requirements and acceptance belong in `docs/specs/`. Their lifecycles are independent, so ongoing design maintenance is not a reason to keep a completed Task active.
 
 Archive a Task document only when all of the following are true for its claimed scope:
 
@@ -41,9 +46,9 @@ Before moving a completed Task document:
 
 1. Finalize its status, required evidence, and final Review conclusion. Preserve stable Task/AC IDs and enough evidence to explain why the scope was accepted.
 2. Synchronize confirmed deferred work through `todo-tracking.md`. Current-scope gaps cannot be relabeled as future work during closure. Verify that no unresolved work remains owned by the Task after synchronization.
-3. Decide separately whether the linked Spec remains a current contract. Completion of implementation does not by itself make a Spec historical.
+3. Decide separately whether the linked Spec remains a current requirements/acceptance contract. Completion of implementation does not by itself make a Spec historical. Archive a completed implementation-only or superseded Spec when it no longer owns a current contract; ensure still-needed design truth has an authoritative home in `docs/design/` rather than copying it into another active Spec.
 4. Identify active references that would break or become misleading after the move, especially TODO entries, indexes, READMEs, successor documents, Review links, and linked implementation logs/evidence. Include relative links and historical anchors in both directions.
-5. Update active documentation that owns current architecture, operation, or domain truth when the repository convention requires it. Do not keep a completed Task active merely to serve as current architecture documentation.
+5. Update the authoritative design or guide that owns current architecture, operation, or domain truth. Preserve any still-current Spec requirements and acceptance. Do not keep a completed Task active merely to serve as current architecture documentation.
 
 ## 3. Move semantics
 
@@ -64,7 +69,9 @@ A linked Spec is handled independently:
 
 Archive means “historical, not a current implementation source.” It does not mean deletion.
 
-Supporting implementation logs and evidence follow [documentation-structure.md](documentation-structure.md). They may be extracted while the Task is still active; this does not archive or complete that Task. At closure, move task-owned support files with the Task or retain their stable repository locations and update links in both directions. Keep shared evidence in its existing authoritative location. Never concatenate logs back into the Task just to archive them together, or copy reports into a second evidence history.
+Supporting implementation logs and evidence follow [documentation-structure.md](documentation-structure.md). They may be extracted while the Task is still active; this does not archive or complete that Task. Evidence lives independently in `docs/evidence/`. At closure, exclusively owned historical evidence may move to `docs/archive/evidence/`; active or shared evidence keeps one authoritative copy and stable references. Preserve raw/frozen bytes, update actual path consumers, and do not concatenate reports back into the Task or duplicate an evidence history.
+
+Repair inbound references directly and remove the original completed-Task path by default. A repository with no active Tasks may keep the absence/status entry in `docs/README.md` instead of retaining an empty task directory or index.
 
 If concrete inbound links cannot be updated in the same change and the repository already permits compatibility redirects, the old path may temporarily contain only a short pointer to the archive location. Do not duplicate status, acceptance criteria, evidence, or implementation details in the redirect. Remove such redirects after references are repaired when the repository convention expects that cleanup.
 
@@ -89,9 +96,12 @@ After moving documents, verify that:
 - no archived Task still owns unresolved implementation work;
 - active indexes and TODO links resolve to the intended current or historical source;
 - still-current Specs remain discoverable and are not archived solely because their implementation finished;
+- long-lived design stays separately discoverable, and historical design is not presented as a current architecture, domain rule, or ADR;
 - archived Specs/Tasks are not described as current requirements or current runtime truth;
 - the archive move did not remove required evidence or stable identifiers;
 - implementation-log/evidence links, backlinks, and any moved historical anchors still resolve, and no supporting report is presented as the current task-status owner.
+
+For path changes, apply the migration checks in `documentation-structure.md`, including scripts/tests/CI that read evidence and the Git-tracked delivery when a commit is in scope. Existing local files alone do not prove a published document tree is complete.
 
 Do not create a second completed-work status database. The archived Task itself, Git history, and any repository archive index are sufficient unless project rules require more.
 

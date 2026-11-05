@@ -1,6 +1,6 @@
 # Implementation
 
-Apply only when the current request includes implementation. Document-only work stops after its planning review.
+Apply when the current request includes software implementation. Requirements/planning-only work stops after planning review; requested documentation organization or archival uses the documentation references and completes its authorized maintenance separately.
 
 ## 1. Implementation gate
 
